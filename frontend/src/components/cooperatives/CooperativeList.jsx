@@ -1,0 +1,465 @@
+import { useState, useEffect } from 'react';
+import { cooperativeService } from '../../services/api';
+import CooperativeForm from './CooperativeForm';
+import CooperativeDetails from './CooperativeDetails';
+import { CanCreate, CanUpdate, CanDelete } from '../common/PermissionWrapper';
+import SearchableSelect from '../common/SearchableSelect';
+import Icon from '../common/Icon';
+import Button from '../common/Button';
+import Badge from '../common/Badge';
+import Card from '../common/Card';
+
+function CooperativeList() {
+  const [cooperatives, setCooperatives] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedCooperative, setSelectedCooperative] = useState(null);
+  const [showInactives, setShowInactives] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    region: [],
+    commune: [],
+    certifiee: [],
+  });
+
+  useEffect(() => {
+    loadCooperatives();
+  }, [showInactives, filters]);
+
+  const loadCooperatives = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        active: showInactives ? undefined : 'true',
+        ...filters,
+      };
+
+      const response = await cooperativeService.getAll(params);
+      setCooperatives(response.data.results || response.data);
+    } catch (error) {
+      console.error('Erreur chargement coopératives:', error);
+      alert('Erreur lors du chargement des coopératives');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (formData) => {
+    try {
+
+      const cleanData = {
+        code: formData.code,
+        nom: formData.nom,
+        sigle: formData.sigle || '',
+        region: formData.region,
+        district: formData.district || '',
+        commune: formData.commune,
+        fokontany: formData.fokontany || '',
+        village: formData.village,
+        telephone: formData.telephone || '',
+        email: formData.email || '',
+        numero_agrement: formData.numero_agrement || '',
+        date_creation: formData.date_creation,
+        date_agrement: formData.date_agrement || null,
+        nombre_hommes: parseInt(formData.nombre_hommes) || 0,
+        nombre_femmes: parseInt(formData.nombre_femmes) || 0,
+        description: formData.description || '',
+        objectifs: formData.objectifs || '',
+        active: formData.active !== undefined ? formData.active : true,
+        certifiee: formData.certifiee !== undefined ? formData.certifiee : false,
+        type_certification: formData.type_certification || '',
+      };
+
+      if (selectedCooperative) {
+        await cooperativeService.update(selectedCooperative.id, cleanData);
+        alert('Coopérative mise à jour avec succès !');
+      } else {
+        await cooperativeService.create(cleanData);
+        alert('Coopérative créée avec succès !');
+      }
+
+      setShowForm(false);
+      setSelectedCooperative(null);
+      loadCooperatives();
+    } catch (error) {
+      console.error('❌ Erreur complète:', error);
+      console.error('❌ Response data:', error.response?.data);
+
+      if (error.response?.data) {
+        const errors = error.response.data;
+        let errorMessage = 'Erreurs de validation:\n\n';
+
+        Object.keys(errors).forEach(key => {
+          const value = errors[key];
+          if (Array.isArray(value)) {
+            errorMessage += `${key}: ${value.join(', ')}\n`;
+          } else {
+            errorMessage += `${key}: ${value}\n`;
+          }
+        });
+
+        alert(errorMessage);
+        console.error('📋 Détail des erreurs:', errors);
+      } else {
+        alert('Erreur lors de l\'enregistrement. Vérifiez la console.');
+      }
+      throw error;
+    }
+  };
+
+  const handleDelete = async (cooperative) => {
+    if (window.confirm(`Voulez-vous vraiment supprimer ${cooperative.nom} ?`)) {
+      try {
+        await cooperativeService.delete(cooperative.id);
+        alert('Coopérative supprimée avec succès');
+        loadCooperatives();
+      } catch (error) {
+        alert('Erreur lors de la suppression');
+      }
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const response = await cooperativeService.export();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `cooperatives_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      alert('Erreur lors de l\'export');
+    }
+  };
+
+  const filteredCooperatives = cooperatives.filter(coop => {
+    // Filtre de recherche
+    const matchesSearch = coop.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coop.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coop.commune?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Filtres multiples
+    if (filters.commune && filters.commune.length > 0 && !filters.commune.includes(coop.commune)) return false;
+    if (filters.region && filters.region.length > 0 && !filters.region.includes(coop.region)) return false;
+    if (filters.certifiee && filters.certifiee.length > 0) {
+      const isCertified = coop.certifiee ? 'true' : 'false';
+      if (!filters.certifiee.includes(isCertified)) return false;
+    }
+    
+    return true;
+  });
+  
+  // Extraire les communes et régions uniques
+  const communesUniques = [...new Set(cooperatives.map(c => c.commune).filter(Boolean))].sort();
+  const regionsUniques = [...new Set(cooperatives.map(c => c.region).filter(Boolean))].sort();
+  
+  const communeOptions = communesUniques.map(commune => ({
+    value: commune,
+    label: commune,
+  }));
+  
+  const regionOptions = regionsUniques.map(region => ({
+    value: region,
+    label: region,
+  }));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-yellow mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-3xl font-bold text-dark">
+            Liste des <span className="text-primary-yellow">Coopératives</span>
+          </h2>
+          <p className="text-gray-600 mt-1">
+            {filteredCooperatives.length} coopérative(s) affichée(s)
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            icon="ArrowDownTrayIcon"
+            onClick={handleExport}
+          >
+            Exporter CSV
+          </Button>
+
+          <CanCreate>
+            <Button
+              variant="primary"
+              icon="PlusIcon"
+              onClick={() => {
+                setSelectedCooperative(null);
+                setShowForm(true);
+              }}
+            >
+              Nouvelle Coopérative
+            </Button>
+          </CanCreate>
+        </div>
+      </div>
+
+      {/* Filtres */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="relative">
+            <Icon 
+              name="MagnifyingGlassIcon" 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size="md"
+            />
+            <input
+              type="text"
+              placeholder="Rechercher (nom, code, commune)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-primary-yellow"
+            />
+          </div>
+
+          <SearchableSelect
+            options={communeOptions}
+            value={filters.commune}
+            onChange={(value) => setFilters({ ...filters, commune: value })}
+            placeholder="Toutes les communes"
+            displayKey="label"
+            valueKey="value"
+            multiple={true}
+          />
+          
+          <SearchableSelect
+            options={regionOptions}
+            value={filters.region}
+            onChange={(value) => setFilters({ ...filters, region: value })}
+            placeholder="Toutes les régions"
+            displayKey="label"
+            valueKey="value"
+            multiple={true}
+          />
+          
+          <SearchableSelect
+            options={[
+              { value: 'true', label: 'Certifiées' },
+              { value: 'false', label: 'Non certifiées' }
+            ]}
+            value={filters.certifiee}
+            onChange={(value) => setFilters({ ...filters, certifiee: value })}
+            placeholder="Toutes"
+            displayKey="label"
+            valueKey="value"
+            multiple={true}
+          />
+
+          <label className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={showInactives}
+              onChange={(e) => setShowInactives(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="text-gray-700 text-sm">Afficher inactives</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Liste des coopératives */}
+      {filteredCooperatives.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCooperatives.map((coop) => (
+            <Card key={coop.id} padding="none" className="hover:shadow-xl transition-shadow">
+              {/* Header Card */}
+              <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-t-lg">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold">{coop.nom}</h3>
+                    <p className="text-green-100 text-sm mt-1">{coop.code}</p>
+                  </div>
+                  {coop.certifiee && (
+                    <Badge variant="success" size="sm" icon="CheckBadgeIcon" className="bg-green-500 text-white border-green-400">
+                      Certifiée
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2 text-gray-700">
+                    <Icon name="MapPinIcon" size="sm" className="text-gray-500 mt-0.5 flex-shrink-0" />
+                    <span>{coop.commune}, {coop.region}</span>
+                  </div>
+                  {coop.telephone && (
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Icon name="PhoneIcon" size="sm" className="text-gray-500 flex-shrink-0" />
+                      <span>{coop.telephone}</span>
+                    </div>
+                  )}
+                  {coop.email && (
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Icon name="EnvelopeIcon" size="sm" className="text-gray-500 flex-shrink-0" />
+                      <span className="truncate">{coop.email}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-200">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-primary-yellow">{coop.nombre_membres || 0}</p>
+                    <p className="text-xs text-gray-500">Membres</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-500">{coop.nombre_hommes || 0}</p>
+                    <p className="text-xs text-gray-500">Hommes</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-pink-500">{coop.nombre_femmes || 0}</p>
+                    <p className="text-xs text-gray-500">Femmes</p>
+                  </div>
+                </div>
+
+                {/* Producteurs actifs */}
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Producteurs actifs:</span>
+                    <Badge variant="success" size="md">
+                      {coop.nombre_producteurs || 0}
+                    </Badge>
+                  </div>
+                </div>
+
+                {coop.president_nom && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                      <Icon name="UserIcon" size="sm" className="text-gray-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="font-semibold">Président:</span> {coop.president_nom}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Villages */}
+                {coop.villages && coop.villages.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex items-start gap-2">
+                      <Icon name="HomeIcon" size="sm" className="text-gray-500 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <span className="font-semibold text-gray-700 block mb-1">Villages couverts:</span>
+                        <span className="text-gray-600 text-xs italic">
+                          {coop.villages.join(', ')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status Badge */}
+                {!coop.active && (
+                  <div className="mt-3">
+                    <Badge variant="error" size="sm" icon="XCircleIcon">
+                      Inactive
+                    </Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2 p-4 bg-gray-50 rounded-b-lg border-t border-gray-200">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="EyeIcon"
+                  onClick={() => {
+                    setSelectedCooperative(coop);
+                    setShowDetails(true);
+                  }}
+                  title="Voir détails"
+                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                />
+
+                <CanUpdate>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="PencilIcon"
+                    onClick={() => {
+                      setSelectedCooperative(coop);
+                      setShowForm(true);
+                    }}
+                    title="Modifier"
+                    className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                  />
+                </CanUpdate>
+
+                <CanDelete>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="TrashIcon"
+                    onClick={() => handleDelete(coop)}
+                    title="Supprimer"
+                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                  />
+                </CanDelete>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card padding="lg" className="text-center">
+          <Icon name="UserGroupIcon" size="xl" className="text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">Aucune coopérative trouvée</h3>
+          <p className="text-gray-500">Essayez de modifier vos filtres ou ajoutez une nouvelle coopérative</p>
+        </Card>
+      )}
+
+      {/* Modals */}
+      {showForm && (
+        <CooperativeForm
+          cooperative={selectedCooperative}
+          onSave={handleSave}
+          onClose={() => {
+            setShowForm(false);
+            setSelectedCooperative(null);
+          }}
+        />
+      )}
+
+      {showDetails && selectedCooperative && (
+        <CooperativeDetails
+          cooperativeId={selectedCooperative.id}
+          onClose={() => {
+            setShowDetails(false);
+            setSelectedCooperative(null);
+          }}
+          onEdit={(coop) => {
+            setShowDetails(false);
+            setSelectedCooperative(coop);
+            setShowForm(true);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+export default CooperativeList;

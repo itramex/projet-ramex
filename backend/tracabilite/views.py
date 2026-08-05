@@ -1,0 +1,386 @@
+# tracabilite/views.py
+from rest_framework import viewsets, status, filters
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import Sum, Count, Q
+from django.shortcuts import get_object_or_404
+
+from .models import (
+    Campagne,
+    BonCollecte,
+    FicheCollecte,
+    BonTransport,
+    LotTraitement,
+    Colis,
+    CommandeExport,
+    TracabiliteChain
+)
+from .serializers import (
+    CampagneSerializer,
+    BonCollecteListSerializer,
+    BonCollecteDetailSerializer,
+    BonCollecteCreateUpdateSerializer,
+    FicheCollecteListSerializer,
+    FicheCollecteDetailSerializer,
+    FicheCollecteCreateUpdateSerializer,
+    BonTransportListSerializer,
+    BonTransportDetailSerializer,
+    BonTransportCreateUpdateSerializer,
+    LotTraitementListSerializer,
+    LotTraitementDetailSerializer,
+    LotTraitementCreateUpdateSerializer,
+    ColisListSerializer,
+    ColisDetailSerializer,
+    ColisCreateUpdateSerializer,
+    CommandeExportListSerializer,
+    CommandeExportDetailSerializer,
+    CommandeExportCreateUpdateSerializer,
+    TracabiliteChainSerializer
+)
+from .engine.tracability_engine import TracabilityEngine
+
+
+class CampagneViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les campagnes"""
+    queryset = Campagne.objects.all()
+    serializer_class = CampagneSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['code']
+    ordering = ['-annee_debut']
+
+
+class BonCollecteViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les bons de collecte (FABC)"""
+    queryset = BonCollecte.objects.all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_fabc', 'producteur__nom', 'producteur__code']
+    ordering = ['-date_marche', '-numero_fabc']
+    
+    def get_serializer_class(self):
+        """Retourner le serializer approprié selon l'action"""
+        if self.action == 'list':
+            return BonCollecteListSerializer
+        elif self.action in ['create', 'update', 'partial_update']:
+            return BonCollecteCreateUpdateSerializer
+        return BonCollecteDetailSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filtres
+        campagne_id = self.request.query_params.get('campagne')
+        if campagne_id:
+            queryset = queryset.filter(campagne_id=campagne_id)
+        
+        producteur_id = self.request.query_params.get('producteur')
+        if producteur_id:
+            queryset = queryset.filter(producteur_id=producteur_id)
+
+        producteur_code = self.request.query_params.get('producteur_code')
+        if producteur_code:
+            queryset = queryset.filter(producteur__code__icontains=producteur_code)
+        
+        cooperative_id = self.request.query_params.get('cooperative')
+        if cooperative_id:
+            queryset = queryset.filter(cooperative_id=cooperative_id)
+        
+        certification = self.request.query_params.get('certification')
+        if certification:
+            certifications = [c.strip() for c in str(certification).split(',') if c.strip()]
+            cert_q = Q()
+            for cert in certifications:
+                cert_q |= Q(certification__iexact=cert) | Q(certification__icontains=cert)
+            queryset = queryset.filter(cert_q)
+
+        village = self.request.query_params.get('village')
+        if village:
+            queryset = queryset.filter(
+                Q(village_marche__icontains=village) | Q(producteur__village__icontains=village)
+            )
+        
+        return queryset.select_related('campagne', 'producteur', 'cooperative').prefetch_related('details_sacs')
+    
+    @action(detail=True, methods=['get'], url_path='trace')
+    def trace(self, request, pk=None):
+        """
+        Traçabilité ascendante à partir d'un bon de collecte
+        
+        GET /api/tracabilite/bons-collecte/{id}/trace/
+        """
+        bon_collecte = self.get_object()
+        
+        try:
+            engine = TracabilityEngine()
+            chain = engine.trace_ascendante(bon_collecte.id)
+            
+            return Response({
+                'success': True,
+                'chain': chain
+            })
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'], url_path='statistics')
+    def statistics(self, request):
+        """
+        Statistiques des bons de collecte
+        
+        GET /api/tracabilite/bons-collecte/statistics/
+        """
+        campagne_id = request.query_params.get('campagne')
+        
+        queryset = self.get_queryset()
+        if campagne_id:
+            queryset = queryset.filter(campagne_id=campagne_id)
+        
+        stats = queryset.aggregate(
+            total_bons=Count('id'),
+            poids_total=Sum('poids_accepte'),
+            montant_total=Sum('montant_total_achat'),
+            nombre_producteurs=Count('producteur', distinct=True)
+        )
+        
+        # Répartition par type de produit
+        by_produit = queryset.values('type_produit').annotate(
+            count=Count('id'),
+            poids=Sum('poids_accepte')
+        ).order_by('-count')
+        
+        # Répartition par certification
+        by_certification = queryset.values('certification').annotate(
+            count=Count('id'),
+            poids=Sum('poids_accepte')
+        ).order_by('-count')
+        
+        return Response({
+            'total_bons': stats['total_bons'] or 0,
+            'poids_total_kg': float(stats['poids_total'] or 0),
+            'montant_total_ar': float(stats['montant_total'] or 0),
+            'nombre_producteurs': stats['nombre_producteurs'] or 0,
+            'by_produit': list(by_produit),
+            'by_certification': list(by_certification)
+        })
+
+
+class FicheCollecteViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les fiches de collecte (FC)"""
+    queryset = FicheCollecte.objects.all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_fc', 'fokontany']
+    ordering = ['-date_marche', '-numero_fc']
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return FicheCollecteListSerializer
+        elif self.action in ['create', 'update', 'partial_update']:
+            return FicheCollecteCreateUpdateSerializer
+        return FicheCollecteDetailSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        campagne_id = self.request.query_params.get('campagne')
+        if campagne_id:
+            queryset = queryset.filter(campagne_id=campagne_id)
+        
+        cooperative_id = self.request.query_params.get('cooperative')
+        if cooperative_id:
+            queryset = queryset.filter(cooperative_id=cooperative_id)
+        
+        return queryset.select_related('campagne', 'cooperative').prefetch_related('bons_collecte')
+
+
+class BonTransportViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les bons de transport (BT)"""
+    queryset = BonTransport.objects.all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_bt', 'lieu_depart', 'lieu_destination']
+    ordering = ['-date_chargement', '-numero_bt']
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return BonTransportListSerializer
+        elif self.action in ['create', 'update', 'partial_update']:
+            return BonTransportCreateUpdateSerializer
+        return BonTransportDetailSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        statut = self.request.query_params.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+        
+        campagne_id = self.request.query_params.get('campagne')
+        if campagne_id:
+            queryset = queryset.filter(campagne_id=campagne_id)
+        
+        return queryset.select_related('campagne', 'fiche_collecte', 'cooperative').prefetch_related('details_sacs')
+    
+    @action(detail=True, methods=['post'], url_path='marquer-recu')
+    def marquer_recu(self, request, pk=None):
+        """
+        Marquer un transport comme reçu
+        
+        POST /api/tracabilite/bons-transport/{id}/marquer-recu/
+        Body: {
+            "date_arrivee": "2025-11-17",
+            "poids_total_arrivee": 1250.5,
+            "agent_receptionnaire": "Jean Dupont"
+        }
+        """
+        bon_transport = self.get_object()
+        
+        bon_transport.date_arrivee = request.data.get('date_arrivee')
+        bon_transport.poids_total_arrivee = request.data.get('poids_total_arrivee')
+        bon_transport.agent_receptionnaire = request.data.get('agent_receptionnaire')
+        bon_transport.statut = 'recu'
+        bon_transport.save()
+        
+        serializer = self.get_serializer(bon_transport)
+        return Response({
+            'success': True,
+            'message': 'Transport marqué comme reçu',
+            'bon_transport': serializer.data
+        })
+
+
+class LotTraitementViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les lots de traitement"""
+    queryset = LotTraitement.objects.all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_lot', 'type_traitement']
+    ordering = ['-date_debut', '-numero_lot']
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return LotTraitementListSerializer
+        elif self.action in ['create', 'update', 'partial_update']:
+            return LotTraitementCreateUpdateSerializer
+        return LotTraitementDetailSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        statut = self.request.query_params.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+        
+        type_traitement = self.request.query_params.get('type')
+        if type_traitement:
+            queryset = queryset.filter(type_traitement=type_traitement)
+        
+        return queryset.select_related('campagne', 'cooperative').prefetch_related('bons_transport')
+
+
+class ColisViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les colis"""
+    queryset = Colis.objects.all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_colis', 'qr_code', 'code_barres']
+    ordering = ['-date_conditionnement', 'numero_colis']
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ColisListSerializer
+        elif self.action in ['create', 'update', 'partial_update']:
+            return ColisCreateUpdateSerializer
+        return ColisDetailSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        qualite = self.request.query_params.get('qualite')
+        if qualite:
+            queryset = queryset.filter(qualite=qualite)
+        
+        return queryset.select_related('lot_traitement')
+    
+    @action(detail=True, methods=['get'], url_path='generate-qr')
+    def generate_qr(self, request, pk=None):
+        """
+        Générer un QR code pour un colis
+        
+        GET /api/tracabilite/colis/{id}/generate-qr/
+        """
+        colis = self.get_object()
+        
+        # TODO: Implémenter la génération de QR code
+        # Utiliser une bibliothèque comme qrcode ou segno
+        
+        return Response({
+            'success': True,
+            'qr_code_url': f'/api/tracabilite/colis/{colis.id}/qr.png'
+        })
+
+
+class CommandeExportViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les commandes d'export"""
+    queryset = CommandeExport.objects.all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_commande', 'nom_client', 'pays_destination']
+    ordering = ['-date_commande', '-numero_commande']
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return CommandeExportListSerializer
+        elif self.action in ['create', 'update', 'partial_update']:
+            return CommandeExportCreateUpdateSerializer
+        return CommandeExportDetailSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        statut = self.request.query_params.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+        
+        pays = self.request.query_params.get('pays')
+        if pays:
+            queryset = queryset.filter(pays_destination__icontains=pays)
+        
+        return queryset.select_related('campagne').prefetch_related('colis')
+    
+    @action(detail=True, methods=['get'], url_path='trace')
+    def trace(self, request, pk=None):
+        """
+        Traçabilité descendante à partir d'une commande d'export
+        
+        GET /api/tracabilite/commandes-export/{id}/trace/
+        """
+        commande = self.get_object()
+        
+        try:
+            engine = TracabilityEngine()
+            chain = engine.trace_descendante(commande.id)
+            
+            return Response({
+                'success': True,
+                'chain': chain
+            })
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class TracabiliteChainViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet pour les chaînes de traçabilité (lecture seule)"""
+    queryset = TracabiliteChain.objects.all()
+    serializer_class = TracabiliteChainSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['uuid', 'producteur__nom']
+    ordering = ['-date_creation']

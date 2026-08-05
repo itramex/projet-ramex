@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+
+# Django / local secrets
+.env
+*.log
+logs/
+
+# Node / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+coverage/
+
+# Local tool configs
+.claude/
+.codely-cli/
+.codely/

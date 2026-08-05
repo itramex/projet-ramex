@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Animation fade in */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Scrollbar personnalisée */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Scrollbar large style (comme maquette liste producteurs) */
+.scrollbar-wide {
+  scrollbar-width: auto; /* Firefox */
+  scrollbar-color: #6b7280 #e5e7eb;
+}
+
+.scrollbar-wide::-webkit-scrollbar {
+  height: 14px;
+}
+
+.scrollbar-wide::-webkit-scrollbar-track {
+  background: #e5e7eb;
+  border-radius: 8px;
+}
+
+.scrollbar-wide::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+}
+
+.scrollbar-wide::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* Style pour border-b-3 */
+.border-b-3 {
+  border-bottom-width: 3px;
+}
+
+aside::-webkit-scrollbar {
+  width: 6px;
+}
+
+aside::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+aside::-webkit-scrollbar-thumb {
+  background: rgba(250, 204, 21, 0.5);
+  border-radius: 3px;
+}
+
+aside::-webkit-scrollbar-thumb:hover {
+  background: rgba(250, 204, 21, 0.7);
+}
