@@ -196,6 +196,75 @@ export const cooperativeService = {
   export: () => api.get('/cooperatives/export/', { responseType: 'blob' }),
 };
 
+// ========== SERVICE GÉOGRAPHIE ==========
+export const geographieService = {
+  // Régions
+  getRegions: (params = {}) => api.get('/geographie/regions/', { params }),
+  getRegion: (id) => api.get(`/geographie/regions/${id}/`),
+  createRegion: (data) => api.post('/geographie/regions/', data),
+  updateRegion: (id, data) => api.put(`/geographie/regions/${id}/`, data),
+  deleteRegion: (id) => api.delete(`/geographie/regions/${id}/`),
+
+  // Districts
+  getDistricts: (params = {}) => api.get('/geographie/districts/', { params }),
+  getDistrict: (id) => api.get(`/geographie/districts/${id}/`),
+  createDistrict: (data) => api.post('/geographie/districts/', data),
+  updateDistrict: (id, data) => api.put(`/geographie/districts/${id}/`, data),
+  deleteDistrict: (id) => api.delete(`/geographie/districts/${id}/`),
+
+  // Communes
+  getCommunes: (params = {}) => api.get('/geographie/communes/', { params }),
+  getCommune: (id) => api.get(`/geographie/communes/${id}/`),
+  createCommune: (data) => api.post('/geographie/communes/', data),
+  updateCommune: (id, data) => api.put(`/geographie/communes/${id}/`, data),
+  deleteCommune: (id) => api.delete(`/geographie/communes/${id}/`),
+
+  // Fokontany
+  getFokontanys: (params = {}) => api.get('/geographie/fokontanys/', { params }),
+  getFokontany: (id) => api.get(`/geographie/fokontanys/${id}/`),
+  createFokontany: (data) => api.post('/geographie/fokontanys/', data),
+  updateFokontany: (id, data) => api.put(`/geographie/fokontanys/${id}/`, data),
+  deleteFokontany: (id) => api.delete(`/geographie/fokontanys/${id}/`),
+
+  // Villages
+  getVillages: (params = {}) => api.get('/geographie/villages/', { params }),
+  getVillage: (id) => api.get(`/geographie/villages/${id}/`),
+  createVillage: (data) => api.post('/geographie/villages/', data),
+  updateVillage: (id, data) => api.put(`/geographie/villages/${id}/`, data),
+  deleteVillage: (id) => api.delete(`/geographie/villages/${id}/`),
+
+  // Agences
+  getAgences: (params = {}) => api.get('/geographie/agences/', { params }),
+  getAgence: (id) => api.get(`/geographie/agences/${id}/`),
+  createAgence: (data) => api.post('/geographie/agences/', data),
+  updateAgence: (id, data) => api.put(`/geographie/agences/${id}/`, data),
+  deleteAgence: (id) => api.delete(`/geographie/agences/${id}/`),
+
+  // Structures intermédiaires
+  getStructuresIntermediaires: (params = {}) => api.get('/geographie/structures-intermediaires/', { params }),
+  getStructureIntermediaire: (id) => api.get(`/geographie/structures-intermediaires/${id}/`),
+  createStructureIntermediaire: (data) => api.post('/geographie/structures-intermediaires/', data),
+  updateStructureIntermediaire: (id, data) => api.put(`/geographie/structures-intermediaires/${id}/`, data),
+  deleteStructureIntermediaire: (id) => api.delete(`/geographie/structures-intermediaires/${id}/`),
+};
+
+// ========== SERVICE DÉVELOPPEMENT DURABLE ==========
+export const ddService = {
+  // Partenaires DD
+  getPartenaires: (params = {}) => api.get('/developpement-durable/partenaires/', { params }),
+  getPartenaire: (id) => api.get(`/developpement-durable/partenaires/${id}/`),
+  createPartenaire: (data) => api.post('/developpement-durable/partenaires/', data),
+  updatePartenaire: (id, data) => api.put(`/developpement-durable/partenaires/${id}/`, data),
+  deletePartenaire: (id) => api.delete(`/developpement-durable/partenaires/${id}/`),
+
+  // Activités DD
+  getActivites: (params = {}) => api.get('/developpement-durable/activites/', { params }),
+  getActivite: (id) => api.get(`/developpement-durable/activites/${id}/`),
+  createActivite: (data) => api.post('/developpement-durable/activites/', data),
+  updateActivite: (id, data) => api.put(`/developpement-durable/activites/${id}/`, data),
+  deleteActivite: (id) => api.delete(`/developpement-durable/activites/${id}/`),
+};
+
 // ========== SERVICE PARCELLES ==========
 export const parcelleService = {
   getAll: (params = {}) => api.get('/parcelles/', { params }),

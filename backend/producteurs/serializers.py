@@ -150,6 +150,13 @@ class ProducteurListSerializer(serializers.ModelSerializer):
     statut_matrimonial_display = serializers.CharField(source='get_statut_matrimonial_display', read_only=True)
     niveau_education_display = serializers.CharField(source='get_niveau_education_display', read_only=True)
     
+    # Champs géographiques normalisés
+    region_nom = serializers.CharField(source='region.nom', read_only=True, allow_null=True)
+    district_nom = serializers.CharField(source='district.nom', read_only=True, allow_null=True)
+    commune_ref_nom = serializers.CharField(source='commune_ref.nom', read_only=True, allow_null=True)
+    fokontany_ref_nom = serializers.CharField(source='fokontany_ref.nom', read_only=True, allow_null=True)
+    village_ref_nom = serializers.CharField(source='village_ref.nom', read_only=True, allow_null=True)
+    
     class Meta:
         model = Producteur
         fields = [
@@ -159,6 +166,10 @@ class ProducteurListSerializer(serializers.ModelSerializer):
             'telephone', 'email',
             # Localisation
             'village', 'fokontany', 'commune',
+            # Localisation normalisée (FK)
+            'region', 'region_nom', 'district', 'district_nom',
+            'commune_ref', 'commune_ref_nom', 'fokontany_ref', 'fokontany_ref_nom',
+            'village_ref', 'village_ref_nom', 'structure_intermediaire',
             # Coopérative
             'cooperative', 'cooperative_nom', 'responsabilite_cooperative', 'responsabilite_cooperative_display',
             'date_adhesion_cooperative',

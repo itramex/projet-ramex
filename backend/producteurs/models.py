@@ -83,9 +83,60 @@ class Producteur(models.Model):
     )
     
     # ==================== LOCALISATION ====================
+    # Champs texte (conservés pour compatibilité)
     commune = models.CharField(max_length=100, verbose_name="Commune")
     fokontany = models.CharField(max_length=100, null=True, blank=True, verbose_name="Fokontany")
     village = models.CharField(max_length=100, verbose_name="Village", null=True, blank=True)
+    
+    # Champs FK normalisés (nouveaux)
+    region = models.ForeignKey(
+        'geographie.Region',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='producteurs',
+        verbose_name="Région"
+    )
+    district = models.ForeignKey(
+        'geographie.District',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='producteurs',
+        verbose_name="District"
+    )
+    commune_ref = models.ForeignKey(
+        'geographie.Commune',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='producteurs',
+        verbose_name="Commune (référentiel)"
+    )
+    fokontany_ref = models.ForeignKey(
+        'geographie.Fokontany',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='producteurs',
+        verbose_name="Fokontany (référentiel)"
+    )
+    village_ref = models.ForeignKey(
+        'geographie.Village',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='producteurs',
+        verbose_name="Village (référentiel)"
+    )
+    structure_intermediaire = models.ForeignKey(
+        'geographie.StructureIntermediaire',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='producteurs',
+        verbose_name="Structure intermédiaire"
+    )
     
     # ==================== CONTACT ====================
     telephone = models.CharField(max_length=20, verbose_name="N° Téléphone", null=True, blank=True)

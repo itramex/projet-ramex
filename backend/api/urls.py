@@ -15,6 +15,8 @@ router.register(r'parcelles', ParcelleViewSet, basename='parcelle')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('geographie/', include('geographie.urls')),
+    path('developpement-durable/', include('developpement_durable.urls')),
     path('chatbot/', ChatbotView.as_view(), name='chatbot'),
     path('dashboard/decisionnel/export/', dashboard_decisionnel_export, name='api_dashboard_decisionnel_export'),
     path('dashboard/', include('dashboard.urls')),

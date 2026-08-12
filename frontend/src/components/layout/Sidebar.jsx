@@ -41,6 +41,12 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       description: 'Gestion des parcelles',
     },
     {
+      title: 'Développement Durable',
+      iconKey: 'location',
+      path: '/developpement-durable',
+      description: 'Activités et partenaires DD',
+    },
+    {
       title: 'Certification et Formation',
       iconKey: 'certifications',
       path: '/formations',

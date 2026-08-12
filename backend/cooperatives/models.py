@@ -27,12 +27,62 @@ class Cooperative(models.Model):
     nom = models.CharField(max_length=200, verbose_name="Nom de la coopérative")
     sigle = models.CharField(max_length=20, blank=True, verbose_name="Sigle")
     
-    # Localisation
+    # Localisation (texte - conservé pour compatibilité)
     region = models.CharField(max_length=100, blank=True, verbose_name="Région", null=True)
     district = models.CharField(max_length=100, blank=True, verbose_name="District", null=True)
     commune = models.CharField(max_length=100, verbose_name="Commune", null=True)
     fokontany = models.CharField(max_length=100, blank=True, verbose_name="Fokontany", null=True)
     village = models.CharField(max_length=100, verbose_name="Village", null=True)
+    
+    # Localisation (FK normalisées - nouvelles)
+    region_ref = models.ForeignKey(
+        'geographie.Region',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cooperatives',
+        verbose_name="Région (référentiel)"
+    )
+    district_ref = models.ForeignKey(
+        'geographie.District',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cooperatives',
+        verbose_name="District (référentiel)"
+    )
+    commune_ref = models.ForeignKey(
+        'geographie.Commune',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cooperatives',
+        verbose_name="Commune (référentiel)"
+    )
+    fokontany_ref = models.ForeignKey(
+        'geographie.Fokontany',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cooperatives',
+        verbose_name="Fokontany (référentiel)"
+    )
+    village_ref = models.ForeignKey(
+        'geographie.Village',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cooperatives',
+        verbose_name="Village (référentiel)"
+    )
+    agence = models.ForeignKey(
+        'geographie.Agence',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cooperatives',
+        verbose_name="Agence RAMEX"
+    )
     
     # Contact
     telephone_validator = RegexValidator(
@@ -93,6 +143,12 @@ class Cooperative(models.Model):
     # Informations supplémentaires
     description = models.TextField(blank=True, verbose_name="Description")
     objectifs = models.TextField(blank=True, verbose_name="Objectifs")
+    objectifs_dd = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Objectifs Développement Durable",
+        help_text="Liste des objectifs clients DD (résilience, autonomisation femmes, droits humains, biodiversité...)"
+    )
     annee_creation = models.PositiveIntegerField(
         null=True,
         blank=True,

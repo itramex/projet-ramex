@@ -21,6 +21,14 @@ class CooperativeListSerializer(serializers.ModelSerializer):
     nombre_femmes = serializers.SerializerMethodField()
     villages = serializers.SerializerMethodField()
     
+    # Champs géographiques normalisés
+    region_ref_nom = serializers.CharField(source='region_ref.nom', read_only=True, allow_null=True)
+    district_ref_nom = serializers.CharField(source='district_ref.nom', read_only=True, allow_null=True)
+    commune_ref_nom = serializers.CharField(source='commune_ref.nom', read_only=True, allow_null=True)
+    fokontany_ref_nom = serializers.CharField(source='fokontany_ref.nom', read_only=True, allow_null=True)
+    village_ref_nom = serializers.CharField(source='village_ref.nom', read_only=True, allow_null=True)
+    agence_nom = serializers.CharField(source='agence.nom', read_only=True, allow_null=True)
+    
     class Meta:
         model = Cooperative
         fields = [
@@ -28,7 +36,11 @@ class CooperativeListSerializer(serializers.ModelSerializer):
             'village', 'telephone', 'email', 'active', 'annee_creation',
             'nombre_membres', 'nombre_hommes', 'nombre_femmes',
             'nombre_producteurs', 'superficie_totale_ha',
-            'date_creation', 'date_enregistrement', 'villages'
+            'date_creation', 'date_enregistrement', 'villages',
+            # Champs géographiques normalisés
+            'region_ref', 'region_ref_nom', 'district_ref', 'district_ref_nom',
+            'commune_ref', 'commune_ref_nom', 'fokontany_ref', 'fokontany_ref_nom',
+            'village_ref', 'village_ref_nom', 'agence', 'agence_nom',
         ]
     
     def get_villages(self, obj):
@@ -118,7 +130,9 @@ class CooperativeCreateUpdateSerializer(serializers.ModelSerializer):
             'code', 'nom', 'sigle', 'region', 'district', 'commune',
             'fokontany', 'village', 'telephone', 'email', 'annee_creation',
             'date_creation', 'nombre_hommes', 'nombre_femmes',
-            'description', 'objectifs', 'active', 'type_certification', 'type_certification_display'
+            'description', 'objectifs', 'active', 'type_certification', 'type_certification_display',
+            # Champs géographiques normalisés
+            'region_ref', 'district_ref', 'commune_ref', 'fokontany_ref', 'village_ref', 'agence',
         ]
     
     def validate_code(self, value):

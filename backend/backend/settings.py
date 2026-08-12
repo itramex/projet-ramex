@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'drf_spectacular',
     
     # Apps locales
+    'geographie',
+    'developpement_durable',
     'users',
     'producteurs',
     'parcelles',

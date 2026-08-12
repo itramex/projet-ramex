@@ -36,6 +36,8 @@ const RecommendationList = lazy(() => import('./components/recommandations/Recom
 const RecommendationDashboard = lazy(() => import('./components/recommandations/RecommendationDashboard'));
 const ComponentsDemo = lazy(() => import('./components/common/ComponentsDemo'));
 const HistoryAnalysisPage = lazy(() => import('./components/history/HistoryAnalysisPage'));
+const GeographieManagement = lazy(() => import('./components/geographie/GeographieManagement'));
+const DeveloppementDurable = lazy(() => import('./components/developpementdurable/DeveloppementDurable'));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -116,6 +118,12 @@ function App() {
           <Route path="/formations" element={<ProtectedRoute><FormationsCertifications /></ProtectedRoute>} />
           <Route path="/formations/certification-types" element={<ProtectedRoute><CertificationTypesManagement /></ProtectedRoute>} />
           <Route path="/formations/specifications" element={<ProtectedRoute><CertificationSpecifications /></ProtectedRoute>} />
+
+          {/* Géographie */}
+          <Route path="/geographie" element={<ProtectedRoute><GeographieManagement /></ProtectedRoute>} />
+
+          {/* Développement Durable */}
+          <Route path="/developpement-durable" element={<ProtectedRoute><DeveloppementDurable /></ProtectedRoute>} />
 
           {/* Recommandations */}
           <Route path="/recommandations" element={<ProtectedRoute><RecommendationDashboard /></ProtectedRoute>} />
