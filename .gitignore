@@ -36,3 +36,9 @@ coverage/
 .claude/
 .codely-cli/
 .codely/
+
+# Fichiers personnels (ne pas pousser sur GitHub)
+CODELY.md
+spec-chaine-valeur-vanille-ramex.md
+ANALYSE_SPEC.md
+mem-log/
