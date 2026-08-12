@@ -27,6 +27,8 @@ const CommandeExportForm = lazy(() => import('./components/tracabilite/CommandeE
 const Menage = lazy(() => import('./components/menages/Menage'));
 const Activite = lazy(() => import('./components/activite/Activite'));
 const FormationsCertifications = lazy(() => import('./components/formations/FormationsCertifications'));
+const CertificationSpecifications = lazy(() => import('./components/formations/CertificationSpecifications'));
+const CertificationTypesManagement = lazy(() => import('./components/formations/CertificationTypesManagement'));
 const UserManagement = lazy(() => import('./components/users/UserManagement'));
 const Chatbot = lazy(() => import('./components/common/Chatbot'));
 const ActiviteList = lazy(() => import('./components/recommandations/ActiviteList'));
@@ -112,6 +114,8 @@ function App() {
           <Route path="/activite" element={<ProtectedRoute><Activite /></ProtectedRoute>} />
           <Route path="/parcelles" element={<ProtectedRoute><ParcelleList /></ProtectedRoute>} />
           <Route path="/formations" element={<ProtectedRoute><FormationsCertifications /></ProtectedRoute>} />
+          <Route path="/formations/certification-types" element={<ProtectedRoute><CertificationTypesManagement /></ProtectedRoute>} />
+          <Route path="/formations/specifications" element={<ProtectedRoute><CertificationSpecifications /></ProtectedRoute>} />
 
           {/* Recommandations */}
           <Route path="/recommandations" element={<ProtectedRoute><RecommendationDashboard /></ProtectedRoute>} />

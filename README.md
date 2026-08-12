@@ -104,6 +104,30 @@ Les variables d’environnement critiques sont déjà définies dans `docker-com
 
 > À utiliser seulement si Docker n’est pas disponible ou souhaité.
 
+### ⚡ Démarrage rapide (Windows)
+
+Le plus simple : utilisez le script de démarrage automatique à la racine du projet.
+
+**Option A - PowerShell :**
+```powershell
+.\start-dev.ps1
+```
+
+**Option B - CMD (double-clic) :**
+```
+start-dev.bat
+```
+
+Le script va automatiquement :
+1. Vérifier que Python et Node.js sont installés
+2. Créer l'environnement virtuel backend si absent
+3. Installer les dépendances Python et Node si absentes
+4. Créer les fichiers `.env` à partir des `.env.example` si absents
+5. Appliquer les migrations Django
+6. Lancer le backend (http://localhost:8000) et le frontend (http://localhost:5173) dans deux fenêtres séparées
+
+---
+
 ### 1. Installer PostgreSQL + PostGIS
 
 1. Installer PostgreSQL sur la machine.
@@ -150,13 +174,25 @@ pip install -r requirements.txt
 
 #### c) Créer le fichier `.env`
 
-Créer un fichier `.env` à la racine de `backend` (à côté de `manage.py`) avec par exemple :
+Copiez le fichier `.env.example` en `.env` et adaptez les valeurs :
+
+```bash
+# Windows
+copy .env.example .env
+
+# Linux / macOS
+# cp .env.example .env
+```
+
+Le fichier `.env` contient toutes les variables configurables, y compris les chemins GDAL/GEOS :
 
 ```env
-SECRET_KEY=change-me-en-production
+# --- Django Core ---
 DEBUG=True
+SECRET_KEY=django-insecure-dev-key-change-in-production
 ALLOWED_HOSTS=localhost,127.0.0.1
 
+# --- Base de données (PostgreSQL + PostGIS) ---
 DB_ENGINE=django.contrib.gis.db.backends.postgis
 DB_NAME=vanille_db
 DB_USER=vanille_user
@@ -164,32 +200,49 @@ DB_PASSWORD=vanille_pass_2025
 DB_HOST=localhost
 DB_PORT=5432
 
+# --- CORS ---
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-```
-Adapter les valeurs si besoin (mot de passe, nom de base, etc.).
 
-#### c-2) Update GDAL project-ramex>backend>settings.py
-
+# --- GDAL / GEOS (Windows uniquement) ---
+# Laissez vide si GDAL est dans le PATH système ou si vous utilisez Linux/Mac
+GDAL_LIBRARY_PATH=
+GEOS_LIBRARY_PATH=
+OSGEO4W_PATH=
 ```
-OSGEO4W = r'C:\Program Files\PostgreSQL\17\bin'
-os.environ['PATH'] = OSGEO4W + ';' + os.environ['PATH']
 
-GDAL_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\17\bin\libgdal-35.dll'
-GEOS_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\17\bin\libgeos_c.dll'
+#### d) Configurer GDAL/GEOS (Windows uniquement)
+
+Les chemins GDAL/GEOS sont désormais **configurables via le fichier `.env`** (plus besoin de modifier `settings.py`).
+
+**Exemple pour PostgreSQL 17 (Windows) :**
+```env
+OSGEO4W_PATH=C:\Program Files\PostgreSQL\17\bin
+GDAL_LIBRARY_PATH=C:\Program Files\PostgreSQL\17\bin\libgdal-35.dll
+GEOS_LIBRARY_PATH=C:\Program Files\PostgreSQL\17\bin\libgeos_c.dll
 ```
-#### d) Appliquer les migrations
+
+**Exemple pour OSGeo4W (Windows) :**
+```env
+OSGEO4W_PATH=C:\OSGeo4W\bin
+GDAL_LIBRARY_PATH=C:\OSGeo4W\bin\gdal308.dll
+GEOS_LIBRARY_PATH=C:\OSGeo4W\bin\geos_c.dll
+```
+
+> **Note** : Sur Linux/Mac, laissez ces variables vides. Django trouvera automatiquement les bibliothèques via le PATH système.
+
+#### e) Appliquer les migrations
 
 ```bash
 python manage.py migrate
 ```
 
-#### e) Créer un super utilisateur
+#### f) Créer un super utilisateur
 
 ```bash
 python manage.py createsuperuser
 ```
 
-#### f) Lancer le serveur Django
+#### g) Lancer le serveur Django
 
 ```bash
 python manage.py runserver 0.0.0.0:8000
@@ -210,7 +263,17 @@ npm install
 
 #### b) Créer le fichier `.env`
 
-Créer un fichier `.env` dans `frontend` avec :
+Copiez le fichier `.env.example` en `.env` :
+
+```bash
+# Windows
+copy .env.example .env
+
+# Linux / macOS
+# cp .env.example .env
+```
+
+Le fichier `.env` contient :
 
 ```env
 VITE_API_URL=http://localhost:8000/api
@@ -229,6 +292,8 @@ Par défaut, Vite tourne sur : http://localhost:5173
 - Frontend : http://localhost:5173
 - API : http://localhost:8000/api
 - Django admin : http://localhost:8000/admin
+- Swagger : http://localhost:8000/api/schema/swagger-ui/
+- ReDoc : http://localhost:8000/api/schema/redoc/
 
 ---
 

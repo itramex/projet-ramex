@@ -8,6 +8,7 @@ export const iconMap = {
   cooperatives: 'UserGroupIcon',
   parcelles: 'MapIcon',
   certifications: 'CheckBadgeIcon',
+  certificationTypes: 'RectangleStackIcon',
   activite: 'BookOpenIcon',
   recommandations: 'LightBulbIcon',
   utilisateurs: 'UserIcon',

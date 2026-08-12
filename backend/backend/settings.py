@@ -343,15 +343,38 @@ LOGGING = {
 }
 
 
-#GDAL_LIBRARY_PATH = r"C:\\Program Files\\GDAL\\gdal.dll"
 # ============================================
-# GDAL
+# GDAL / GEOS CONFIGURATION
 # ============================================
-OSGEO4W = r'C:\Program Files\PostgreSQL\17\bin'
-os.environ['PATH'] = OSGEO4W + ';' + os.environ['PATH']
+# Ces chemins sont configurables via les variables d'environnement.
+# Laissez-les vides si GDAL/GEOS sont dans le PATH système (Linux/Mac)
+# ou si vous utilisez un gestionnaire de paquets (conda, apt, etc.).
+#
+# Exemple Windows (PostgreSQL 17) :
+#   GDAL_LIBRARY_PATH=C:\Program Files\PostgreSQL\17\bin\libgdal-35.dll
+#   GEOS_LIBRARY_PATH=C:\Program Files\PostgreSQL\17\bin\libgeos_c.dll
+#   OSGEO4W_PATH=C:\Program Files\PostgreSQL\17\bin
+#
+# Exemple Windows (OSGeo4W) :
+#   GDAL_LIBRARY_PATH=C:\OSGeo4W\bin\gdal308.dll
+#   GEOS_LIBRARY_PATH=C:\OSGeo4W\bin\geos_c.dll
+#   OSGEO4W_PATH=C:\OSGeo4W\bin
 
-GDAL_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\17\bin\libgdal-35.dll'
-GEOS_LIBRARY_PATH = r'C:\Program Files\PostgreSQL\17\bin\libgeos_c.dll'
+# Chemin du dossier OSGeo4W / PostgreSQL bin (optionnel, Windows uniquement)
+OSGEO4W_PATH = config('OSGEO4W_PATH', default='')
+if OSGEO4W_PATH:
+    os.environ['PATH'] = OSGEO4W_PATH + ';' + os.environ['PATH']
+
+# Chemins explicites des bibliothèques GDAL et GEOS (optionnel)
+GDAL_LIBRARY_PATH = config('GDAL_LIBRARY_PATH', default='')
+GEOS_LIBRARY_PATH = config('GEOS_LIBRARY_PATH', default='')
+
+# Si les chemins sont vides, Django tentera de trouver les bibliothèques
+# automatiquement via le PATH système ou les emplacements par défaut.
+if GDAL_LIBRARY_PATH:
+    os.environ['GDAL_LIBRARY_PATH'] = GDAL_LIBRARY_PATH
+if GEOS_LIBRARY_PATH:
+    os.environ['GEOS_LIBRARY_PATH'] = GEOS_LIBRARY_PATH
 
 
 # ============================================

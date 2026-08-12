@@ -149,10 +149,22 @@ function FormationsCertifications() {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-dark mb-2">
-          Certifications et <span className="text-chick-yellow">Formations</span>
-        </h1>
-        <p className="text-gray-600">Suivi des formations et certifications des producteurs</p>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-dark mb-2">
+              Certifications et <span className="text-chick-yellow">Formations</span>
+            </h1>
+            <p className="text-gray-600">Suivi des formations et certifications des producteurs</p>
+          </div>
+          <Button
+            variant="secondary"
+            icon="InformationCircleIcon"
+            onClick={() => window.location.href = '/formations/specifications'}
+            className="flex-shrink-0"
+          >
+            Voir les spécifications
+          </Button>
+        </div>
       </div>
 
       {loading && (
