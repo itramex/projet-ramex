@@ -31,9 +31,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                     'nom': user.profile.cooperative.nom,
                     'code': user.profile.cooperative.code,
                 }
+            if user.profile.agence:
+                data['user']['agence'] = {
+                    'id': user.profile.agence.id,
+                    'nom': user.profile.agence.nom,
+                }
         else:
             # Default role if no profile
-            data['user']['role'] = 'viewer'
+            data['user']['role'] = 'animateur'
         
         # Determine role_display based on superuser/staff status first
         if user.is_superuser or user.is_staff:

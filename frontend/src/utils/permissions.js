@@ -1,24 +1,30 @@
-// Permission utilities for role-based access control
+// Permission utilities for role-based access control (RBAC — Phase 2)
+//
+// Rôles RAMEX :
+//   admin          : accès complet
+//   animateur      : Certification + Développement Durable
+//   superviseur    : Certification + Développement Durable (+ supervision)
+//   agent_collecte : Traçabilité
 
 export const ROLES = {
   ADMIN: 'admin',
-  MANAGER: 'manager',
-  AGENT: 'agent',
-  VIEWER: 'viewer',
+  ANIMATEUR: 'animateur',
+  SUPERVISEUR: 'superviseur',
+  AGENT_COLLECTE: 'agent_collecte',
 };
 
 export const ROLE_LABELS = {
   admin: 'Administrateur',
-  manager: 'Gestionnaire',
-  agent: 'Agent de terrain',
-  viewer: 'Visualiseur',
+  animateur: 'Animateur terrain',
+  superviseur: 'Superviseur',
+  agent_collecte: 'Agent de collecte',
 };
 
 /**
  * Get current user role from localStorage
  */
 export const getCurrentUserRole = () => {
-  return localStorage.getItem('user_role') || ROLES.VIEWER;
+  return localStorage.getItem('user_role') || ROLES.ANIMATEUR;
 };
 
 /**
@@ -44,23 +50,58 @@ export const isAdmin = () => {
 };
 
 /**
- * Check if current user is admin or manager
+ * Check if current user is a supervisor (admin or superviseur)
  */
-export const isAdminOrManager = () => {
+export const isSuperviseur = () => {
   const role = getCurrentUserRole();
-  return role === ROLES.ADMIN || role === ROLES.MANAGER || isAdmin();
+  return role === ROLES.SUPERVISEUR || isAdmin();
 };
 
 /**
- * Check if current user is admin, manager, or agent
+ * Pilier TRACABILITÉ → réservé à `admin` et `agent_collecte`
+ */
+export const canManageTracabilite = () => {
+  const role = getCurrentUserRole();
+  return role === ROLES.AGENT_COLLECTE || isAdmin();
+};
+
+/**
+ * Piliers CERTIFICATION & DÉVELOPPEMENT DURABLE →
+ * réservés à `admin`, `animateur` et `superviseur`
+ */
+export const canManageCertificationDD = () => {
+  const role = getCurrentUserRole();
+  return role === ROLES.ANIMATEUR || role === ROLES.SUPERVISEUR || isAdmin();
+};
+
+/**
+ * Alias : pilier Développement Durable (mêmes droits que Certification)
+ */
+export const canManageDD = () => canManageCertificationDD();
+
+/**
+ * Check if current user is admin or supervisor (ancien "manager")
+ */
+export const isAdminOrManager = () => {
+  return isAdmin() || getCurrentUserRole() === ROLES.SUPERVISEUR;
+};
+
+/**
+ * Check if current user is admin, supervisor, or field agent (tous les rôles métier)
  */
 export const isAdminOrManagerOrAgent = () => {
   const role = getCurrentUserRole();
-  return role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.AGENT || isAdmin();
+  return (
+    role === ROLES.ADMIN ||
+    role === ROLES.SUPERVISEUR ||
+    role === ROLES.ANIMATEUR ||
+    role === ROLES.AGENT_COLLECTE ||
+    isAdmin()
+  );
 };
 
 /**
- * Check if user has permission to perform CRUD operations
+ * Check if user has permission to perform CRUD operations on referential data
  * Only admins can create, update, delete
  */
 export const canCreate = () => isAdmin();
@@ -69,7 +110,7 @@ export const canDelete = () => isAdmin();
 
 /**
  * Check if user can import data (Excel)
- * Admins, managers, and agents can import
+ * Tous les utilisateurs authentifiés peuvent importer sur leur pilier
  */
 export const canImport = () => isAdminOrManagerOrAgent();
 

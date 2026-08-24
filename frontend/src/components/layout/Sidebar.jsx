@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { isAdmin } from '../../utils/permissions';
+import { isAdmin, canManageTracabilite, canManageCertificationDD } from '../../utils/permissions';
 import Icon from '../common/Icon';
 import { iconMap } from '../../styles/icons';
 
@@ -40,19 +40,22 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       path: '/parcelles',
       description: 'Gestion des parcelles',
     },
-    {
-      title: 'Développement Durable',
-      iconKey: 'location',
-      path: '/developpement-durable',
-      description: 'Activités et partenaires DD',
-    },
-    {
-      title: 'Certification et Formation',
-      iconKey: 'certifications',
-      path: '/formations',
-      description: 'Certifications et formations',
-      hasSubmenu: true,
-    },
+    // Développement Durable + Certification/Formation → animateur / superviseur / admin
+    ...(canManageCertificationDD() ? [
+      {
+        title: 'Développement Durable',
+        iconKey: 'location',
+        path: '/developpement-durable',
+        description: 'Activités et partenaires DD',
+      },
+      {
+        title: 'Certification et Formation',
+        iconKey: 'certifications',
+        path: '/formations',
+        description: 'Certifications et formations',
+        hasSubmenu: true,
+      },
+    ] : []),
     {
       title: 'Activité',
       iconKey: 'activite',
@@ -309,7 +312,8 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
             <div className="mx-4 my-3 border-t border-gray-700"></div>
           )}
           
-          {/* Menu Traçabilité avec sous-menu */}
+          {/* Menu Traçabilité avec sous-menu → admin / agent_collecte */}
+          {canManageTracabilite() && (
           <div>
             <button
               onClick={() => setTracabiliteOpen(!tracabiliteOpen)}
@@ -362,6 +366,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
               </div>
             )}
           </div>
+          )}
         </nav>
       </aside>
     </>

@@ -4,6 +4,7 @@ import Icon from '../common/Icon';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 import Card from '../common/Card';
+import { geographieService } from '../../services/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -137,9 +138,9 @@ function UserManagement() {
 
   const roles = [
     { value: 'admin', label: 'Administrateur', color: 'red' },
-    { value: 'manager', label: 'Gestionnaire', color: 'blue' },
-    { value: 'agent', label: 'Agent de terrain', color: 'green' },
-    { value: 'viewer', label: 'Visualiseur', color: 'gray' },
+    { value: 'superviseur', label: 'Superviseur', color: 'blue' },
+    { value: 'animateur', label: 'Animateur terrain', color: 'green' },
+    { value: 'agent_collecte', label: 'Agent de collecte', color: 'purple' },
   ];
 
   const tabs = [
@@ -454,7 +455,8 @@ function UsersTab({
                             variant={
                               getRoleBadgeColor(user.profile.role) === 'red' ? 'error' :
                               getRoleBadgeColor(user.profile.role) === 'blue' ? 'info' :
-                              getRoleBadgeColor(user.profile.role) === 'green' ? 'success' : 'neutral'
+                              getRoleBadgeColor(user.profile.role) === 'green' ? 'success' :
+                              getRoleBadgeColor(user.profile.role) === 'purple' ? 'neutral' : 'neutral'
                             }
                             size="sm"
                           >
@@ -795,14 +797,22 @@ function UserCreateModal({ onClose, onSuccess, roles }) {
     password_confirm: '',
     first_name: '',
     last_name: '',
-    role: 'viewer',
+    role: 'animateur',
     telephone: '',
     poste: '',
+    agence: '',
     is_active: true,
     is_staff: false,
   });
+  const [agences, setAgences] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    geographieService.getAgences()
+      .then(res => setAgences(res.data.results || res.data))
+      .catch(() => setAgences([]));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -938,6 +948,19 @@ function UserCreateModal({ onClose, onSuccess, roles }) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-chick-yellow"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Agence RAMEX</label>
+              <select
+                value={formData.agence}
+                onChange={(e) => setFormData({ ...formData, agence: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-chick-yellow"
+              >
+                <option value="">— Aucune —</option>
+                {agences.map(a => (
+                  <option key={a.id} value={a.id}>{a.nom}</option>
+                ))}
+              </select>
+            </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Poste</label>
               <input
@@ -980,13 +1003,21 @@ function UserEditModal({ user, onClose, onSuccess, roles }) {
     last_name: user.last_name || '',
     is_active: user.is_active,
     profile: {
-      role: user.profile?.role || 'viewer',
+      role: user.profile?.role || 'animateur',
       telephone: user.profile?.telephone || '',
       poste: user.profile?.poste || '',
+      agence: user.profile?.agence || '',
     }
   });
+  const [agences, setAgences] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    geographieService.getAgences()
+      .then(res => setAgences(res.data.results || res.data))
+      .catch(() => setAgences([]));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1082,6 +1113,22 @@ function UserEditModal({ user, onClose, onSuccess, roles }) {
                 })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-chick-yellow"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Agence RAMEX</label>
+              <select
+                value={formData.profile.agence}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  profile: { ...formData.profile, agence: e.target.value }
+                })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-chick-yellow"
+              >
+                <option value="">— Aucune —</option>
+                {agences.map(a => (
+                  <option key={a.id} value={a.id}>{a.nom}</option>
+                ))}
+              </select>
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Poste</label>

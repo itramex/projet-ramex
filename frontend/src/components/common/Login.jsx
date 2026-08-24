@@ -25,7 +25,7 @@ function Login() {
       const userData = {
         username: credentials.username,
         ...(response.data.user && {
-          role: response.data.user.role || 'viewer',
+          role: response.data.user.role || 'animateur',
           id: response.data.user.id,
           ...response.data.user
         })
@@ -36,7 +36,7 @@ function Login() {
       // Maintain backward compatibility with components that still use old localStorage keys
       localStorage.setItem('username', credentials.username);
       if (response.data.user) {
-        localStorage.setItem('user_role', response.data.user.role || 'viewer');
+        localStorage.setItem('user_role', response.data.user.role || 'animateur');
         localStorage.setItem('user_id', response.data.user.id);
       }
 

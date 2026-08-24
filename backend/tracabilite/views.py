@@ -3,6 +3,7 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from users.permissions import CanManageTracabilite
 from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
 
@@ -45,7 +46,7 @@ class CampagneViewSet(viewsets.ModelViewSet):
     """ViewSet pour les campagnes"""
     queryset = Campagne.objects.all()
     serializer_class = CampagneSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['code']
     ordering = ['-annee_debut']
@@ -54,7 +55,7 @@ class CampagneViewSet(viewsets.ModelViewSet):
 class BonCollecteViewSet(viewsets.ModelViewSet):
     """ViewSet pour les bons de collecte (FABC)"""
     queryset = BonCollecte.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['numero_fabc', 'producteur__nom', 'producteur__code']
     ordering = ['-date_marche', '-numero_fabc']
@@ -171,7 +172,7 @@ class BonCollecteViewSet(viewsets.ModelViewSet):
 class FicheCollecteViewSet(viewsets.ModelViewSet):
     """ViewSet pour les fiches de collecte (FC)"""
     queryset = FicheCollecte.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['numero_fc', 'fokontany']
     ordering = ['-date_marche', '-numero_fc']
@@ -200,7 +201,7 @@ class FicheCollecteViewSet(viewsets.ModelViewSet):
 class BonTransportViewSet(viewsets.ModelViewSet):
     """ViewSet pour les bons de transport (BT)"""
     queryset = BonTransport.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['numero_bt', 'lieu_depart', 'lieu_destination']
     ordering = ['-date_chargement', '-numero_bt']
@@ -256,7 +257,7 @@ class BonTransportViewSet(viewsets.ModelViewSet):
 class LotTraitementViewSet(viewsets.ModelViewSet):
     """ViewSet pour les lots de traitement"""
     queryset = LotTraitement.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['numero_lot', 'type_traitement']
     ordering = ['-date_debut', '-numero_lot']
@@ -285,7 +286,7 @@ class LotTraitementViewSet(viewsets.ModelViewSet):
 class ColisViewSet(viewsets.ModelViewSet):
     """ViewSet pour les colis"""
     queryset = Colis.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['numero_colis', 'qr_code', 'code_barres']
     ordering = ['-date_conditionnement', 'numero_colis']
@@ -327,7 +328,7 @@ class ColisViewSet(viewsets.ModelViewSet):
 class CommandeExportViewSet(viewsets.ModelViewSet):
     """ViewSet pour les commandes d'export"""
     queryset = CommandeExport.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['numero_commande', 'nom_client', 'pays_destination']
     ordering = ['-date_commande', '-numero_commande']
@@ -380,7 +381,7 @@ class TracabiliteChainViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet pour les chaînes de traçabilité (lecture seule)"""
     queryset = TracabiliteChain.objects.all()
     serializer_class = TracabiliteChainSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['uuid', 'producteur__nom']
     ordering = ['-date_creation']

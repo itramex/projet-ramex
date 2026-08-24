@@ -3,6 +3,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import Login from './components/common/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import PermissionRoute from './components/PermissionRoute';
 import { sessionManager } from './services/sessionManager';
 import { tokenStorage } from './services/tokenStorage';
 
@@ -115,15 +116,15 @@ function App() {
           <Route path="/menage" element={<ProtectedRoute><Menage /></ProtectedRoute>} />
           <Route path="/activite" element={<ProtectedRoute><Activite /></ProtectedRoute>} />
           <Route path="/parcelles" element={<ProtectedRoute><ParcelleList /></ProtectedRoute>} />
-          <Route path="/formations" element={<ProtectedRoute><FormationsCertifications /></ProtectedRoute>} />
-          <Route path="/formations/certification-types" element={<ProtectedRoute><CertificationTypesManagement /></ProtectedRoute>} />
-          <Route path="/formations/specifications" element={<ProtectedRoute><CertificationSpecifications /></ProtectedRoute>} />
+          <Route path="/formations" element={<PermissionRoute permission="certificationDD"><FormationsCertifications /></PermissionRoute>} />
+          <Route path="/formations/certification-types" element={<PermissionRoute permission="certificationDD"><CertificationTypesManagement /></PermissionRoute>} />
+          <Route path="/formations/specifications" element={<PermissionRoute permission="certificationDD"><CertificationSpecifications /></PermissionRoute>} />
 
           {/* Géographie */}
           <Route path="/geographie" element={<ProtectedRoute><GeographieManagement /></ProtectedRoute>} />
 
           {/* Développement Durable */}
-          <Route path="/developpement-durable" element={<ProtectedRoute><DeveloppementDurable /></ProtectedRoute>} />
+          <Route path="/developpement-durable" element={<PermissionRoute permission="certificationDD"><DeveloppementDurable /></PermissionRoute>} />
 
           {/* Recommandations */}
           <Route path="/recommandations" element={<ProtectedRoute><RecommendationDashboard /></ProtectedRoute>} />
@@ -137,44 +138,44 @@ function App() {
           {/* ==================== MODULE TRAÇABILITÉ ==================== */}
 
           {/* Dashboard */}
-          <Route path="/tracabilite" element={<ProtectedRoute><TracabilityDashboard /></ProtectedRoute>} />
-          <Route path="/tracabilite/dashboard" element={<ProtectedRoute><TracabilityDashboard /></ProtectedRoute>} />
+          <Route path="/tracabilite" element={<PermissionRoute permission="tracabilite"><TracabilityDashboard /></PermissionRoute>} />
+          <Route path="/tracabilite/dashboard" element={<PermissionRoute permission="tracabilite"><TracabilityDashboard /></PermissionRoute>} />
 
           {/* Bons de Collecte */}
-          <Route path="/tracabilite/bons-collecte" element={<ProtectedRoute><BonCollecteList /></ProtectedRoute>} />
-          <Route path="/tracabilite/bons-collecte/create" element={<ProtectedRoute><BonCollecteForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/bons-collecte/:id" element={<ProtectedRoute><BonCollecteForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/bons-collecte/:id/edit" element={<ProtectedRoute><BonCollecteForm /></ProtectedRoute>} />
+          <Route path="/tracabilite/bons-collecte" element={<PermissionRoute permission="tracabilite"><BonCollecteList /></PermissionRoute>} />
+          <Route path="/tracabilite/bons-collecte/create" element={<PermissionRoute permission="tracabilite"><BonCollecteForm /></PermissionRoute>} />
+          <Route path="/tracabilite/bons-collecte/:id" element={<PermissionRoute permission="tracabilite"><BonCollecteForm /></PermissionRoute>} />
+          <Route path="/tracabilite/bons-collecte/:id/edit" element={<PermissionRoute permission="tracabilite"><BonCollecteForm /></PermissionRoute>} />
 
           {/* Fiches de Collecte */}
-          <Route path="/tracabilite/fiches-collecte" element={<ProtectedRoute><FicheCollecteList /></ProtectedRoute>} />
-          <Route path="/tracabilite/fiches-collecte/create" element={<ProtectedRoute><FicheCollecteForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/fiches-collecte/:id" element={<ProtectedRoute><FicheCollecteForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/fiches-collecte/:id/edit" element={<ProtectedRoute><FicheCollecteForm /></ProtectedRoute>} />
+          <Route path="/tracabilite/fiches-collecte" element={<PermissionRoute permission="tracabilite"><FicheCollecteList /></PermissionRoute>} />
+          <Route path="/tracabilite/fiches-collecte/create" element={<PermissionRoute permission="tracabilite"><FicheCollecteForm /></PermissionRoute>} />
+          <Route path="/tracabilite/fiches-collecte/:id" element={<PermissionRoute permission="tracabilite"><FicheCollecteForm /></PermissionRoute>} />
+          <Route path="/tracabilite/fiches-collecte/:id/edit" element={<PermissionRoute permission="tracabilite"><FicheCollecteForm /></PermissionRoute>} />
 
           {/* Bons de Transport */}
-          <Route path="/tracabilite/bons-transport" element={<ProtectedRoute><BonTransportList /></ProtectedRoute>} />
-          <Route path="/tracabilite/bons-transport/create" element={<ProtectedRoute><BonTransportForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/bons-transport/:id" element={<ProtectedRoute><BonTransportForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/bons-transport/:id/edit" element={<ProtectedRoute><BonTransportForm /></ProtectedRoute>} />
+          <Route path="/tracabilite/bons-transport" element={<PermissionRoute permission="tracabilite"><BonTransportList /></PermissionRoute>} />
+          <Route path="/tracabilite/bons-transport/create" element={<PermissionRoute permission="tracabilite"><BonTransportForm /></PermissionRoute>} />
+          <Route path="/tracabilite/bons-transport/:id" element={<PermissionRoute permission="tracabilite"><BonTransportForm /></PermissionRoute>} />
+          <Route path="/tracabilite/bons-transport/:id/edit" element={<PermissionRoute permission="tracabilite"><BonTransportForm /></PermissionRoute>} />
 
           {/* Lots de Traitement */}
-          <Route path="/tracabilite/lots-traitement" element={<ProtectedRoute><LotTraitementList /></ProtectedRoute>} />
-          <Route path="/tracabilite/lots-traitement/create" element={<ProtectedRoute><LotTraitementForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/lots-traitement/:id" element={<ProtectedRoute><LotTraitementForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/lots-traitement/:id/edit" element={<ProtectedRoute><LotTraitementForm /></ProtectedRoute>} />
+          <Route path="/tracabilite/lots-traitement" element={<PermissionRoute permission="tracabilite"><LotTraitementList /></PermissionRoute>} />
+          <Route path="/tracabilite/lots-traitement/create" element={<PermissionRoute permission="tracabilite"><LotTraitementForm /></PermissionRoute>} />
+          <Route path="/tracabilite/lots-traitement/:id" element={<PermissionRoute permission="tracabilite"><LotTraitementForm /></PermissionRoute>} />
+          <Route path="/tracabilite/lots-traitement/:id/edit" element={<PermissionRoute permission="tracabilite"><LotTraitementForm /></PermissionRoute>} />
 
           {/* Colis */}
-          <Route path="/tracabilite/colis" element={<ProtectedRoute><ColisList /></ProtectedRoute>} />
-          <Route path="/tracabilite/colis/create" element={<ProtectedRoute><ColisForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/colis/:id" element={<ProtectedRoute><ColisForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/colis/:id/edit" element={<ProtectedRoute><ColisForm /></ProtectedRoute>} />
+          <Route path="/tracabilite/colis" element={<PermissionRoute permission="tracabilite"><ColisList /></PermissionRoute>} />
+          <Route path="/tracabilite/colis/create" element={<PermissionRoute permission="tracabilite"><ColisForm /></PermissionRoute>} />
+          <Route path="/tracabilite/colis/:id" element={<PermissionRoute permission="tracabilite"><ColisForm /></PermissionRoute>} />
+          <Route path="/tracabilite/colis/:id/edit" element={<PermissionRoute permission="tracabilite"><ColisForm /></PermissionRoute>} />
 
           {/* Commandes d'Export */}
-          <Route path="/tracabilite/commandes-export" element={<ProtectedRoute><CommandeExportList /></ProtectedRoute>} />
-          <Route path="/tracabilite/commandes-export/create" element={<ProtectedRoute><CommandeExportForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/commandes-export/:id" element={<ProtectedRoute><CommandeExportForm /></ProtectedRoute>} />
-          <Route path="/tracabilite/commandes-export/:id/edit" element={<ProtectedRoute><CommandeExportForm /></ProtectedRoute>} />
+          <Route path="/tracabilite/commandes-export" element={<PermissionRoute permission="tracabilite"><CommandeExportList /></PermissionRoute>} />
+          <Route path="/tracabilite/commandes-export/create" element={<PermissionRoute permission="tracabilite"><CommandeExportForm /></PermissionRoute>} />
+          <Route path="/tracabilite/commandes-export/:id" element={<PermissionRoute permission="tracabilite"><CommandeExportForm /></PermissionRoute>} />
+          <Route path="/tracabilite/commandes-export/:id/edit" element={<PermissionRoute permission="tracabilite"><CommandeExportForm /></PermissionRoute>} />
 
           {/* ==================== FIN MODULE TRAÇABILITÉ ==================== */}
 

@@ -3,16 +3,18 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from .models import UserProfile, ActivityLog
 from cooperatives.models import Cooperative
+from geographie.models import Agence
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """Serializer pour le profil utilisateur"""
     cooperative_nom = serializers.CharField(source='cooperative.nom', read_only=True)
+    agence_nom = serializers.CharField(source='agence.nom', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     
     class Meta:
         model = UserProfile
-        fields = ['role', 'role_display', 'telephone', 'poste', 'cooperative', 'cooperative_nom', 'actif']
+        fields = ['role', 'role_display', 'telephone', 'poste', 'cooperative', 'cooperative_nom', 'agence', 'agence_nom', 'actif']
 
 
 class UserListSerializer(serializers.ModelSerializer):
@@ -76,11 +78,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """Serializer pour créer un nouvel utilisateur"""
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True, required=True)
-    role = serializers.ChoiceField(choices=UserProfile.ROLE_CHOICES, required=False, default='viewer')
+    role = serializers.ChoiceField(choices=UserProfile.ROLE_CHOICES, required=False, default='animateur')
     telephone = serializers.CharField(required=False, allow_blank=True)
     poste = serializers.CharField(required=False, allow_blank=True)
     cooperative = serializers.PrimaryKeyRelatedField(
         queryset=Cooperative.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    agence = serializers.PrimaryKeyRelatedField(
+        queryset=Agence.objects.all(),
         required=False,
         allow_null=True
     )
@@ -90,7 +97,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         fields = [
             'username', 'email', 'password', 'password_confirm',
             'first_name', 'last_name', 'is_active', 'is_staff',
-            'role', 'telephone', 'poste', 'cooperative'
+            'role', 'telephone', 'poste', 'cooperative', 'agence'
         ]
     
     def validate(self, attrs):
@@ -101,10 +108,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Extract profile fields
         validated_data.pop('password_confirm')
-        role = validated_data.pop('role', 'viewer')
+        role = validated_data.pop('role', 'animateur')
         telephone = validated_data.pop('telephone', None)
         poste = validated_data.pop('poste', None)
         cooperative = validated_data.pop('cooperative', None)
+        agence = validated_data.pop('agence', None)
         
         # Create user
         user = User.objects.create_user(**validated_data)
@@ -115,6 +123,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         profile.telephone = telephone
         profile.poste = poste
         profile.cooperative = cooperative
+        profile.agence = agence
         profile.save()
         
         return user

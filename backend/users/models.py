@@ -9,15 +9,23 @@ class UserProfile(models.Model):
     
     ROLE_CHOICES = [
         ('admin', 'Administrateur'),
-        ('manager', 'Gestionnaire'),
-        ('agent', 'Agent de terrain'),
-        ('viewer', 'Visualiseur'),
+        ('animateur', 'Animateur terrain'),
+        ('superviseur', 'Superviseur'),
+        ('agent_collecte', 'Agent de collecte'),
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='viewer', verbose_name='Rôle')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='animateur', verbose_name='Rôle')
     telephone = models.CharField(max_length=20, blank=True, null=True, verbose_name='Téléphone')
     poste = models.CharField(max_length=100, blank=True, null=True, verbose_name='Poste')
+    agence = models.ForeignKey(
+        'geographie.Agence',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users',
+        verbose_name='Agence RAMEX assignée'
+    )
     cooperative = models.ForeignKey(
         'cooperatives.Cooperative',
         on_delete=models.SET_NULL,
@@ -109,8 +117,8 @@ class ActivityLog(models.Model):
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     """Créer automatiquement un profil lors de la création d'un utilisateur"""
     if created:
-        # Assigner le rôle 'admin' aux superusers, sinon 'viewer' par défaut
-        role = 'admin' if instance.is_superuser else 'viewer'
+        # Assigner le rôle 'admin' aux superusers, sinon 'animateur' par défaut
+        role = 'admin' if instance.is_superuser else 'animateur'
         UserProfile.objects.create(user=instance, role=role)
     else:
         if hasattr(instance, 'profile'):

@@ -2,7 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from users.permissions import IsAdminOrReadOnly
+from users.permissions import CanManageCertificationDD
 from users.models import ActivityLog
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q
@@ -19,7 +19,7 @@ class TypeFormationViewSet(viewsets.ModelViewSet):
     """ViewSet pour les types de formations"""
     queryset = TypeFormation.objects.filter(actif=True)
     serializer_class = TypeFormationSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, CanManageCertificationDD]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nom', 'description']
     ordering_fields = ['nom', 'duree_jours', 'date_creation']
@@ -29,7 +29,7 @@ class TypeFormationViewSet(viewsets.ModelViewSet):
 class FormationViewSet(viewsets.ModelViewSet):
     """ViewSet pour les formations des producteurs"""
     queryset = Formation.objects.select_related('producteur', 'type_formation').all()
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, CanManageCertificationDD]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'producteur': ['exact', 'in'],
@@ -191,7 +191,7 @@ class TypeCertificationViewSet(viewsets.ModelViewSet):
     """ViewSet pour les types de certifications"""
     queryset = TypeCertification.objects.filter(actif=True)
     serializer_class = TypeCertificationSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, CanManageCertificationDD]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['niveau', 'actif']
     search_fields = ['nom', 'code', 'description', 'organisme_certificateur']
@@ -202,7 +202,7 @@ class TypeCertificationViewSet(viewsets.ModelViewSet):
 class CertificationViewSet(viewsets.ModelViewSet):
     """ViewSet pour les certifications des producteurs"""
     queryset = Certification.objects.select_related('producteur', 'type_certification').all()
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, CanManageCertificationDD]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['producteur', 'type_certification', 'statut', 'date_obtention', 'date_expiration']
     search_fields = ['producteur__code', 'producteur__nom', 'producteur__prenom', 'numero_certificat']
@@ -405,7 +405,7 @@ class CertificationViewSet(viewsets.ModelViewSet):
 class AuditCertificationViewSet(viewsets.ModelViewSet):
     queryset = AuditCertification.objects.select_related('type_certification').annotate(nb_nonconformites=Count('nonconformites'))
     serializer_class = AuditCertificationSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, CanManageCertificationDD]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['type_certification', 'resultat', 'date_audit']
     search_fields = ['type_certification__nom', 'type_certification__code', 'organisme']
@@ -435,7 +435,7 @@ class AuditCertificationViewSet(viewsets.ModelViewSet):
 class NonConformiteViewSet(viewsets.ModelViewSet):
     queryset = NonConformite.objects.select_related('audit', 'producteur')
     serializer_class = NonConformiteSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated, CanManageCertificationDD]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['audit', 'producteur', 'type', 'statut', 'date_limite']
     search_fields = ['description', 'action_corrective', 'producteur__code']
