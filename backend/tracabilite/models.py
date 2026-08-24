@@ -9,11 +9,23 @@ from cooperatives.models import Cooperative
 
 class Campagne(models.Model):
     """Campagne agricole (année de récolte)"""
+    TYPE_CAMPAGNE_CHOICES = [
+        ('vanille_verte', 'Vanille verte'),
+        ('vanille_preparee', 'Vanille préparée'),
+    ]
+
     code = models.CharField(max_length=20, unique=True)  # Ex: "2024-2025"
     annee_debut = models.IntegerField()
     annee_fin = models.IntegerField()
     date_debut = models.DateField()
     date_fin = models.DateField()
+    # Fenêtre métier : vanille verte (juin-juil.) vs vanille préparée (août-oct.)
+    type = models.CharField(
+        max_length=20,
+        choices=TYPE_CAMPAGNE_CHOICES,
+        default='vanille_verte',
+        verbose_name="Type de campagne"
+    )
     statut = models.CharField(
         max_length=20,
         choices=[
