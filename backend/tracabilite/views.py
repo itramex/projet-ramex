@@ -93,8 +93,19 @@ class BonCollecteViewSet(viewsets.ModelViewSet):
             certifications = [c.strip() for c in str(certification).split(',') if c.strip()]
             cert_q = Q()
             for cert in certifications:
-                cert_q |= Q(certification__iexact=cert) | Q(certification__icontains=cert)
+                cert_q |= (
+                    Q(certification__iexact=cert) |
+                    Q(certification__icontains=cert) |
+                    Q(type_certification__code__iexact=cert) |
+                    Q(type_certification__nom__icontains=cert)
+                )
             queryset = queryset.filter(cert_q)
+
+        type_certification = self.request.query_params.get('type_certification')
+        if type_certification:
+            type_ids = [t.strip() for t in str(type_certification).split(',') if t.strip().isdigit()]
+            if type_ids:
+                queryset = queryset.filter(type_certification_id__in=type_ids)
 
         village = self.request.query_params.get('village')
         if village:
@@ -102,7 +113,7 @@ class BonCollecteViewSet(viewsets.ModelViewSet):
                 Q(village_marche__icontains=village) | Q(producteur__village__icontains=village)
             )
         
-        return queryset.select_related('campagne', 'producteur', 'cooperative').prefetch_related('details_sacs')
+        return queryset.select_related('campagne', 'producteur', 'cooperative', 'type_certification').prefetch_related('details_sacs')
     
     @action(detail=True, methods=['get'], url_path='trace')
     def trace(self, request, pk=None):

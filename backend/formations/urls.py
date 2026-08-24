@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     TypeFormationViewSet, FormationViewSet,
     TypeCertificationViewSet, CertificationViewSet,
-    AuditCertificationViewSet, NonConformiteViewSet
+    AuditCertificationViewSet, NonConformiteViewSet, ActiviteCertificationViewSet,
 )
 
 router = DefaultRouter()
@@ -13,6 +13,7 @@ router.register(r'types-certifications', TypeCertificationViewSet, basename='typ
 router.register(r'certifications', CertificationViewSet, basename='certification')
 router.register(r'audits', AuditCertificationViewSet, basename='audit-certification')
 router.register(r'nonconformites', NonConformiteViewSet, basename='nonconformite')
+router.register(r'activites-certifications', ActiviteCertificationViewSet, basename='activite-certification')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -98,7 +98,7 @@ class TypeCertification(models.Model):
 
 
 class Certification(models.Model):
-    """Certifications obtenues par les producteurs"""
+    """Certifications obtenues par les producteurs et/ou coopératives"""
     
     STATUT_CHOICES = [
         ('valide', 'Valide'),
@@ -110,8 +110,18 @@ class Certification(models.Model):
     producteur = models.ForeignKey(
         Producteur,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='certifications',
         verbose_name="Producteur"
+    )
+    cooperative = models.ForeignKey(
+        'cooperatives.Cooperative',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='certifications',
+        verbose_name="Coopérative"
     )
     type_certification = models.ForeignKey(
         TypeCertification,
@@ -159,18 +169,35 @@ class Certification(models.Model):
         ordering = ['-date_obtention']
         indexes = [
             models.Index(fields=['producteur', 'statut']),
+            models.Index(fields=['cooperative', 'statut']),
             models.Index(fields=['date_expiration']),
             models.Index(fields=['date_obtention']),
         ]
     
     def __str__(self):
-        return f"{self.producteur.code} - {self.type_certification.nom} ({self.statut})"
+        sujet = self.producteur.code if self.producteur else (self.cooperative.nom if self.cooperative else 'Entité')
+        return f"{sujet} - {self.type_certification.nom} ({self.statut})"
+    
+    @property
+    def entite_label(self):
+        """Libellé de l'entité certifiée (producteur ou coopérative)."""
+        if self.producteur:
+            return f"Producteur: {self.producteur.nom_complet} ({self.producteur.code})"
+        if self.cooperative:
+            return f"Coopérative: {self.cooperative.nom}"
+        return "Non spécifié"
     
     @property
     def est_valide(self):
         """Vérifie si la certification est encore valide"""
         from django.utils import timezone
         return self.statut == 'valide' and self.date_expiration >= timezone.now().date()
+    
+    def clean(self):
+        """Au moins un producteur OU une coopérative doit être renseigné."""
+        from django.core.exceptions import ValidationError
+        if not self.producteur and not self.cooperative:
+            raise ValidationError("Une certification doit être attachée à un producteur ou à une coopérative.")
     
     def save(self, *args, **kwargs):
         """Auto-mise à jour du statut selon la date d'expiration"""
@@ -263,3 +290,98 @@ class NonConformite(models.Model):
     def __str__(self):
         ref = f"{self.audit_id}"
         return f"NC {ref} - {self.type} ({self.statut})"
+
+
+class ActiviteCertification(models.Model):
+    """
+    Activités de mise en œuvre de la certification (pilier Certification).
+
+    Exemples : sensibilisation, formation, audit interne, audit externe.
+    Peut concerner une coopérative, un producteur ou un groupe.
+    """
+
+    TYPE_ACTIVITE_CHOICES = [
+        ('sensibilisation', 'Sensibilisation'),
+        ('formation', 'Formation'),
+        ('audit_interne', 'Audit interne'),
+        ('audit_externe', 'Audit externe'),
+    ]
+
+    type_activite = models.CharField(
+        max_length=30,
+        choices=TYPE_ACTIVITE_CHOICES,
+        verbose_name="Type d'activité"
+    )
+    date = models.DateField(verbose_name="Date de l'activité")
+
+    # Contexte
+    type_certification = models.ForeignKey(
+        TypeCertification,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activites',
+        verbose_name="Type de certification lié"
+    )
+    cooperative = models.ForeignKey(
+        'cooperatives.Cooperative',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activites_certification',
+        verbose_name="Coopérative concernée"
+    )
+    producteur = models.ForeignKey(
+        Producteur,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activites_certification',
+        verbose_name="Producteur concerné"
+    )
+
+    # Contenu & résultats
+    description = models.TextField(blank=True, verbose_name="Description / thèmes abordés")
+    resultat = models.TextField(blank=True, verbose_name="Résultat obtenu")
+    nombre_participants = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Nombre de participants"
+    )
+    notes = models.TextField(blank=True, verbose_name="Notes complémentaires")
+
+    # Responsable RAMEX
+    responsable = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activites_certification_responsables',
+        verbose_name="Agent RAMEX responsable"
+    )
+
+    # Traçabilité
+    date_creation = models.DateTimeField(auto_now_add=True)
+    cree_par = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activites_certification_crees',
+        verbose_name="Créé par"
+    )
+
+    class Meta:
+        verbose_name = "Activité de certification"
+        verbose_name_plural = "Activités de certification"
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['type_activite']),
+            models.Index(fields=['date']),
+            models.Index(fields=['cooperative', 'date']),
+        ]
+
+    def __str__(self):
+        sujet = self.cooperative.nom if self.cooperative else (
+            self.producteur.code if self.producteur else 'Général'
+        )
+        return f"{self.get_type_activite_display()} - {self.date} ({sujet})"

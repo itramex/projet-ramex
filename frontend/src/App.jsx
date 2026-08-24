@@ -30,6 +30,7 @@ const Activite = lazy(() => import('./components/activite/Activite'));
 const FormationsCertifications = lazy(() => import('./components/formations/FormationsCertifications'));
 const CertificationSpecifications = lazy(() => import('./components/formations/CertificationSpecifications'));
 const CertificationTypesManagement = lazy(() => import('./components/formations/CertificationTypesManagement'));
+const ActivitesCertification = lazy(() => import('./components/formations/ActivitesCertification'));
 const UserManagement = lazy(() => import('./components/users/UserManagement'));
 const Chatbot = lazy(() => import('./components/common/Chatbot'));
 const ActiviteList = lazy(() => import('./components/recommandations/ActiviteList'));
@@ -119,6 +120,7 @@ function App() {
           <Route path="/formations" element={<PermissionRoute permission="certificationDD"><FormationsCertifications /></PermissionRoute>} />
           <Route path="/formations/certification-types" element={<PermissionRoute permission="certificationDD"><CertificationTypesManagement /></PermissionRoute>} />
           <Route path="/formations/specifications" element={<PermissionRoute permission="certificationDD"><CertificationSpecifications /></PermissionRoute>} />
+          <Route path="/formations/activites" element={<PermissionRoute permission="certificationDD"><ActivitesCertification /></PermissionRoute>} />
 
           {/* Géographie */}
           <Route path="/geographie" element={<ProtectedRoute><GeographieManagement /></ProtectedRoute>} />

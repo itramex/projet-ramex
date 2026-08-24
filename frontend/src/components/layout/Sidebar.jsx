@@ -96,6 +96,11 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       path: '/formations/certification-types',
     },
     {
+      title: 'Activités de certification',
+      iconKey: 'activite',
+      path: '/formations/activites',
+    },
+    {
       title: 'Spécifications',
       iconKey: 'information',
       path: '/formations/specifications',

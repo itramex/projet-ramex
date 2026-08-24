@@ -7,11 +7,14 @@ from users.models import ActivityLog
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q
 from django.db.models.functions import ExtractYear
-from .models import TypeFormation, Formation, TypeCertification, Certification, AuditCertification, NonConformite
+from .models import (
+    TypeFormation, Formation, TypeCertification, Certification,
+    AuditCertification, NonConformite, ActiviteCertification,
+)
 from .serializers import (
     TypeFormationSerializer, FormationSerializer, FormationListSerializer,
     TypeCertificationSerializer, CertificationSerializer, CertificationListSerializer,
-    AuditCertificationSerializer, NonConformiteSerializer
+    AuditCertificationSerializer, NonConformiteSerializer, ActiviteCertificationSerializer,
 )
 
 
@@ -200,12 +203,15 @@ class TypeCertificationViewSet(viewsets.ModelViewSet):
 
 
 class CertificationViewSet(viewsets.ModelViewSet):
-    """ViewSet pour les certifications des producteurs"""
-    queryset = Certification.objects.select_related('producteur', 'type_certification').all()
+    """ViewSet pour les certifications (producteurs et coopératives)"""
+    queryset = Certification.objects.select_related('producteur', 'cooperative', 'type_certification').all()
     permission_classes = [IsAuthenticated, CanManageCertificationDD]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['producteur', 'type_certification', 'statut', 'date_obtention', 'date_expiration']
-    search_fields = ['producteur__code', 'producteur__nom', 'producteur__prenom', 'numero_certificat']
+    filterset_fields = ['producteur', 'cooperative', 'type_certification', 'statut', 'date_obtention', 'date_expiration']
+    search_fields = [
+        'producteur__code', 'producteur__nom', 'producteur__prenom',
+        'cooperative__nom', 'cooperative__code', 'numero_certificat',
+    ]
     ordering_fields = ['date_obtention', 'date_expiration', 'date_enregistrement']
     ordering = ['-date_obtention']
     
@@ -223,6 +229,25 @@ class CertificationViewSet(viewsets.ModelViewSet):
             prod_ids = [pid.strip() for pid in producteurs_in.split(',') if pid.strip().isdigit()]
             if prod_ids:
                 queryset = queryset.filter(producteur_id__in=prod_ids)
+
+        cooperative = params.get('cooperative')
+        if cooperative:
+            coop_ids = [cid.strip() for cid in cooperative.split(',') if cid.strip().isdigit()]
+            if coop_ids:
+                queryset = queryset.filter(cooperative_id__in=coop_ids)
+
+        # Filtre "toutes" (toutes les certifications) ou par type d'entité
+        entite = params.get('entite')
+        if entite == 'cooperative':
+            queryset = queryset.exclude(cooperative__isnull=True)
+        elif entite == 'producteur':
+            queryset = queryset.exclude(producteur__isnull=True)
+
+        # Valeur booléenne: n'afficher que les valides
+        seulement_valides = params.get('seulement_valides')
+        if seulement_valides and seulement_valides.lower() == 'true':
+            from django.utils import timezone
+            queryset = queryset.filter(statut='valide', date_expiration__gte=timezone.now().date())
 
         annee = params.get('annee')
         if annee and str(annee).isdigit():
@@ -243,7 +268,7 @@ class CertificationViewSet(viewsets.ModelViewSet):
             ActivityLog.log(
                 user=request.user,
                 action='create',
-                description=f"Création de la certification {certification.type_certification.nom} pour {certification.producteur.nom_complet}",
+                description=f"Création de la certification {certification.type_certification.nom} pour {certification.entite_label}",
                 module='Certifications',
                 object_type='Certification',
                 object_id=certification.id,
@@ -451,4 +476,45 @@ class NonConformiteViewSet(viewsets.ModelViewSet):
             nc.date_resolution = timezone.now().date()
         nc.save()
         return Response(self.get_serializer(nc).data)
+
+
+class ActiviteCertificationViewSet(viewsets.ModelViewSet):
+    """
+    API pour les activités de mise en œuvre de la certification
+    (sensibilisation, formation, audit interne, audit externe).
+    """
+    queryset = ActiviteCertification.objects.select_related(
+        'type_certification', 'cooperative', 'producteur', 'responsable'
+    ).all()
+    serializer_class = ActiviteCertificationSerializer
+    permission_classes = [IsAuthenticated, CanManageCertificationDD]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['type_activite', 'type_certification', 'cooperative', 'producteur', 'date']
+    search_fields = [
+        'description', 'resultat', 'notes',
+        'cooperative__nom', 'producteur__code', 'producteur__nom',
+    ]
+    ordering_fields = ['date', 'date_creation', 'nombre_participants']
+    ordering = ['-date', '-date_creation']
+
+    def perform_create(self, serializer):
+        serializer.save(cree_par=self.request.user, responsable=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def statistiques(self, request):
+        """Statistiques par type d'activité et par certification."""
+        qs = self.filter_queryset(self.get_queryset())
+        data = {
+            'par_type': list(
+                qs.values('type_activite').annotate(count=Count('id')).order_by('-count')
+            ),
+            'par_certification': list(
+                qs.exclude(type_certification__isnull=True)
+                .values('type_certification__id', 'type_certification__nom')
+                .annotate(count=Count('id')).order_by('-count')
+            ),
+            'total': qs.count(),
+            'total_participants': qs.aggregate(total=Count('id'))['total'],
+        }
+        return Response(data)
     

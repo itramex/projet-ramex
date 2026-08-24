@@ -85,7 +85,17 @@ class BonCollecte(models.Model):
     
     # Produit
     type_produit = models.CharField(max_length=20, choices=TYPE_PRODUIT_CHOICES)
-    certification = models.CharField(max_length=20, choices=TYPE_CERTIFICATION_CHOICES)
+    # Liaison Certification (Phase 4) : référence au référentiel TypeCertification (extensible)
+    type_certification = models.ForeignKey(
+        'formations.TypeCertification',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bons_collecte',
+        verbose_name="Type de certification"
+    )
+    # Champ texte de compatibilité (historique) — peut être vide si la FK est utilisée
+    certification = models.CharField(max_length=20, choices=TYPE_CERTIFICATION_CHOICES, null=True, blank=True)
     
     # Poids (kg)
     poids_total_livre = models.DecimalField(

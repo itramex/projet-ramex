@@ -11,6 +11,7 @@ from .models import (
     CommandeExport,
     TracabiliteChain
 )
+from formations.models import TypeCertification
 
 
 # ==================== SERIALIZERS RÉUTILISÉS ====================
@@ -66,6 +67,7 @@ class BonCollecteListSerializer(serializers.ModelSerializer):
     producteur_code = serializers.CharField(source='producteur.code', read_only=True)
     cooperative_nom = serializers.CharField(source='cooperative.nom', read_only=True, allow_null=True)
     campagne_code = serializers.CharField(source='campagne.code', read_only=True)
+    type_certification_nom = serializers.CharField(source='type_certification.nom', read_only=True)
     
     # Display fields
     type_produit_display = serializers.CharField(source='get_type_produit_display', read_only=True)
@@ -81,6 +83,7 @@ class BonCollecteListSerializer(serializers.ModelSerializer):
             'date_marche', 'village_marche', 'commune', 'fokontany',
             'type_produit', 'type_produit_display',
             'certification', 'certification_display',
+            'type_certification', 'type_certification_nom',
             'poids_total_livre', 'poids_accepte', 'poids_retour',
             'prix_unitaire_marche', 'montant_premium', 'montant_total_achat',
             'mode_paiement', 'mode_paiement_display',
@@ -89,6 +92,8 @@ class BonCollecteListSerializer(serializers.ModelSerializer):
         ]
 
     def get_certification_display(self, obj):
+        if obj.type_certification:
+            return obj.type_certification.nom
         value = obj.certification or ''
         if ',' in value:
             return ", ".join([v.strip().upper() for v in value.split(',') if v.strip()])
@@ -118,6 +123,7 @@ class BonCollecteDetailSerializer(serializers.ModelSerializer):
     type_produit_display = serializers.CharField(source='get_type_produit_display', read_only=True)
     certification_display = serializers.SerializerMethodField()
     mode_paiement_display = serializers.CharField(source='get_mode_paiement_display', read_only=True)
+    type_certification_nom = serializers.CharField(source='type_certification.nom', read_only=True)
     
     class Meta:
         model = BonCollecte
@@ -125,6 +131,8 @@ class BonCollecteDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ['date_creation', 'date_modification']
 
     def get_certification_display(self, obj):
+        if obj.type_certification:
+            return obj.type_certification.nom
         value = obj.certification or ''
         if ',' in value:
             return ", ".join([v.strip().upper() for v in value.split(',') if v.strip()])
@@ -138,11 +146,18 @@ class BonCollecteCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer pour création/mise à jour d'un bon de collecte"""
     
     details_sacs = DetailSacBonCollecteSerializer(many=True, required=False)
+    type_certification = serializers.PrimaryKeyRelatedField(
+        queryset=TypeCertification.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    certification = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     
     # Display fields (read-only)
     type_produit_display = serializers.CharField(source='get_type_produit_display', read_only=True)
     certification_display = serializers.SerializerMethodField()
     mode_paiement_display = serializers.CharField(source='get_mode_paiement_display', read_only=True)
+    type_certification_nom = serializers.CharField(source='type_certification.nom', read_only=True)
     
     class Meta:
         model = BonCollecte
@@ -158,6 +173,8 @@ class BonCollecteCreateUpdateSerializer(serializers.ModelSerializer):
         return certification_value
 
     def get_certification_display(self, obj):
+        if obj.type_certification:
+            return obj.type_certification.nom
         value = obj.certification or ''
         if ',' in value:
             return ", ".join([v.strip().upper() for v in value.split(',') if v.strip()])
@@ -179,8 +196,11 @@ class BonCollecteCreateUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Validations croisées"""
-        if 'certification' in data:
+        if 'certification' in data and data.get('certification'):
             data['certification'] = self._normalize_certification(data.get('certification'))
+        else:
+            # Si une FK TypeCertification est fournie, on la laisse telle quelle
+            data.setdefault('certification', '')
         poids_total_livre = data.get('poids_total_livre', 0)
         poids_accepte = data.get('poids_accepte', 0)
         poids_retour = data.get('poids_retour', 0)

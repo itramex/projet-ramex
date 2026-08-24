@@ -418,6 +418,14 @@ export const formationService = {
 
   // Non-conformités
   resolveNonConformite: (id) => api.post(`/formations/nonconformites/${id}/resoudre/`),
+
+  // Activités de certification (Phase 4)
+  getAllActivitesCertification: (params = {}) => api.get('/formations/activites-certifications/', { params }),
+  getActiviteCertificationById: (id) => api.get(`/formations/activites-certifications/${id}/`),
+  createActiviteCertification: (data) => api.post('/formations/activites-certifications/', data),
+  updateActiviteCertification: (id, data) => api.put(`/formations/activites-certifications/${id}/`, data),
+  deleteActiviteCertification: (id) => api.delete(`/formations/activites-certifications/${id}/`),
+  getActivitesCertificationStats: () => api.get('/formations/activites-certifications/statistiques/'),
 };
 
 // ========== SERVICE RECOMMANDATIONS ==========
