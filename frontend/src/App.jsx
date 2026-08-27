@@ -28,6 +28,7 @@ const CommandeExportForm = lazy(() => import('./components/tracabilite/CommandeE
 const Magasins = lazy(() => import('./components/tracabilite/Magasins'));
 const Estimations = lazy(() => import('./components/tracabilite/Estimations'));
 const BonsLivraison = lazy(() => import('./components/tracabilite/BonsLivraison'));
+const CycleAnnuel = lazy(() => import('./components/cycleannuel/CycleAnnuel'));
 const Menage = lazy(() => import('./components/menages/Menage'));
 const Activite = lazy(() => import('./components/activite/Activite'));
 const FormationsCertifications = lazy(() => import('./components/formations/FormationsCertifications'));
@@ -192,6 +193,9 @@ function App() {
           <Route path="/tracabilite/bons-livraison" element={<PermissionRoute permission="tracabilite"><BonsLivraison /></PermissionRoute>} />
 
           {/* ==================== FIN MODULE TRAÇABILITÉ ==================== */}
+
+          {/* Cycle annuel / Calendrier agricole (transversal) */}
+          <Route path="/cycle-annuel" element={<ProtectedRoute><CycleAnnuel /></ProtectedRoute>} />
 
           {/* Users - Admin only */}
           <Route path="/utilisateurs" element={<AdminRoute><UserManagement /></AdminRoute>} />

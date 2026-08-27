@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'finances',
     'dashboard',
     'api',
+    'cycle_annuel',
     'chatbot',
     'recommandations',
     'history',

@@ -75,6 +75,12 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       path: '/historique',
       description: 'Évolution annuelle',
     },
+    {
+      title: 'Cycle annuel',
+      iconKey: 'calendar',
+      path: '/cycle-annuel',
+      description: 'Calendrier agricole & rapports',
+    },
     // User management - admin only
     ...(isAdmin() ? [{
       title: 'Utilisateurs',

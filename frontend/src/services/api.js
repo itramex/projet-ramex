@@ -411,6 +411,35 @@ export const tracabiliteService = {
 };
 
 
+// ========== SERVICE CYCLE ANNUEL & CALENDRIER ==========
+export const cycleAnnuelService = {
+  // Phases agricoles (référentiel calendrier)
+  getPhasesAgricoles: (params = {}) => api.get('/cycle-annuel/phases-agricoles/', { params }),
+  getPhaseAgricole: (id) => api.get(`/cycle-annuel/phases-agricoles/${id}/`),
+  createPhaseAgricole: (data) => api.post('/cycle-annuel/phases-agricoles/', data),
+  updatePhaseAgricole: (id, data) => api.put(`/cycle-annuel/phases-agricoles/${id}/`, data),
+  deletePhaseAgricole: (id) => api.delete(`/cycle-annuel/phases-agricoles/${id}/`),
+  getCalendrier: (params = {}) => api.get('/cycle-annuel/phases-agricoles/calendrier/', { params }),
+
+  // Phases planifiées par campagne
+  getPhasesCampagne: (params = {}) => api.get('/cycle-annuel/phases-campagne/', { params }),
+  getPhaseCampagne: (id) => api.get(`/cycle-annuel/phases-campagne/${id}/`),
+  createPhaseCampagne: (data) => api.post('/cycle-annuel/phases-campagne/', data),
+  updatePhaseCampagne: (id, data) => api.put(`/cycle-annuel/phases-campagne/${id}/`, data),
+  deletePhaseCampagne: (id) => api.delete(`/cycle-annuel/phases-campagne/${id}/`),
+
+  // Indicateurs de campagne
+  getIndicateurs: (params = {}) => api.get('/cycle-annuel/indicateurs/', { params }),
+  getIndicateur: (id) => api.get(`/cycle-annuel/indicateurs/${id}/`),
+  createIndicateur: (data) => api.post('/cycle-annuel/indicateurs/', data),
+  updateIndicateur: (id, data) => api.put(`/cycle-annuel/indicateurs/${id}/`, data),
+  deleteIndicateur: (id) => api.delete(`/cycle-annuel/indicateurs/${id}/`),
+
+  // Rapport consolidé par campagne
+  getRapportCampagne: (campagneId) => api.get('/cycle-annuel/rapports/', { params: { campagne: campagneId } })
+};
+
+
 // ========== SERVICE FORMATIONS & CERTIFICATIONS ==========
 export const formationService = {
   // Types de formations

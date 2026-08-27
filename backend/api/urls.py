@@ -23,6 +23,7 @@ urlpatterns = [
     path('cooperatives/', include('cooperatives.urls')),
     path('tracabilite/', include('tracabilite.urls')),
     path('formations/', include('formations.urls')),
+    path('cycle-annuel/', include('cycle_annuel.urls')),
     path('', include('users.urls')),
     path('', include('recommandations.urls')),
 ]
