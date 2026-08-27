@@ -164,6 +164,16 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       iconKey: 'estimation',
       path: '/tracabilite/estimations',
     },
+    {
+      title: 'Entrées Magasin',
+      iconKey: 'bonTransport',
+      path: '/tracabilite/entrees-magasin',
+    },
+    {
+      title: 'Fiches de Stock',
+      iconKey: 'colis',
+      path: '/tracabilite/fiches-stock',
+    },
   ];
 
   const isActive = (path) => location.pathname === path;

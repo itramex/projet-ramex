@@ -28,6 +28,8 @@ const CommandeExportForm = lazy(() => import('./components/tracabilite/CommandeE
 const Magasins = lazy(() => import('./components/tracabilite/Magasins'));
 const Estimations = lazy(() => import('./components/tracabilite/Estimations'));
 const BonsLivraison = lazy(() => import('./components/tracabilite/BonsLivraison'));
+const EntreesMagasin = lazy(() => import('./components/tracabilite/EntreesMagasin'));
+const FichesStock = lazy(() => import('./components/tracabilite/FichesStock'));
 const CycleAnnuel = lazy(() => import('./components/cycleannuel/CycleAnnuel'));
 const Menage = lazy(() => import('./components/menages/Menage'));
 const Activite = lazy(() => import('./components/activite/Activite'));
@@ -191,6 +193,12 @@ function App() {
 
           {/* Bons de livraison */}
           <Route path="/tracabilite/bons-livraison" element={<PermissionRoute permission="tracabilite"><BonsLivraison /></PermissionRoute>} />
+
+          {/* Entrées magasin */}
+          <Route path="/tracabilite/entrees-magasin" element={<PermissionRoute permission="tracabilite"><EntreesMagasin /></PermissionRoute>} />
+
+          {/* Fiches de stock */}
+          <Route path="/tracabilite/fiches-stock" element={<PermissionRoute permission="tracabilite"><FichesStock /></PermissionRoute>} />
 
           {/* ==================== FIN MODULE TRAÇABILITÉ ==================== */}
 
