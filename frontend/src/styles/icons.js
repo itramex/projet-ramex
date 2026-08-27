@@ -43,6 +43,8 @@ export const iconMap = {
   lotTraitement: 'CogIcon',
   colis: 'ArchiveBoxIcon',
   commandeExport: 'GlobeAltIcon',
+  magasin: 'BuildingOfficeIcon',
+  estimation: 'CubeIcon',
   
   // Autres
   settings: 'Cog6ToothIcon',

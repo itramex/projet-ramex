@@ -143,6 +143,21 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       iconKey: 'commandeExport',
       path: '/tracabilite/commandes-export',
     },
+    {
+      title: 'Magasins',
+      iconKey: 'magasin',
+      path: '/tracabilite/magasins',
+    },
+    {
+      title: 'Bons de Livraison',
+      iconKey: 'bonTransport',
+      path: '/tracabilite/bons-livraison',
+    },
+    {
+      title: 'Estimations Production',
+      iconKey: 'estimation',
+      path: '/tracabilite/estimations',
+    },
   ];
 
   const isActive = (path) => location.pathname === path;

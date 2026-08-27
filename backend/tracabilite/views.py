@@ -15,7 +15,12 @@ from .models import (
     LotTraitement,
     Colis,
     CommandeExport,
-    TracabiliteChain
+    TracabiliteChain,
+    EstimationProduction,
+    Magasin,
+    BonLivraison,
+    EntreeMagasin,
+    FicheStock
 )
 from .serializers import (
     CampagneSerializer,
@@ -37,7 +42,12 @@ from .serializers import (
     CommandeExportListSerializer,
     CommandeExportDetailSerializer,
     CommandeExportCreateUpdateSerializer,
-    TracabiliteChainSerializer
+    TracabiliteChainSerializer,
+    EstimationProductionSerializer,
+    MagasinSerializer,
+    BonLivraisonSerializer,
+    EntreeMagasinSerializer,
+    FicheStockSerializer
 )
 from .engine.tracability_engine import TracabilityEngine
 
@@ -396,3 +406,152 @@ class TracabiliteChainViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['uuid', 'producteur__nom']
     ordering = ['-date_creation']
+# ==================== ESTIMATION DE PRODUCTION (Phase 5) ====================
+
+class EstimationProductionViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les estimations de production."""
+    queryset = EstimationProduction.objects.select_related('producteur', 'campagne')
+    serializer_class = EstimationProductionSerializer
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['producteur__code', 'producteur__nom']
+    ordering = ['-date_estimation']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        campagne = self.request.query_params.get('campagne')
+        if campagne:
+            queryset = queryset.filter(campagne_id=campagne)
+
+        producteur = self.request.query_params.get('producteur')
+        if producteur:
+            queryset = queryset.filter(producteur_id=producteur)
+
+        type_vanille = self.request.query_params.get('type_vanille')
+        if type_vanille:
+            queryset = queryset.filter(type_vanille=type_vanille)
+
+        return queryset
+
+    @action(detail=False, methods=['get'], url_path='stats')
+    def stats(self, request):
+        """Statistiques : total estimé par campagne et type de vanille."""
+        somme = EstimationProduction.objects.filter(
+            campagne__statut='active'
+        ).aggregate(total=Sum('quantite_estimee'))
+        par_type = (
+            EstimationProduction.objects.values('type_vanille')
+            .annotate(total=Sum('quantite_estimee'), count=Count('id'))
+        )
+        par_campagne = (
+            EstimationProduction.objects.values('campagne__code', 'campagne')
+            .annotate(total=Sum('quantite_estimee'), count=Count('id'))
+        )
+        return Response({
+            'total_estime': somme['total'] or 0,
+            'par_type_vanille': par_type,
+            'par_campagne': par_campagne,
+        })
+
+
+# ==================== MAGASIN ====================
+
+class MagasinViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les magasins."""
+    queryset = Magasin.objects.all()
+    serializer_class = MagasinSerializer
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['nom', 'code', 'localisation']
+    ordering = ['nom']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        actif = self.request.query_params.get('actif')
+        if actif is not None:
+            queryset = queryset.filter(actif=actif.lower() == 'true')
+
+        type_magasin = self.request.query_params.get('type')
+        if type_magasin:
+            queryset = queryset.filter(type=type_magasin)
+
+        return queryset.order_by('nom')
+
+
+# ==================== BON DE LIVRAISON ====================
+
+class BonLivraisonViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les bons de livraison."""
+    queryset = BonLivraison.objects.select_related(
+        'commande_export', 'magasin_source', 'magasin_destination'
+    )
+    serializer_class = BonLivraisonSerializer
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero', 'magasin_destination__nom']
+    ordering = ['-date']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        statut = self.request.query_params.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        magasin = self.request.query_params.get('magasin_destination')
+        if magasin:
+            queryset = queryset.filter(magasin_destination_id=magasin)
+
+        return queryset
+
+
+# ==================== ENTRÉE MAGASIN ====================
+
+class EntreeMagasinViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les entrées magasin."""
+    queryset = EntreeMagasin.objects.select_related('magasin', 'bon_livraison')
+    serializer_class = EntreeMagasinSerializer
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_bon', 'magasin__nom']
+    ordering = ['-date']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        magasin = self.request.query_params.get('magasin')
+        if magasin:
+            queryset = queryset.filter(magasin_id=magasin)
+
+        bon_livraison = self.request.query_params.get('bon_livraison')
+        if bon_livraison:
+            queryset = queryset.filter(bon_livraison_id=bon_livraison)
+
+        return queryset
+
+
+# ==================== FICHE DE STOCK ====================
+
+class FicheStockViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les fiches de stock."""
+    queryset = FicheStock.objects.select_related('magasin')
+    serializer_class = FicheStockSerializer
+    permission_classes = [IsAuthenticated, CanManageTracabilite]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['reference', 'magasin__nom']
+    ordering = ['-date']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        magasin = self.request.query_params.get('magasin')
+        if magasin:
+            queryset = queryset.filter(magasin_id=magasin)
+
+        produit = self.request.query_params.get('produit')
+        if produit:
+            queryset = queryset.filter(produit=produit)
+
+        return queryset

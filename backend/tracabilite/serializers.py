@@ -9,7 +9,12 @@ from .models import (
     LotTraitement,
     Colis,
     CommandeExport,
-    TracabiliteChain
+    TracabiliteChain,
+    EstimationProduction,
+    Magasin,
+    BonLivraison,
+    EntreeMagasin,
+    FicheStock
 )
 from formations.models import TypeCertification
 
@@ -574,3 +579,110 @@ class TracabiliteChainSerializer(serializers.ModelSerializer):
         model = TracabiliteChain
         fields = '__all__'
         read_only_fields = ['uuid', 'date_creation']
+# ==================== ESTIMATION DE PRODUCTION (Phase 5) ====================
+
+class EstimationProductionSerializer(serializers.ModelSerializer):
+    """Serializer pour les estimations de production."""
+
+    producteur_nom = serializers.CharField(source='producteur.nom_complet', read_only=True)
+    producteur_code = serializers.CharField(source='producteur.code', read_only=True)
+    campagne_code = serializers.CharField(source='campagne.code', read_only=True)
+    type_vanille_display = serializers.CharField(source='get_type_vanille_display', read_only=True)
+
+    class Meta:
+        model = EstimationProduction
+        fields = [
+            'id', 'producteur', 'producteur_nom', 'producteur_code',
+            'campagne', 'campagne_code',
+            'quantite_estimee', 'type_vanille', 'type_vanille_display',
+            'date_estimation', 'observations', 'date_creation', 'date_modification',
+        ]
+        read_only_fields = ['date_creation', 'date_modification']
+
+
+# ==================== MAGASIN ====================
+
+class MagasinSerializer(serializers.ModelSerializer):
+    """Serializer pour les magasins."""
+
+    type_display = serializers.CharField(source='get_type_display', read_only=True)
+    stock_actuel = serializers.DecimalField(
+        max_digits=14, decimal_places=3, read_only=True
+    )
+    nb_fiches_stock = serializers.IntegerField(source='fiches_stock.count', read_only=True)
+
+    class Meta:
+        model = Magasin
+        fields = [
+            'id', 'nom', 'code', 'type', 'type_display',
+            'localisation', 'responsable', 'telephone', 'actif',
+            'stock_actuel', 'nb_fiches_stock',
+            'date_creation', 'date_modification',
+        ]
+        read_only_fields = ['date_creation', 'date_modification']
+
+
+# ==================== BON DE LIVRAISON ====================
+
+class BonLivraisonSerializer(serializers.ModelSerializer):
+    """Serializer pour les bons de livraison."""
+
+    commande_export_numero = serializers.CharField(
+        source='commande_export.numero_commande', read_only=True
+    )
+    magasin_source_nom = serializers.CharField(source='magasin_source.nom', read_only=True)
+    magasin_destination_nom = serializers.CharField(source='magasin_destination.nom', read_only=True)
+    produit_display = serializers.CharField(source='get_produit_display', read_only=True)
+    statut_display = serializers.CharField(source='get_statut_display', read_only=True)
+
+    class Meta:
+        model = BonLivraison
+        fields = [
+            'id', 'numero', 'commande_export', 'commande_export_numero',
+            'magasin_source', 'magasin_source_nom',
+            'magasin_destination', 'magasin_destination_nom',
+            'produit', 'produit_display', 'quantite',
+            'date', 'transporteur', 'observations',
+            'statut', 'statut_display',
+            'date_creation', 'date_modification',
+        ]
+        read_only_fields = ['date_creation', 'date_modification']
+
+
+# ==================== ENTRÉE MAGASIN ====================
+
+class EntreeMagasinSerializer(serializers.ModelSerializer):
+    """Serializer pour les entrées magasin."""
+
+    magasin_nom = serializers.CharField(source='magasin.nom', read_only=True)
+    bon_livraison_numero = serializers.CharField(source='bon_livraison.numero', read_only=True)
+
+    class Meta:
+        model = EntreeMagasin
+        fields = [
+            'id', 'numero_bon', 'bon_livraison', 'bon_livraison_numero',
+            'magasin', 'magasin_nom', 'produit', 'quantite_recue',
+            'date', 'agent_receptionnaire', 'observations', 'date_creation',
+        ]
+        read_only_fields = ['date_creation']
+
+
+# ==================== FICHE DE STOCK ====================
+
+class FicheStockSerializer(serializers.ModelSerializer):
+    """Serializer pour les fiches de stock."""
+
+    magasin_nom = serializers.CharField(source='magasin.nom', read_only=True)
+    type_mouvement_display = serializers.CharField(source='get_type_mouvement_display', read_only=True)
+    solde = serializers.DecimalField(max_digits=14, decimal_places=3, read_only=True)
+
+    class Meta:
+        model = FicheStock
+        fields = [
+            'id', 'magasin', 'magasin_nom', 'produit',
+            'date', 'reference',
+            'quantite_entree', 'quantite_sortie', 'solde',
+            'type_mouvement', 'type_mouvement_display',
+            'observations', 'date_creation',
+        ]
+        read_only_fields = ['solde', 'date_creation']

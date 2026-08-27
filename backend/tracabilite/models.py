@@ -736,3 +736,269 @@ class TracabiliteChain(models.Model):
     def __str__(self):
         return f"Traçabilité {self.type_tracabilite} - {self.uuid}"
 
+# ==================== ÉTAPE 6 : MAGASINS & STOCKS (Phase 5) ====================
+
+class EstimationProduction(models.Model):
+    """
+    Estimation de production : quantité de vanille annoncée par producteur pour une campagne.
+    """
+    TYPE_VANILLE_CHOICES = [
+        ('verte', 'Vanille verte'),
+        ('preparee', 'Vanille préparée'),
+    ]
+
+    producteur = models.ForeignKey(
+        Producteur,
+        on_delete=models.CASCADE,
+        related_name='estimations_production',
+        verbose_name="Producteur"
+    )
+    campagne = models.ForeignKey(
+        Campagne,
+        on_delete=models.PROTECT,
+        related_name='estimations_production',
+        verbose_name="Campagne"
+    )
+    quantite_estimee = models.DecimalField(
+        max_digits=12, decimal_places=3, validators=[MinValueValidator(0)],
+        verbose_name="Quantité estimée (kg)"
+    )
+    type_vanille = models.CharField(
+        max_length=20, choices=TYPE_VANILLE_CHOICES, default='verte',
+        verbose_name="Type de vanille"
+    )
+    date_estimation = models.DateField(verbose_name="Date de l'estimation")
+    observations = models.TextField(blank=True)
+
+    date_creation = models.DateTimeField(auto_now_add=True)
+    date_modification = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date_estimation']
+        verbose_name = "Estimation de production"
+        verbose_name_plural = "Estimations de production"
+        unique_together = ['producteur', 'campagne', 'type_vanille']
+
+    def __str__(self):
+        return f"{self.producteur.code} - {self.campagne.code}: {self.quantite_estimee} kg"
+
+
+# ==================== MAGASIN ====================
+
+class Magasin(models.Model):
+    """
+    MAGASIN
+    Entrepôt / magasin RAMEX ou partenaire où le produit est stocké puis livré.
+    """
+    TYPE_MAGASIN_CHOICES = [
+        ('entrepot', 'Entrepôt'),
+        ('depot_transit', 'Dépôt de transit'),
+        ('site_exportateur', "Site exportateur"),
+        ('cooperative', 'Coopérative'),
+    ]
+
+    nom = models.CharField(max_length=200, unique=True, verbose_name="Nom du magasin")
+    code = models.CharField(max_length=30, unique=True, blank=True, verbose_name="Code")
+    type = models.CharField(
+        max_length=30, choices=TYPE_MAGASIN_CHOICES, default='entrepot',
+        verbose_name="Type de magasin"
+    )
+    localisation = models.CharField(max_length=255, blank=True, verbose_name="Localisation")
+    responsable = models.CharField(max_length=100, blank=True, verbose_name="Responsable")
+    telephone = models.CharField(max_length=20, blank=True, verbose_name="Téléphone")
+    actif = models.BooleanField(default=True, verbose_name="Actif")
+
+    date_creation = models.DateTimeField(auto_now_add=True)
+    date_modification = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['nom']
+        verbose_name = "Magasin"
+        verbose_name_plural = "Magasins"
+
+    def __str__(self):
+        return self.nom
+
+    @property
+    def stock_actuel(self):
+        derniere = self.fiches_stock.order_by('-date', '-id').first()
+        return derniere.solde if derniere else 0
+
+
+# ==================== BON DE LIVRAISON (Transaction sortie) ====================
+
+class BonLivraison(models.Model):
+    """
+    BON DE LIVRAISON : livraison d'une transaction (commande d'export) vers un magasin.
+    """
+    numero = models.CharField(max_length=50, unique=True, db_index=True, verbose_name="Numéro du bon")
+
+    # Transaction source (commande d'export)
+    commande_export = models.ForeignKey(
+        CommandeExport,
+        on_delete=models.PROTECT,
+        related_name='bons_livraison',
+        verbose_name="Transaction (commande d'export)"
+    )
+    magasin_source = models.ForeignKey(
+        Magasin,
+        on_delete=models.PROTECT,
+        related_name='bons_livraison_sorties',
+        verbose_name="Magasin de départ"
+    )
+    magasin_destination = models.ForeignKey(
+        Magasin,
+        on_delete=models.PROTECT,
+        related_name='bons_livraison_destinations',
+        verbose_name="Magasin de destination"
+    )
+
+    TYPE_PRODUIT_CHOICES = [
+        ('vanille_verte', 'Vanille verte'),
+        ('vanille_preparee', 'Vanille préparée'),
+        ('vanille_vrac', 'Vanille vrac'),
+    ]
+    produit = models.CharField(
+        max_length=20, choices=TYPE_PRODUIT_CHOICES, default='vanille_preparee',
+        verbose_name="Produit"
+    )
+    quantite = models.DecimalField(
+        max_digits=12, decimal_places=3, validators=[MinValueValidator(0)],
+        verbose_name="Quantité (kg)"
+    )
+    date = models.DateField(verbose_name="Date de livraison")
+    transporteur = models.CharField(max_length=100, blank=True, verbose_name="Transporteur")
+    observations = models.TextField(blank=True)
+
+    STATUT_CHOICES = [
+        ('preparee', 'Préparée'),
+        ('en_transit', 'En transit'),
+        ('livree', 'Livrée'),
+        ('annulee', 'Annulée'),
+    ]
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='preparee')
+
+    date_creation = models.DateTimeField(auto_now_add=True)
+    date_modification = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', '-numero']
+        verbose_name = "Bon de livraison"
+        verbose_name_plural = "Bons de livraison"
+
+    def __str__(self):
+        return f"BL {self.numero} → {self.magasin_destination.nom} ({self.quantite} kg)"
+# ==================== ENTRÉE MAGASIN ====================
+
+class EntreeMagasin(models.Model):
+    """
+    ENTRÉE MAGASIN : réception physique d'un bon de livraison dans un magasin.
+    """
+    numero_bon = models.CharField(max_length=50, unique=True, db_index=True, verbose_name="Numéro du bon")
+
+    bon_livraison = models.ForeignKey(
+        BonLivraison,
+        on_delete=models.CASCADE,
+        related_name='entrees',
+        verbose_name="Bon de livraison associé"
+    )
+    magasin = models.ForeignKey(
+        Magasin,
+        on_delete=models.PROTECT,
+        related_name='entrees_magasin',
+        verbose_name="Magasin de réception"
+    )
+    produit = models.CharField(
+        max_length=20, default='vanille_preparee', verbose_name="Produit"
+    )
+    quantite_recue = models.DecimalField(
+        max_digits=12, decimal_places=3, validators=[MinValueValidator(0)],
+        verbose_name="Quantité reçue (kg)"
+    )
+    date = models.DateField(verbose_name="Date de réception")
+    agent_receptionnaire = models.CharField(max_length=100, blank=True, verbose_name="Agent réceptionnaire")
+    observations = models.TextField(blank=True)
+
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-numero_bon']
+        verbose_name = "Entrée magasin"
+        verbose_name_plural = "Entrées magasin"
+
+    def __str__(self):
+        return f"Entrée {self.numero_bon} - {self.magasin.nom} ({self.quantite_recue} kg)"
+
+
+# ==================== FICHE DE STOCK ====================
+
+class FicheStock(models.Model):
+    """
+    FICHE DE STOCK : mouvement d'un magasin avec solde cumulé calculé automatiquement.
+    """
+    magasin = models.ForeignKey(
+        Magasin,
+        on_delete=models.CASCADE,
+        related_name='fiches_stock',
+        verbose_name="Magasin"
+    )
+    produit = models.CharField(
+        max_length=20, default='vanille_preparee', verbose_name="Produit"
+    )
+    date = models.DateField(verbose_name="Date du mouvement")
+    reference = models.CharField(
+        max_length=100, blank=True,
+        verbose_name="Référence",
+        help_text="Référence document (BL, entrée, ajustement...)"
+    )
+
+    quantite_entree = models.DecimalField(
+        max_digits=12, decimal_places=3, default=0, validators=[MinValueValidator(0)],
+        verbose_name="Quantité entrée (kg)"
+    )
+    quantite_sortie = models.DecimalField(
+        max_digits=12, decimal_places=3, default=0, validators=[MinValueValidator(0)],
+        verbose_name="Quantité sortie (kg)"
+    )
+    solde = models.DecimalField(
+        max_digits=14, decimal_places=3, default=0, editable=False,
+        verbose_name="Solde cumulé (kg)"
+    )
+
+    TYPE_MOUVEMENT_CHOICES = [
+        ('entree_bl', "Entrée sur bon de livraison"),
+        ('entree_directe', "Entrée directe"),
+        ('sortie_export', "Sortie pour export"),
+        ('ajustement', "Ajustement"),
+    ]
+    type_mouvement = models.CharField(
+        max_length=20, choices=TYPE_MOUVEMENT_CHOICES, default='entree_directe',
+        verbose_name="Type de mouvement"
+    )
+
+    observations = models.TextField(blank=True)
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-id']
+        verbose_name = "Fiche de stock"
+        verbose_name_plural = "Fiches de stock"
+        indexes = [models.Index(fields=['magasin', 'produit', '-date'])]
+
+    def __str__(self):
+        return f"{self.magasin.nom} · {self.produit} · {self.date} (solde {self.solde} kg)"
+
+    def save(self, *args, **kwargs):
+        """
+        Solde cumulé : dernier solde du magasin/produit + entrée - sortie.
+        """
+        dernier = (
+            FicheStock.objects
+            .filter(magasin=self.magasin, produit=self.produit)
+            .exclude(pk=self.pk)
+            .order_by('-date', '-id')
+            .first()
+        )
+        base = dernier.solde if dernier else 0
+        self.solde = base + (self.quantite_entree or 0) - (self.quantite_sortie or 0)
+        super().save(*args, **kwargs)

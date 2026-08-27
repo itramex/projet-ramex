@@ -8,7 +8,12 @@ from .views import (
     LotTraitementViewSet,
     ColisViewSet,
     CommandeExportViewSet,
-    TracabiliteChainViewSet
+    TracabiliteChainViewSet,
+    EstimationProductionViewSet,
+    MagasinViewSet,
+    BonLivraisonViewSet,
+    EntreeMagasinViewSet,
+    FicheStockViewSet
 )
 
 router = DefaultRouter()
@@ -20,6 +25,11 @@ router.register(r'lots-traitement', LotTraitementViewSet, basename='lot-traiteme
 router.register(r'colis', ColisViewSet, basename='colis')
 router.register(r'commandes-export', CommandeExportViewSet, basename='commande-export')
 router.register(r'tracabilite-chains', TracabiliteChainViewSet, basename='tracabilite-chain')
+router.register(r'estimations-production', EstimationProductionViewSet, basename='estimation-production')
+router.register(r'magasins', MagasinViewSet, basename='magasin')
+router.register(r'bons-livraison', BonLivraisonViewSet, basename='bon-livraison')
+router.register(r'entrees-magasin', EntreeMagasinViewSet, basename='entree-magasin')
+router.register(r'fiches-stock', FicheStockViewSet, basename='fiche-stock')
 
 urlpatterns = [
     path('', include(router.urls)),

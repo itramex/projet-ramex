@@ -25,6 +25,9 @@ const ColisList = lazy(() => import('./components/tracabilite/ColisList'));
 const ColisForm = lazy(() => import('./components/tracabilite/ColisForm'));
 const CommandeExportList = lazy(() => import('./components/tracabilite/CommandeExportList'));
 const CommandeExportForm = lazy(() => import('./components/tracabilite/CommandeExportForm'));
+const Magasins = lazy(() => import('./components/tracabilite/Magasins'));
+const Estimations = lazy(() => import('./components/tracabilite/Estimations'));
+const BonsLivraison = lazy(() => import('./components/tracabilite/BonsLivraison'));
 const Menage = lazy(() => import('./components/menages/Menage'));
 const Activite = lazy(() => import('./components/activite/Activite'));
 const FormationsCertifications = lazy(() => import('./components/formations/FormationsCertifications'));
@@ -178,6 +181,15 @@ function App() {
           <Route path="/tracabilite/commandes-export/create" element={<PermissionRoute permission="tracabilite"><CommandeExportForm /></PermissionRoute>} />
           <Route path="/tracabilite/commandes-export/:id" element={<PermissionRoute permission="tracabilite"><CommandeExportForm /></PermissionRoute>} />
           <Route path="/tracabilite/commandes-export/:id/edit" element={<PermissionRoute permission="tracabilite"><CommandeExportForm /></PermissionRoute>} />
+
+          {/* Magasins */}
+          <Route path="/tracabilite/magasins" element={<PermissionRoute permission="tracabilite"><Magasins /></PermissionRoute>} />
+
+          {/* Estimations de production */}
+          <Route path="/tracabilite/estimations" element={<PermissionRoute permission="tracabilite"><Estimations /></PermissionRoute>} />
+
+          {/* Bons de livraison */}
+          <Route path="/tracabilite/bons-livraison" element={<PermissionRoute permission="tracabilite"><BonsLivraison /></PermissionRoute>} />
 
           {/* ==================== FIN MODULE TRAÇABILITÉ ==================== */}
 

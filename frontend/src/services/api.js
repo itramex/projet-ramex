@@ -371,7 +371,43 @@ export const tracabiliteService = {
   traceCommandeExport: (id) => api.get(`/tracabilite/commandes-export/${id}/trace/`),
 
   // Chaînes de traçabilité
-  getTracabiliteChains: (params = {}) => api.get('/tracabilite/tracabilite-chains/', { params })
+  getTracabiliteChains: (params = {}) => api.get('/tracabilite/tracabilite-chains/', { params }),
+
+  // Estimations de production
+  getEstimationsProduction: (params = {}) => api.get('/tracabilite/estimations-production/', { params }),
+  getEstimationProduction: (id) => api.get(`/tracabilite/estimations-production/${id}/`),
+  createEstimationProduction: (data) => api.post('/tracabilite/estimations-production/', data),
+  updateEstimationProduction: (id, data) => api.put(`/tracabilite/estimations-production/${id}/`, data),
+  deleteEstimationProduction: (id) => api.delete(`/tracabilite/estimations-production/${id}/`),
+  statistiquesEstimations: () => api.get('/tracabilite/estimations-production/stats/'),
+
+  // Magasins
+  getMagasins: (params = {}) => api.get('/tracabilite/magasins/', { params }),
+  getMagasin: (id) => api.get(`/tracabilite/magasins/${id}/`),
+  createMagasin: (data) => api.post('/tracabilite/magasins/', data),
+  updateMagasin: (id, data) => api.put(`/tracabilite/magasins/${id}/`, data),
+  deleteMagasin: (id) => api.delete(`/tracabilite/magasins/${id}/`),
+
+  // Bons de livraison
+  getBonsLivraison: (params = {}) => api.get('/tracabilite/bons-livraison/', { params }),
+  getBonLivraison: (id) => api.get(`/tracabilite/bons-livraison/${id}/`),
+  createBonLivraison: (data) => api.post('/tracabilite/bons-livraison/', data),
+  updateBonLivraison: (id, data) => api.put(`/tracabilite/bons-livraison/${id}/`, data),
+  deleteBonLivraison: (id) => api.delete(`/tracabilite/bons-livraison/${id}/`),
+
+  // Entrées magasin
+  getEntreesMagasin: (params = {}) => api.get('/tracabilite/entrees-magasin/', { params }),
+  getEntreeMagasin: (id) => api.get(`/tracabilite/entrees-magasin/${id}/`),
+  createEntreeMagasin: (data) => api.post('/tracabilite/entrees-magasin/', data),
+  updateEntreeMagasin: (id, data) => api.put(`/tracabilite/entrees-magasin/${id}/`, data),
+  deleteEntreeMagasin: (id) => api.delete(`/tracabilite/entrees-magasin/${id}/`),
+
+  // Fiches de stock
+  getFichesStock: (params = {}) => api.get('/tracabilite/fiches-stock/', { params }),
+  getFicheStock: (id) => api.get(`/tracabilite/fiches-stock/${id}/`),
+  createFicheStock: (data) => api.post('/tracabilite/fiches-stock/', data),
+  updateFicheStock: (id, data) => api.put(`/tracabilite/fiches-stock/${id}/`, data),
+  deleteFicheStock: (id) => api.delete(`/tracabilite/fiches-stock/${id}/`)
 };
 
 
