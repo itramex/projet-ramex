@@ -5,6 +5,7 @@ import Button from '../common/Button';
 import Badge from '../common/Badge';
 import Card from '../common/Card';
 import { geographieService } from '../../services/api';
+import { getCurrentUser } from '../../utils/permissions';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -189,9 +190,17 @@ function UserManagement() {
     }
   };
 
-  const handleToggleActive = async (id) => {
+  const handleToggleActive = async (user) => {
+    const current = getCurrentUser();
+    if (current && user.id === current.id) {
+      alert('Vous ne pouvez pas désactiver votre propre compte.');
+      return;
+    }
+    const action = user.is_active ? 'désactiver' : 'réactiver';
+    if (!window.confirm(`Voulez-vous vraiment ${action} le compte « ${user.username} » ?`)) return;
+
     try {
-      await userService.toggleActive(id);
+      await userService.toggleActive(user.id);
       loadData();
     } catch (err) {
       alert('Erreur lors de la modification du statut');
@@ -503,7 +512,7 @@ function UsersTab({
                           Mot de passe
                         </button>
                         <button
-                          onClick={() => handleToggleActive(user.id)}
+                          onClick={() => handleToggleActive(user)}
                           className={`${user.is_active ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900'}`}
                         >
                           {user.is_active ? 'Désactiver' : 'Activer'}
@@ -522,6 +531,16 @@ function UsersTab({
             </table>
           </div>
         </div>
+      )}
+
+      {showPasswordModal && selectedUser && (
+        <PasswordResetModal
+          user={selectedUser}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setSelectedUser(null);
+          }}
+        />
       )}
     </div>
   );
@@ -1189,16 +1208,31 @@ function PasswordResetModal({ user, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
     setSuccess('');
 
+    if (formData.new_password !== formData.new_password_confirm) {
+      setError('Les deux mots de passe ne correspondent pas.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await userService.resetPassword(user.id, formData);
+      await userService.resetPassword(user.id, {
+        new_password: formData.new_password,
+        new_password_confirm: formData.new_password_confirm,
+      });
       setSuccess('Mot de passe réinitialisé avec succès');
-      setTimeout(() => onClose(), 2000);
+      setTimeout(() => onClose(), 1500);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Erreur lors de la réinitialisation');
+      const data = err.response?.data;
+      let message = data?.detail || '';
+      if (!message && data?.new_password) {
+        message = Array.isArray(data.new_password)
+          ? data.new_password.join(' ')
+          : String(data.new_password);
+      }
+      setError(message || 'Erreur lors de la réinitialisation');
     } finally {
       setLoading(false);
     }
@@ -1234,6 +1268,9 @@ function PasswordResetModal({ user, onClose }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-chick-yellow"
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Au moins 8 caractères, pas trop courant, ni uniquement numérique.
+            </p>
           </div>
 
           <div>
