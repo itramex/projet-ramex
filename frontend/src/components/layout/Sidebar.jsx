@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { isAdmin, canManageTracabilite, canManageCertificationDD } from '../../utils/permissions';
+import { isAdmin, isSuperviseur, canManageTracabilite, canManageCertificationDD } from '../../utils/permissions';
 import Icon from '../common/Icon';
 import { iconMap } from '../../styles/icons';
 
@@ -87,6 +87,13 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       iconKey: 'utilisateurs',
       path: '/utilisateurs',
       description: 'Gestion des utilisateurs',
+    }] : []),
+    // Journal d'activité - admin + superviseur
+    ...(isSuperviseur() ? [{
+      title: 'Journal d\'activité',
+      iconKey: 'journal',
+      path: '/journal',
+      description: 'Audit & sessions',
     }] : []),
   ];
 

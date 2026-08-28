@@ -607,4 +607,14 @@ export const historyService = {
   getProducteurs: (params = {}) => api.get('/producteurs/', { params }),
 };
 
+// ========== SERVICE JOURNAL D'ACTIVITÉ (audit / gouvernance) ==========
+export const activityLogService = {
+  // Journal (filtres: user, action, module, days, date_from, date_to, search)
+  getLogs: (params = {}) => api.get('/activity-logs/', { params }),
+  // Statistiques (aujourd'hui / semaine / mois / par action / utilisateurs actifs / connexions)
+  getStatistics: () => api.get('/activity-logs/statistics/'),
+  // Sessions utilisateurs (connexions / déconnexions)
+  getUserSessions: (params = {}) => api.get('/activity-logs/user_sessions/', { params }),
+};
+
 export default api;

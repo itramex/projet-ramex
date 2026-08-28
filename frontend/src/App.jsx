@@ -38,6 +38,7 @@ const CertificationSpecifications = lazy(() => import('./components/formations/C
 const CertificationTypesManagement = lazy(() => import('./components/formations/CertificationTypesManagement'));
 const ActivitesCertification = lazy(() => import('./components/formations/ActivitesCertification'));
 const UserManagement = lazy(() => import('./components/users/UserManagement'));
+const ActivityLogs = lazy(() => import('./components/users/ActivityLogs'));
 const Chatbot = lazy(() => import('./components/common/Chatbot'));
 const ActiviteList = lazy(() => import('./components/recommandations/ActiviteList'));
 const RecommendationList = lazy(() => import('./components/recommandations/RecommendationList'));
@@ -207,6 +208,8 @@ function App() {
 
           {/* Users - Admin only */}
           <Route path="/utilisateurs" element={<AdminRoute><UserManagement /></AdminRoute>} />
+          {/* Journal d'activité - Admin + Superviseur */}
+          <Route path="/journal" element={<PermissionRoute permission="superviseur"><ActivityLogs /></PermissionRoute>} />
 
           {/* Redirection par défaut */}
           <Route path="*" element={<Navigate to="/dashboard" />} />

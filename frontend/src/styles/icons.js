@@ -45,6 +45,7 @@ export const iconMap = {
   commandeExport: 'GlobeAltIcon',
   magasin: 'BuildingOfficeIcon',
   estimation: 'CubeIcon',
+  journal: 'ClipboardDocumentListIcon',
   
   // Autres
   settings: 'Cog6ToothIcon',
