@@ -16,6 +16,7 @@ export const iconMap = {
   recommandations: 'LightBulbIcon',
   utilisateurs: 'UserIcon',
   tracabilite: 'CubeIcon',
+  social: 'HeartIcon',
   
   // Actions
   add: 'PlusIcon',

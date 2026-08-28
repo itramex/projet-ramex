@@ -35,6 +35,9 @@ function Dashboard() {
   const [data, setData] = useState(null);
   const [productionData, setProductionData] = useState(null);
   const [decisionData, setDecisionData] = useState(null);
+  const [socialData, setSocialData] = useState(null);
+  const [socialSubTab, setSocialSubTab] = useState('hygiene');
+  const [cultureDetail, setCultureDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
@@ -59,9 +62,13 @@ function Dashboard() {
   useEffect(() => {
     if (activeTab === 'production') {
       loadProductionData();
+      loadCultureDetail();
     }
     if (activeTab === 'decisionnel') {
       loadDecisionData();
+    }
+    if (activeTab === 'social') {
+      loadSocialData();
     }
   }, [activeTab, filters]);
 
@@ -149,6 +156,39 @@ function Dashboard() {
       setLoading(false);
     }
   }, [filters]);
+
+  const loadCultureDetail = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      filters.villages.forEach(village => params.append('village', village));
+      filters.communes.forEach(commune => params.append('commune', commune));
+      const response = await dashboardService.getProductionParCulture(params);
+      setCultureDetail(response.data);
+    } catch (error) {
+      console.error('Erreur chargement production par culture:', error);
+    }
+  }, [filters]);
+
+  const loadSocialData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [hygiene, enfants, environnement] = await Promise.all([
+        dashboardService.getHygiene(),
+        dashboardService.getEnfants(),
+        dashboardService.getEnvironnement(),
+      ]);
+      setSocialData({
+        hygiene: hygiene.data,
+        enfants: enfants.data,
+        environnement: environnement.data,
+      });
+    } catch (error) {
+      setError(error.response?.data?.detail || error.message || 'Erreur lors du chargement');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const handleFilterChange = useCallback((filterName, value) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
@@ -277,6 +317,16 @@ function Dashboard() {
               AGR
             </button>
             <button
+              onClick={() => setActiveTab('social')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'social'
+                  ? 'border-chick-yellow text-chick-yellow'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+            >
+              <Icon name={iconMap.social} size="sm" />
+              Social
+            </button>
+            <button
               onClick={() => setActiveTab('decisionnel')}
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'decisionnel'
                   ? 'border-chick-yellow text-chick-yellow'
@@ -311,6 +361,7 @@ function Dashboard() {
       ) : activeTab === 'production' ? (
         <ProductionTab
           data={productionData}
+          cultureData={cultureDetail}
           filters={filters}
           villagesCommunes={villagesCommunes}
           onFilterChange={handleFilterChange}
@@ -324,6 +375,12 @@ function Dashboard() {
         />
       ) : activeTab === 'agr' ? (
         <AGRStats />
+      ) : activeTab === 'social' ? (
+        <SocialTab
+          data={socialData}
+          subTab={socialSubTab}
+          onSubTabChange={setSocialSubTab}
+        />
       ) : activeTab === 'decisionnel' ? (
         <DecisionTab
           data={decisionData}
@@ -632,7 +689,7 @@ const OverviewTab = memo(({ data, filters, villagesCommunes, showVillageDropdown
 OverviewTab.displayName = 'OverviewTab';
 
 // ========== Onglet Production ==========
-const ProductionTab = memo(({ data, filters, villagesCommunes, onFilterChange, toggleVillage, toggleCommune, onResetFilters, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown }) => {
+const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, onFilterChange, toggleVillage, toggleCommune, onResetFilters, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown }) => {
   if (!data) {
     return (
       <div className="text-center py-12">
@@ -856,6 +913,58 @@ const ProductionTab = memo(({ data, filters, villagesCommunes, onFilterChange, t
           </ChartCard>
         )}
       </div>
+
+      {/* Productions détaillées par culture (multi-cultures par parcelle) */}
+      {cultureData?.productions_par_culture?.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-bold text-dark">
+              Productions détaillées par culture
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                (chaque parcelle compte pour chacune de ses cultures — {cultureData.nb_cultures_differentes} culture{cultureData.nb_cultures_differentes > 1 ? 's' : ''})
+              </span>
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Culture</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Production totale</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Parcelles</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Moyenne / parcelle</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Part</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {cultureData.productions_par_culture.map((item, index) => {
+                  const share = cultureData.total_production_kg > 0
+                    ? Math.round((item.production_totale_kg / cultureData.total_production_kg) * 100)
+                    : 0;
+                  const cultureLabels = { vanille: 'Vanille', cafe: 'Café', girofle: 'Girofle', cacao: 'Cacao', poivre: 'Poivre', autre: 'Autre' };
+                  const cultureName = cultureLabels[item.culture] || item.culture;
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">{cultureName}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.production_totale_kg || 0).toLocaleString('fr-FR')} kg</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{item.nb_parcelles}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.production_moyenne_kg || 0).toLocaleString('fr-FR')} kg</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{share} %</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-gray-50">
+                <tr>
+                  <td className="px-6 py-3 text-sm font-bold text-gray-900">Total</td>
+                  <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">{Number(cultureData.total_production_kg || 0).toLocaleString('fr-FR')} kg</td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Détail par culture - Cards enrichies */}
       {data.par_culture?.length > 0 && (
@@ -1250,6 +1359,155 @@ const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onRes
 
 DecisionTab.displayName = 'DecisionTab';
 
+// ========== Onglet Social (Hygiène / Enfants / Environnement) ==========
+const SocialTab = memo(({ data, subTab, onSubTabChange }) => {
+  if (!data || !data.hygiene || !data.enfants || !data.environnement) {
+    return (
+      <div className="text-center py-12">
+        <Icon name={iconMap.social} size="xl" className="text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-600 text-lg">Chargement des données sociales...</p>
+      </div>
+    );
+  }
+
+  const subTabs = [
+    { id: 'hygiene', label: 'Hygiène & Santé' },
+    { id: 'enfants', label: 'Enfants & Scolarisation' },
+    { id: 'environnement', label: 'Environnement' },
+  ];
+
+  return (
+    <>
+      {/* Sous-onglets */}
+      <Card padding="none" className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            {subTabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => onSubTabChange(tab.id)}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${subTab === tab.id
+                    ? 'border-chick-yellow text-chick-yellow'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </Card>
+
+      {subTab === 'hygiene' && <HygieneView data={data.hygiene} />}
+      {subTab === 'enfants' && <EnfantsView data={data.enfants} />}
+      {subTab === 'environnement' && <EnvironnementView data={data.environnement} />}
+    </>
+  );
+});
+
+SocialTab.displayName = 'SocialTab';
+
+// ----- Vue Hygiène & Santé -----
+const HygieneView = memo(({ data }) => {
+  const indicateurs = [
+    { key: 'poubelles_triees', label: 'Poubelles triées', color: 'bg-green-500' },
+    { key: 'wc_maison', label: 'WC à la maison', color: 'bg-blue-500' },
+    { key: 'wc_champ', label: 'WC au champ', color: 'bg-cyan-500' },
+    { key: 'eau_potable', label: 'Accès à l\'eau potable', color: 'bg-teal-500' },
+    { key: 'assurance_sante', label: 'Assurance santé', color: 'bg-purple-500' },
+  ];
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <StatCard title="Producteurs actifs" value={data.total_producteurs} subtitle="Population analysée" iconName="UsersIcon" color="bg-chick-yellow" />
+        <StatCard title="Eau potable" value={`${data.eau_potable?.pourcentage ?? 0} %`} subtitle={`${data.eau_potable?.count ?? 0} producteurs concernés`} iconName="CheckCircleIcon" color="bg-teal-500" />
+        <StatCard title="Assurance santé" value={`${data.assurance_sante?.pourcentage ?? 0} %`} subtitle={`${data.assurance_sante?.count ?? 0} producteurs couverts`} iconName="CheckCircleIcon" color="bg-purple-500" />
+      </div>
+
+      <Card title="Conditions d'hygiène des producteurs" padding="md">
+        <div className="space-y-4">
+          {indicateurs.map(ind => {
+            const item = data[ind.key] || { count: 0, pourcentage: 0 };
+            return (
+              <div key={ind.key}>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium text-gray-700">{ind.label}</span>
+                  <span className="text-sm text-gray-500">{item.count} producteur{item.count > 1 ? 's' : ''} · {item.pourcentage} %</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className={`${ind.color} h-3 rounded-full transition-all`} style={{ width: `${Math.min(item.pourcentage || 0, 100)}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </>
+  );
+});
+
+HygieneView.displayName = 'HygieneView';
+
+// ----- Vue Enfants & Scolarisation -----
+const EnfantsView = memo(({ data }) => {
+  const horsAge = Math.max(
+    (data.total_enfants || 0) - (data.enfants_scolarises || 0) - (data.enfants_non_scolarises || 0),
+    0
+  );
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard title="Total enfants" value={data.total_enfants} subtitle={`${data.total_garcons} garçons · ${data.total_filles} filles`} iconName="UsersIcon" color="bg-chick-yellow" />
+        <StatCard title="En âge scolaire (3-18 ans)" value={data.enfants_en_age_scolaire} subtitle="Estimé via les années de naissance" iconName="UserIcon" color="bg-blue-500" />
+        <StatCard title="Enfants scolarisés" value={data.enfants_scolarises} subtitle={`Taux de scolarisation : ${data.taux_scolarisation} %`} iconName="CheckCircleIcon" color="bg-green-500" />
+        <StatCard title="Non scolarisés" value={data.enfants_non_scolarises} subtitle="À accompagner en priorité" iconName="ExclamationTriangleIcon" color="bg-red-500" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartCard title="Scolarisation des enfants">
+          <Doughnut
+            data={{
+              labels: ['Scolarisés', 'Non scolarisés', 'Hors âge scolaire'],
+              datasets: [{
+                data: [data.enfants_scolarises, data.enfants_non_scolarises, horsAge],
+                backgroundColor: ['#10B981', '#EF4444', '#9CA3AF'],
+                borderWidth: 1,
+              }],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: true,
+              plugins: { legend: { position: 'bottom' } },
+            }}
+          />
+        </ChartCard>
+
+        <ChartCard title="Répartition par genre">
+          <Doughnut
+            data={{
+              labels: ['Garçons', 'Filles'],
+              datasets: [{
+                data: [data.total_garcons, data.total_filles],
+                backgroundColor: ['#3B82F6', '#EC4899'],
+                borderWidth: 1,
+              }],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: true,
+              plugins: { legend: { position: 'bottom' } },
+            }}
+          />
+        </ChartCard>
+      </div>
+    </>
+  );
+});
+
+EnfantsView.displayName = 'EnfantsView';
+
 // Composants utilitaires
 const StatCard = memo(({ title, value, subtitle, iconName, color }) => {
   // Determine text color based on background color
@@ -1272,6 +1530,55 @@ const StatCard = memo(({ title, value, subtitle, iconName, color }) => {
 });
 
 StatCard.displayName = 'StatCard';
+
+// ----- Vue Environnement -----
+const EnvironnementView = memo(({ data }) => {
+  const total = data.total_producteurs || 0;
+  const pct = (value) => total > 0 ? Math.round(((value || 0) / total) * 100) : 0;
+
+  const indicateurs = [
+    { key: 'respecte_dina', label: 'Respecte le dina (règlement local)', color: 'bg-green-500' },
+    { key: 'ne_brule_pas_foret', label: 'Ne brûle pas la forêt', color: 'bg-emerald-500' },
+    { key: 'ne_coupe_pas_foret', label: 'Ne coupe pas la forêt', color: 'bg-teal-500' },
+    { key: 'pratique_peche', label: 'Pratique la pêche', color: 'bg-blue-500' },
+    { key: 'pratique_tavy', label: 'Pratique le tavy (culture sur brûlis)', color: 'bg-red-500' },
+  ];
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <StatCard title="Producteurs actifs" value={total} subtitle="Population analysée" iconName="UsersIcon" color="bg-chick-yellow" />
+        <StatCard title="Respect du dina" value={`${pct(data.respecte_dina)} %`} subtitle={`${data.respecte_dina} producteurs`} iconName="CheckCircleIcon" color="bg-green-500" />
+        <StatCard title="Pratique le tavy" value={`${pct(data.pratique_tavy)} %`} subtitle={`${data.pratique_tavy} producteurs — point de vigilance`} iconName="ExclamationTriangleIcon" color="bg-red-500" />
+      </div>
+
+      <Card title="Comportements environnementaux" padding="md">
+        <div className="space-y-4">
+          {indicateurs.map(ind => {
+            const value = data[ind.key] || 0;
+            const percent = pct(value);
+            return (
+              <div key={ind.key}>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium text-gray-700">{ind.label}</span>
+                  <span className="text-sm text-gray-500">{value} producteur{value > 1 ? 's' : ''} · {percent} %</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className={`${ind.color} h-3 rounded-full transition-all`} style={{ width: `${Math.min(percent, 100)}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-xs text-gray-500">
+          Note : « pratique le tavy » est un indicateur négatif (culture sur brûlis) — un pourcentage élevé appelle une action de sensibilisation.
+        </p>
+      </Card>
+    </>
+  );
+});
+
+EnvironnementView.displayName = 'EnvironnementView';
 
 const ChartCard = memo(({ title, children }) => {
   return (

@@ -307,6 +307,10 @@ export const dashboardService = {
   }),
   getVillagesAndCommunes: () => api.get('/dashboard/villages-communes/'),
   getProduction: (params = {}) => api.get('/dashboard/production/', { params }),
+  getProductionParCulture: (params = {}) => api.get('/dashboard/production-par-culture/', { params }),
+  getHygiene: () => api.get('/dashboard/hygiene/'),
+  getEnfants: () => api.get('/dashboard/enfants/'),
+  getEnvironnement: () => api.get('/dashboard/environnement/'),
   createVillage: (data) => api.post('/dashboard/villages/', data),
   importVillagesExcel: (formData) => api.post('/dashboard/villages/import-excel/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
