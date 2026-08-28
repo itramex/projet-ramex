@@ -201,10 +201,10 @@ function CycleAnnuel() {
             <div key={m.numero} className="bg-white rounded-lg shadow-md p-4">
               <h3 className="font-semibold text-dark mb-2">{m.numero}. {m.nom}</h3>
               <div className="space-y-1.5">
-                {m.phases.length === 0 && (
+                {(m.phases?.length || 0) === 0 && (
                   <p className="text-xs text-gray-400 italic">Aucune phase</p>
                 )}
-                {m.phases.map((p) => (
+                {(m.phases || []).map((p) => (
                   <div
                     key={`${m.numero}-${p.id}`}
                     className={`text-xs px-2 py-1 rounded border ${PILIER_COLOR[p.pilier] || 'bg-gray-100'}`}

@@ -285,6 +285,16 @@ function UserManagement() {
       )}
 
       {/* Modals */}
+      {showPasswordModal && selectedUser && (
+        <PasswordResetModal
+          user={selectedUser}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setSelectedUser(null);
+          }}
+        />
+      )}
+
       {showCreateModal && (
         <UserCreateModal
           onClose={() => setShowCreateModal(false)}
@@ -531,16 +541,6 @@ function UsersTab({
             </table>
           </div>
         </div>
-      )}
-
-      {showPasswordModal && selectedUser && (
-        <PasswordResetModal
-          user={selectedUser}
-          onClose={() => {
-            setShowPasswordModal(false);
-            setSelectedUser(null);
-          }}
-        />
       )}
     </div>
   );
