@@ -3,6 +3,7 @@ import { parcelleService, producteurService, dashboardService } from '../../serv
 import ParcelleForm from './ParcelleForm';
 import ParcelleDetails from './ParcelleDetails';
 import ParcelleMapViewFullscreen from './ParcelleMapViewFullscreen';
+import ParcellesGlobalMap from './ParcellesGlobalMap';
 import SearchableSelect from '../common/SearchableSelect';
 import ExportPersonnalise from '../common/ExportPersonnalise';
 import { CanCreate, CanUpdate, CanDelete } from '../common/PermissionWrapper';
@@ -23,6 +24,7 @@ function ParcelleList() {
   const [showForm, setShowForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [showMapView, setShowMapView] = useState(false);
+  const [showGlobalMap, setShowGlobalMap] = useState(false);
   const [showExportPersonnalise, setShowExportPersonnalise] = useState(false);
   const [selectedParcelle, setSelectedParcelle] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -273,7 +275,17 @@ function ParcelleList() {
           >
             Voir la carte ({parcellesAvecGPS.length})
           </Button>
-          
+
+          <Button
+            onClick={() => setShowGlobalMap(true)}
+            variant="secondary"
+            icon="GlobeAltIcon"
+            className="bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
+            title="Toutes les parcelles géolocalisées + recherche de proximité"
+          >
+            Carte globale
+          </Button>
+
           <Button
             onClick={handleExport}
             variant="secondary"
@@ -857,6 +869,17 @@ function ParcelleList() {
           parcelles={parcellesAvecGPS}
           onClose={() => setShowMapView(false)}
           enableDraw={false}
+        />
+      )}
+
+      {showGlobalMap && (
+        <ParcellesGlobalMap
+          onClose={() => setShowGlobalMap(false)}
+          onOpenDetails={(id) => {
+            setShowGlobalMap(false);
+            setSelectedParcelle({ id });
+            setShowDetails(true);
+          }}
         />
       )}
 

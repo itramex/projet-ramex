@@ -7,6 +7,7 @@ from users.permissions import IsAdminOrReadOnly
 from users.models import ActivityLog
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
+from django.contrib.gis.db.models.functions import Distance
 from django.db.models import Sum, Avg, Count
 from django.http import HttpResponse
 from django.utils import timezone
@@ -233,9 +234,12 @@ class ParcelleViewSet(viewsets.ModelViewSet):
         
         try:
             point = Point(float(lon), float(lat), srid=4326)
-            parcelles = Parcelle.objects.filter(
-                point__distance_lte=(point, D(km=radius_km))
-            ).order_by('point__distance_from')[:20]
+            parcelles = (
+                Parcelle.objects.filter(point__isnull=False)
+                .annotate(distance=Distance('point', point))
+                .filter(point__distance_lte=(point, D(km=radius_km)))
+                .order_by('distance')[:20]
+            )
             
             serializer = ParcelleListSerializer(parcelles, many=True, context={'request': request})
             return Response(serializer.data)

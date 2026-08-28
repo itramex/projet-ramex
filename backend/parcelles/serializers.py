@@ -27,6 +27,7 @@ class ParcelleListSerializer(serializers.ModelSerializer):
     distance_habitation_display = serializers.CharField(source='get_distance_habitation_display', read_only=True)
     type_propriete_display = serializers.CharField(source='get_type_propriete_display', read_only=True)
     type_certification_display = serializers.CharField(source='get_type_certification_display', read_only=True)
+    distance_km = serializers.SerializerMethodField()
     
     class Meta:
         model = Parcelle
@@ -37,7 +38,7 @@ class ParcelleListSerializer(serializers.ModelSerializer):
             'productions_par_culture', 'estimation_production_kg', 'certifiee', 'type_certification', 'type_certification_display',
             'active', 'photo_url', 'annee_plantation', 'age_parcelle', 'date_enregistrement',
             'latitude', 'longitude', 'profil_parcelle', 'profil_parcelle_display', 'distance_habitation', 'distance_habitation_display',
-            'type_propriete', 'type_propriete_display'
+            'type_propriete', 'type_propriete_display', 'distance_km'
         ]
     
     def get_photo_url(self, obj):
@@ -52,6 +53,16 @@ class ParcelleListSerializer(serializers.ModelSerializer):
     
     def get_longitude(self, obj):
         return obj.longitude
+
+    def get_distance_km(self, obj):
+        """Distance en km (présente uniquement quand annotée par l'action nearby)"""
+        distance = getattr(obj, 'distance', None)
+        if distance is not None:
+            try:
+                return round(distance.km, 2)
+            except Exception:
+                return None
+        return None
 
 
 class ParcelleGeoJSONSerializer(GeoFeatureModelSerializer):
