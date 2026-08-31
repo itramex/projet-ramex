@@ -46,6 +46,7 @@ const RecommendationList = lazy(() => import('./components/recommandations/Recom
 const RecommendationDashboard = lazy(() => import('./components/recommandations/RecommendationDashboard'));
 const ArchivesMahavelona = lazy(() => import('./components/recommandations/ArchivesMahavelona'));
 const VillagesReference = lazy(() => import('./components/common/VillagesReference'));
+const Dotations = lazy(() => import('./components/producteurs/Dotations'));
 const ComponentsDemo = lazy(() => import('./components/common/ComponentsDemo'));
 const HistoryAnalysisPage = lazy(() => import('./components/history/HistoryAnalysisPage'));
 const GeographieManagement = lazy(() => import('./components/geographie/GeographieManagement'));
@@ -145,6 +146,8 @@ function App() {
           <Route path="/recommandations/archives" element={<ProtectedRoute><ArchivesMahavelona /></ProtectedRoute>} />
           {/* Villages de référence (import Excel inclus) */}
           <Route path="/villages" element={<ProtectedRoute><VillagesReference /></ProtectedRoute>} />
+          {/* Dotations (gestion centrale) */}
+          <Route path="/dotations" element={<ProtectedRoute><Dotations /></ProtectedRoute>} />
 
           {/* Historique */}
           <Route path="/historique" element={<ProtectedRoute><HistoryAnalysisPage /></ProtectedRoute>} />

@@ -69,6 +69,12 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       description: 'Activité des producteurs',
     },
     {
+      title: 'Dotations',
+      iconKey: 'dotations',
+      path: '/dotations',
+      description: 'Kits scolaires, poissons, volailles',
+    },
+    {
       title: 'Recommandations',
       iconKey: 'recommandations',
       path: '/recommandations',

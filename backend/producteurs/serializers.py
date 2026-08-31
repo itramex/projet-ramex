@@ -59,11 +59,12 @@ class CooperativeSerializer(serializers.ModelSerializer):
 class DotationSerializer(serializers.ModelSerializer):
     """Serializer pour les dotations par année"""
     producteur_code = serializers.CharField(source='producteur.code', read_only=True)
+    producteur_nom = serializers.CharField(source='producteur.nom_complet', read_only=True)
 
     class Meta:
         model = Dotation
         fields = [
-            'id', 'producteur', 'producteur_code', 'type_dotation',
+            'id', 'producteur', 'producteur_code', 'producteur_nom', 'type_dotation',
             'annee', 'quantite', 'details', 'date_enregistrement'
         ]
         read_only_fields = ['date_enregistrement']

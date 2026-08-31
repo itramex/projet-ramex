@@ -50,6 +50,7 @@ export const iconMap = {
   chaine: 'LinkIcon',
   archive: 'ArchiveBoxIcon',
   villages: 'MapPinIcon',
+  dotations: 'GiftIcon',
   
   // Autres
   settings: 'Cog6ToothIcon',
