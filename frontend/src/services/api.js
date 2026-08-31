@@ -268,6 +268,10 @@ export const ddService = {
 // ========== SERVICE PARCELLES ==========
 export const parcelleService = {
   getAll: (params = {}) => api.get('/parcelles/', { params }),
+  getAllWithAllPages: async (params = {}) => {
+    const { results } = await fetchAllPages('/parcelles/', params);
+    return { data: results };
+  },
   getAllForDropdown: async (params = {}) => {
     const { results } = await fetchAllPages('/parcelles/', params);
     return { data: results };

@@ -128,7 +128,7 @@ function ParcelleList() {
       if (!showInactives) params.active = 'true';
 
       const [parcellesRes, producteursRes] = await Promise.all([
-        parcelleService.getAll(params),
+        parcelleService.getAllWithAllPages(params),
         producteurService.getAll({ actif: 'true' })
       ]);
 
