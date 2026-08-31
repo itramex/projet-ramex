@@ -80,8 +80,9 @@ function ColisForm() {
   };
 
   const generateQRCode = () => {
-    // Générer un code QR unique
-    const qr = `QR-${formData.numero_colis}-${Date.now()}`;
+    // Format normalisé et déterministe (identique au QR serveur) :
+    // reproductible — pas d'horodatage aléatoire.
+    const qr = `RMX|COLIS|${formData.numero_colis || 'A-DEFINIR'}`;
     setFormData(prev => ({ ...prev, qr_code: qr }));
   };
 

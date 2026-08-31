@@ -332,18 +332,41 @@ class ColisViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='generate-qr')
     def generate_qr(self, request, pk=None):
         """
-        Générer un QR code pour un colis
-        
+        Générer un QR code pour un colis (payload normalisé + image PNG base64).
+
         GET /api/tracabilite/colis/{id}/generate-qr/
         """
+        import base64
+        import io
+
+        import qrcode
+
         colis = self.get_object()
-        
-        # TODO: Implémenter la génération de QR code
-        # Utiliser une bibliothèque comme qrcode ou segno
-        
+
+        # Payload normalisé et déterministe : le même colis produit toujours
+        # le même QR (reproductible, scannable, lisible par un humain).
+        payload = f"RMX|COLIS|{colis.numero_colis}"
+        if colis.lot_traitement_id and colis.lot_traitement:
+            payload += f"|LOT|{colis.lot_traitement.numero_lot}"
+        payload += f"|PDS|{colis.poids_net}kg|QUAL|{colis.qualite or 'N/A'}"
+
+        # Normalise le champ stocké si vide ou au format ad-hoc historique
+        reference = f"RMX|COLIS|{colis.numero_colis}"
+        if not colis.qr_code or not colis.qr_code.startswith(reference):
+            colis.qr_code = reference
+            colis.save(update_fields=['qr_code'])
+
+        img = qrcode.make(payload, box_size=8, border=2)
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        png_base64 = base64.b64encode(buffer.getvalue()).decode()
+
         return Response({
             'success': True,
-            'qr_code_url': f'/api/tracabilite/colis/{colis.id}/qr.png'
+            'numero_colis': colis.numero_colis,
+            'payload': payload,
+            'qr_code': colis.qr_code,
+            'qr_png_base64': f"data:image/png;base64,{png_base64}",
         })
 
 

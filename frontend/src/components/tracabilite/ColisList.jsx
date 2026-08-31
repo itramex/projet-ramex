@@ -14,6 +14,23 @@ function ColisList() {
     fetchColis();
   }, []);
 
+  // QR Code serveur
+  const [qrModal, setQrModal] = useState(null);
+  const [qrLoadingId, setQrLoadingId] = useState(null);
+
+  const showQr = async (c) => {
+    setQrLoadingId(c.id);
+    try {
+      const res = await tracabiliteService.generateQR(c.id);
+      setQrModal(res.data);
+    } catch (error) {
+      console.error('Erreur QR:', error);
+      alert('Erreur lors de la génération du QR code');
+    } finally {
+      setQrLoadingId(null);
+    }
+  };
+
   const fetchColis = async () => {
     setLoading(true);
     try {
@@ -90,6 +107,14 @@ function ColisList() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => showQr(c)}
+                    disabled={qrLoadingId === c.id}
+                    title="QR Code serveur"
+                    className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                  >
+                    <Icon name="QrCodeIcon" size="md" />
+                  </button>
                   <Link
                     to={`/tracabilite/colis/${c.id}`}
                     className="text-blue-600 hover:text-blue-900"
@@ -108,6 +133,38 @@ function ColisList() {
           </tbody>
         </table>
       </div>
+
+      {/* Modale QR Code */}
+      {qrModal && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-dark">QR Code — {qrModal.numero_colis}</h3>
+              <button onClick={() => setQrModal(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+            </div>
+            {qrModal.qr_png_base64 ? (
+              <img
+                src={qrModal.qr_png_base64}
+                alt={`QR ${qrModal.numero_colis}`}
+                className="mx-auto border border-gray-200 rounded-lg"
+                style={{ width: 256, height: 256 }}
+              />
+            ) : (
+              <p className="text-red-600 text-sm py-8">Image QR indisponible.</p>
+            )}
+            <p className="mt-4 text-xs text-gray-500 uppercase">Contenu scanné</p>
+            <p className="font-mono text-sm text-dark break-all bg-gray-50 rounded-lg p-2 mt-1">
+              {qrModal.payload}
+            </p>
+            <button
+              onClick={() => setQrModal(null)}
+              className="mt-4 w-full bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 font-semibold"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
