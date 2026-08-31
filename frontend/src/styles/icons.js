@@ -47,6 +47,7 @@ export const iconMap = {
   magasin: 'BuildingOfficeIcon',
   estimation: 'CubeIcon',
   journal: 'ClipboardDocumentListIcon',
+  chaine: 'LinkIcon',
   
   // Autres
   settings: 'Cog6ToothIcon',

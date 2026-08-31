@@ -157,6 +157,11 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       path: '/tracabilite/commandes-export',
     },
     {
+      title: 'Chaînes de Traçabilité',
+      iconKey: 'chaine',
+      path: '/tracabilite/chaines',
+    },
+    {
       title: 'Magasins',
       iconKey: 'magasin',
       path: '/tracabilite/magasins',

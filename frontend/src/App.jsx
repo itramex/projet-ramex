@@ -30,6 +30,7 @@ const Estimations = lazy(() => import('./components/tracabilite/Estimations'));
 const BonsLivraison = lazy(() => import('./components/tracabilite/BonsLivraison'));
 const EntreesMagasin = lazy(() => import('./components/tracabilite/EntreesMagasin'));
 const FichesStock = lazy(() => import('./components/tracabilite/FichesStock'));
+const ChainsTracabilite = lazy(() => import('./components/tracabilite/ChainsTracabilite'));
 const CycleAnnuel = lazy(() => import('./components/cycleannuel/CycleAnnuel'));
 const Menage = lazy(() => import('./components/menages/Menage'));
 const Activite = lazy(() => import('./components/activite/Activite'));
@@ -200,6 +201,9 @@ function App() {
 
           {/* Fiches de stock */}
           <Route path="/tracabilite/fiches-stock" element={<PermissionRoute permission="tracabilite"><FichesStock /></PermissionRoute>} />
+
+          {/* Chaînes de traçabilité (historique) */}
+          <Route path="/tracabilite/chaines" element={<PermissionRoute permission="tracabilite"><ChainsTracabilite /></PermissionRoute>} />
 
           {/* ==================== FIN MODULE TRAÇABILITÉ ==================== */}
 

@@ -579,6 +579,76 @@ class TracabiliteChainSerializer(serializers.ModelSerializer):
         model = TracabiliteChain
         fields = '__all__'
         read_only_fields = ['uuid', 'date_creation']
+
+
+class TracabiliteChainListSerializer(serializers.ModelSerializer):
+    """Serializer léger pour la liste des chaînes de traçabilité.
+
+    Extrait un résumé (numéros FABC / colis / commande, poids, nb d'étapes)
+    directement depuis chain_data, sans requêtes supplémentaires.
+    """
+
+    producteur_nom = serializers.CharField(source='producteur.nom_complet', read_only=True)
+    producteur_code = serializers.CharField(source='producteur.code', read_only=True)
+    type_tracabilite_display = serializers.CharField(source='get_type_tracabilite_display', read_only=True)
+    numero_fabc = serializers.SerializerMethodField()
+    numero_colis = serializers.SerializerMethodField()
+    numero_commande = serializers.SerializerMethodField()
+    poids_kg = serializers.SerializerMethodField()
+    nb_etapes = serializers.SerializerMethodField()
+
+    ETAPE_KEYS = ['bon_collecte', 'fiche_collecte', 'bon_transport',
+                  'lot_traitement', 'colis', 'commande_export']
+
+    class Meta:
+        model = TracabiliteChain
+        fields = [
+            'id', 'uuid', 'type_tracabilite', 'type_tracabilite_display',
+            'producteur', 'producteur_nom', 'producteur_code',
+            'bon_collecte_id', 'fiche_collecte_id', 'bon_transport_id',
+            'lot_traitement_id', 'colis_id', 'commande_export_id',
+            'numero_fabc', 'numero_colis', 'numero_commande', 'poids_kg',
+            'nb_etapes', 'date_creation',
+        ]
+
+    def get_numero_fabc(self, obj):
+        bc = (obj.chain_data or {}).get('bon_collecte')
+        if isinstance(bc, dict):
+            return bc.get('numero_fabc')
+        if isinstance(bc, list) and bc:
+            return ', '.join(str(b.get('numero_fabc', '')) for b in bc[:3])
+        return None
+
+    def get_numero_colis(self, obj):
+        colis = (obj.chain_data or {}).get('colis')
+        if isinstance(colis, dict):
+            return colis.get('numero_colis')
+        if isinstance(colis, list) and colis:
+            return ', '.join(str(c.get('numero_colis', '')) for c in colis[:3])
+        return None
+
+    def get_numero_commande(self, obj):
+        ce = (obj.chain_data or {}).get('commande_export')
+        if isinstance(ce, dict):
+            return ce.get('numero_commande')
+        if isinstance(ce, list) and ce:
+            return ce[0].get('numero_commande')
+        return None
+
+    def get_poids_kg(self, obj):
+        data = obj.chain_data or {}
+        bc = data.get('bon_collecte')
+        if isinstance(bc, dict) and bc.get('poids_accepte') is not None:
+            return bc.get('poids_accepte')
+        ce = data.get('commande_export')
+        if isinstance(ce, dict) and ce.get('poids_total_net') is not None:
+            return ce.get('poids_total_net')
+        return None
+
+    def get_nb_etapes(self, obj):
+        data = obj.chain_data or {}
+        return sum(1 for k in self.ETAPE_KEYS if data.get(k))
+
 # ==================== ESTIMATION DE PRODUCTION (Phase 5) ====================
 
 class EstimationProductionSerializer(serializers.ModelSerializer):

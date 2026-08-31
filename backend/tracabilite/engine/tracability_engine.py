@@ -151,7 +151,10 @@ class TracabilityEngine:
                                         producteur = bon_collecte.producteur
                                         if producteur.id not in [p['id'] for p in chain['producteurs']]:
                                             chain['producteurs'].append(self._serialize_producteur(producteur))
-            
+
+            # Sauvegarder la chaîne
+            self._save_chain_descendante(chain, commande_export)
+
             return chain
         
         except CommandeExport.DoesNotExist:
@@ -236,11 +239,36 @@ class TracabilityEngine:
     
     @transaction.atomic
     def _save_chain(self, chain_data, bon_collecte):
-        """Sauvegarde la chaîne de traçabilité en base"""
-        TracabiliteChain.objects.create(
-            uuid=uuid.uuid4(),
-            type_tracabilite=chain_data['type'],
-            producteur=bon_collecte.producteur,
+        """Sauvegarde (ou met à jour) la chaîne de traçabilité ascendante en base.
+
+        Upsert sur (bon_collecte, type) pour éviter les doublons si le même
+        bon est tracé plusieurs fois.
+        """
+        TracabiliteChain.objects.update_or_create(
             bon_collecte_id=bon_collecte.id,
-            chain_data=chain_data
+            type_tracabilite='ascendante',
+            defaults={
+                'uuid': uuid.uuid4(),
+                'producteur': bon_collecte.producteur,
+                'fiche_collecte_id': (chain_data.get('fiche_collecte') or {}).get('id'),
+                'bon_transport_id': (chain_data.get('bon_transport') or {}).get('id'),
+                'lot_traitement_id': (chain_data.get('lot_traitement') or {}).get('id'),
+                'colis_id': (chain_data.get('colis') or {}).get('id'),
+                'commande_export_id': (chain_data.get('commande_export') or {}).get('id'),
+                'chain_data': chain_data,
+            },
+        )
+
+    @transaction.atomic
+    def _save_chain_descendante(self, chain_data, commande_export):
+        """Sauvegarde (ou met à jour) la chaîne de traçabilité descendante en base."""
+        colis_list = chain_data.get('colis') or []
+        TracabiliteChain.objects.update_or_create(
+            commande_export_id=commande_export.id,
+            type_tracabilite='descendante',
+            defaults={
+                'uuid': uuid.uuid4(),
+                'colis_id': colis_list[0].get('id') if colis_list else None,
+                'chain_data': chain_data,
+            },
         )

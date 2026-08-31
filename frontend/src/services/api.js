@@ -341,6 +341,10 @@ export const tracabiliteService = {
   traceBonCollecte: (id) => api.get(`/tracabilite/bons-collecte/${id}/trace/`),
   statistiquesBonsCollecte: (params = {}) => api.get('/tracabilite/bons-collecte/statistics/', { params }),
 
+  // Chaînes de traçabilité (historique persistant)
+  getChainsTracabilite: (params = {}) => api.get('/tracabilite/tracabilite-chains/', { params }),
+  getChainTracabilite: (id) => api.get(`/tracabilite/tracabilite-chains/${id}/`),
+
   // Fiches de collecte
   getFichesCollecte: (params = {}) => api.get('/tracabilite/fiches-collecte/', { params }),
   getFicheCollecte: (id) => api.get(`/tracabilite/fiches-collecte/${id}/`),

@@ -43,6 +43,7 @@ from .serializers import (
     CommandeExportDetailSerializer,
     CommandeExportCreateUpdateSerializer,
     TracabiliteChainSerializer,
+    TracabiliteChainListSerializer,
     EstimationProductionSerializer,
     MagasinSerializer,
     BonLivraisonSerializer,
@@ -400,12 +401,23 @@ class CommandeExportViewSet(viewsets.ModelViewSet):
 
 class TracabiliteChainViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet pour les chaînes de traçabilité (lecture seule)"""
-    queryset = TracabiliteChain.objects.all()
     serializer_class = TracabiliteChainSerializer
     permission_classes = [IsAuthenticated, CanManageTracabilite]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['uuid', 'producteur__nom']
+    search_fields = ['uuid', 'producteur__nom', 'producteur__code']
     ordering = ['-date_creation']
+
+    def get_queryset(self):
+        queryset = TracabiliteChain.objects.select_related('producteur')
+        type_trace = self.request.query_params.get('type')
+        if type_trace:
+            queryset = queryset.filter(type_tracabilite=type_trace)
+        return queryset
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TracabiliteChainListSerializer
+        return TracabiliteChainSerializer
 # ==================== ESTIMATION DE PRODUCTION (Phase 5) ====================
 
 class EstimationProductionViewSet(viewsets.ModelViewSet):
