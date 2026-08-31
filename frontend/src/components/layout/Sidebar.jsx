@@ -40,6 +40,12 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       path: '/parcelles',
       description: 'Gestion des parcelles',
     },
+    {
+      title: 'Villages de référence',
+      iconKey: 'villages',
+      path: '/villages',
+      description: 'Référentiel villages avec import Excel',
+    },
     // Développement Durable + Certification/Formation → animateur / superviseur / admin
     ...(canManageCertificationDD() ? [
       {

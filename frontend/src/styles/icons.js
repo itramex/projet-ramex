@@ -49,6 +49,7 @@ export const iconMap = {
   journal: 'ClipboardDocumentListIcon',
   chaine: 'LinkIcon',
   archive: 'ArchiveBoxIcon',
+  villages: 'MapPinIcon',
   
   // Autres
   settings: 'Cog6ToothIcon',
