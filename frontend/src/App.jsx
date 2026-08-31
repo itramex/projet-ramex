@@ -44,6 +44,7 @@ const Chatbot = lazy(() => import('./components/common/Chatbot'));
 const ActiviteList = lazy(() => import('./components/recommandations/ActiviteList'));
 const RecommendationList = lazy(() => import('./components/recommandations/RecommendationList'));
 const RecommendationDashboard = lazy(() => import('./components/recommandations/RecommendationDashboard'));
+const ArchivesMahavelona = lazy(() => import('./components/recommandations/ArchivesMahavelona'));
 const ComponentsDemo = lazy(() => import('./components/common/ComponentsDemo'));
 const HistoryAnalysisPage = lazy(() => import('./components/history/HistoryAnalysisPage'));
 const GeographieManagement = lazy(() => import('./components/geographie/GeographieManagement'));
@@ -140,6 +141,7 @@ function App() {
           <Route path="/recommandations" element={<ProtectedRoute><RecommendationDashboard /></ProtectedRoute>} />
           <Route path="/recommandations/activites" element={<ProtectedRoute><ActiviteList /></ProtectedRoute>} />
           <Route path="/recommandations/liste" element={<ProtectedRoute><RecommendationList /></ProtectedRoute>} />
+          <Route path="/recommandations/archives" element={<ProtectedRoute><ArchivesMahavelona /></ProtectedRoute>} />
 
           {/* Historique */}
           <Route path="/historique" element={<ProtectedRoute><HistoryAnalysisPage /></ProtectedRoute>} />

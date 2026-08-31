@@ -389,6 +389,75 @@ class RecommendationViewSet(viewsets.ModelViewSet):
         serializer.save(cree_par=request.user if request.user.is_authenticated else None)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['post'], url_path='mahavelona/archives/snapshot')
+    def mahavelona_archives_snapshot(self, request):
+        """
+        POST /api/recommendations/mahavelona/archives/snapshot/
+        Body (optionnel) : {"annee": 2026}  — défaut : année courante.
+
+        Génère (ou remplace) l'archive annuelle des critères Mahavelona
+        à partir de l'état actuel des producteurs.
+        """
+        from producteurs.models import Producteur
+
+        annee = request.data.get('annee') or timezone.now().year
+        try:
+            annee = int(annee)
+        except (TypeError, ValueError):
+            return Response(
+                {'detail': "Année invalide."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        qs = Producteur.objects.filter(mahavelona=True, actif=True)
+        total = qs.count()
+
+        par_annee_adhesion = list(
+            qs.filter(mahavelona_annee__isnull=False)
+            .values('mahavelona_annee')
+            .annotate(total=Count('id'))
+            .order_by('mahavelona_annee')
+        )
+        par_sexe = list(qs.values('sexe').annotate(total=Count('id')).order_by('-total'))
+        par_commune = list(qs.values('commune').annotate(total=Count('id')).order_by('-total')[:20])
+        par_village = list(qs.values('village').annotate(total=Count('id')).order_by('-total')[:30])
+        versions = list(
+            qs.exclude(mahavelona_criteres_version='')
+            .values('mahavelona_criteres_version')
+            .annotate(total=Count('id'))
+            .order_by('-total')
+        )
+
+        archive_json = {
+            'genere_le': timezone.now().isoformat(),
+            'total_membres': total,
+            'femmes_leaders': qs.filter(femme_leader=True).count(),
+            'paysans_relais': qs.filter(paysan_relais=True).count(),
+            'par_annee_adhesion': par_annee_adhesion,
+            'par_sexe': par_sexe,
+            'par_commune': par_commune,
+            'par_village': par_village,
+            'versions_criteres': versions,
+        }
+
+        version_label = (
+            versions[0]['mahavelona_criteres_version']
+            if versions else f"snapshot-{timezone.now().strftime('%Y%m%d')}"
+        )
+
+        archive, created = MahavelonaArchive.objects.update_or_create(
+            annee_reference=annee,
+            criteres_version=version_label,
+            defaults={
+                'archive_json': archive_json,
+                'cree_par': request.user if request.user.is_authenticated else None,
+            },
+        )
+
+        data = MahavelonaArchiveSerializer(archive).data
+        data['created'] = created
+        return Response(data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
 
 class ActiviteViewSet(viewsets.ModelViewSet):
     """

@@ -534,6 +534,7 @@ export const recommendationService = {
   // Archives Mahavelona
   getMahavelonaArchives: (params = {}) => api.get('/recommendations/mahavelona/archives/', { params }),
   createMahavelonaArchive: (data) => api.post('/recommendations/mahavelona/archives/', data),
+  snapshotMahavelonaArchive: (data = {}) => api.post('/recommendations/mahavelona/archives/snapshot/', data),
 
   // Refresh toutes les recommandations (admin)
   refreshAll: () => api.post('/recommendations/refresh-all/')

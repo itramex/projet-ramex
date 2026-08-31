@@ -190,6 +190,13 @@ function RecommendationDashboard() {
             Voir tout
             <Icon name="ChevronRightIcon" size="sm" />
           </Link>
+          <Link
+            to="/recommandations/archives"
+            className="text-primary-yellow hover:text-yellow-600 font-medium flex items-center gap-1 ml-4"
+            title="Archives annuelles Mahavelona"
+          >
+            📸 Archives Mahavelona
+          </Link>
         </div>
 
         {stats.recent_recommendations.length === 0 ? (

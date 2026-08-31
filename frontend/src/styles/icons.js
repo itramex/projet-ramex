@@ -48,6 +48,7 @@ export const iconMap = {
   estimation: 'CubeIcon',
   journal: 'ClipboardDocumentListIcon',
   chaine: 'LinkIcon',
+  archive: 'ArchiveBoxIcon',
   
   // Autres
   settings: 'Cog6ToothIcon',
