@@ -18,7 +18,7 @@ def copy_date_adhesion_to_cooperative(apps, schema_editor):
         producteur.date_adhesion_cooperative = producteur.date_adhesion
         producteur.save(update_fields=['date_adhesion_cooperative'])
     
-    print(f"✅ {producteurs_to_update.count()} producteurs mis à jour")
+    print(f"[0014] {producteurs_to_update.count()} producteurs mis a jour")
 
 
 def reverse_copy(apps, schema_editor):

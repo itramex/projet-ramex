@@ -113,6 +113,12 @@ import dj_database_url
 # Configuration base de données via URL (pour Render/Supabase)
 # Cette configuration écrase les valeurs ci-dessus si DATABASE_URL est défini
 
+# Template PostGIS pour la base de test : utile quand l'utilisateur DB n'est pas
+# superuser (il ne peut alors pas exécuter CREATE EXTENSION postgis lui-même).
+DB_TEST_TEMPLATE = config('DB_TEST_TEMPLATE', default='')
+if DB_TEST_TEMPLATE:
+    DATABASES['default']['TEST'] = {'TEMPLATE': DB_TEST_TEMPLATE}
+
 # ============================================
 # CACHE CONFIGURATION (for rate limiting)
 # ============================================
@@ -283,7 +289,7 @@ SIMPLE_JWT = {
 # ============================================
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    default='http://localhost:5173,http://127.0.0.1:5173,http:192.168.1.80:5173',
+    default='http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.80:5173',
     cast=Csv()
 )
 CORS_ALLOW_CREDENTIALS = config('CORS_ALLOW_CREDENTIALS', default=True, cast=bool)

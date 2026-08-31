@@ -7,6 +7,7 @@ import Icon from '../common/Icon';
 import { iconMap } from '../../styles/icons';
 import { usePagination } from '../../hooks/usePagination';
 import { Pagination } from '../../components/common/Pagination';
+import TracabilityChainViewer from './TracabilityChainViewer';
 
 function BonCollecteList() {
   const [bonsCollecte, setBonsCollecte] = useState([]);
@@ -16,6 +17,7 @@ function BonCollecteList() {
   const [selectedCertification, setSelectedCertification] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState(null);
+  const [traceChain, setTraceChain] = useState(null);
 
   useEffect(() => {
     fetchCampagnes();
@@ -65,9 +67,7 @@ function BonCollecteList() {
   const handleTrace = async (id) => {
     try {
       const response = await tracabiliteService.traceBonCollecte(id);
-
-      // TODO: Afficher la chaîne de traçabilité dans un modal
-      alert('Traçabilité générée avec succès !');
+      setTraceChain(response.data.chain);
     } catch (error) {
       console.error('Erreur traçabilité:', error);
       alert('Erreur lors de la génération de la traçabilité');
@@ -295,6 +295,11 @@ function BonCollecteList() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Modal de chaîne de traçabilité (réutilise le viewer existant) */}
+      {traceChain && (
+        <TracabilityChainViewer chain={traceChain} onClose={() => setTraceChain(null)} />
       )}
     </div>
   );
