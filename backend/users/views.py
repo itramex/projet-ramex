@@ -37,7 +37,7 @@ class UserViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         """Seuls les admins peuvent créer, modifier ou supprimer des utilisateurs"""
-        if self.action in ['create', 'update', 'partial_update', 'destroy', 'reset_password']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'reset_password', 'toggle_active']:
             return [IsAdminUser()]
         return [IsAuthenticated()]
     

@@ -64,7 +64,7 @@ class AuthTokenApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['valid'])
         self.assertIn('expires_in', response.data)
-        self.assertEqual(response.data['user_id'], self.user.id)
+        self.assertEqual(int(response.data['user_id']), self.user.id)
 
 
 class UserApiTests(TestCase):

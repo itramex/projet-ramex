@@ -105,7 +105,7 @@ class Cooperative(models.Model):
         verbose_name="Numéro d'agrément"
     )
     date_creation = models.DateField(
-        default=timezone.now,
+        default=timezone.localdate,
         verbose_name="Date de création",
         help_text="Date de création officielle de la coopérative",
 

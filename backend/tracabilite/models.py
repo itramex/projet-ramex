@@ -145,6 +145,7 @@ class BonCollecte(models.Model):
     montant_total_achat = models.DecimalField(
         max_digits=12, 
         decimal_places=2,
+        default=0,
         verbose_name="Montant total achat (Ar)"
     )
     
