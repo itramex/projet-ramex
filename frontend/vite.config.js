@@ -1,6 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Sous Vitest, React doit charger sa build de développement : un NODE_ENV=production
+// global (machine) casserait React.act utilisé par @testing-library/react.
+// Vitest ne force 'test' que si la variable n'est pas déjà définie.
+if (process.env.VITEST && process.env.NODE_ENV !== 'test') {
+  process.env.NODE_ENV = 'test'
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],

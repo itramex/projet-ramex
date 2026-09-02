@@ -325,10 +325,90 @@ docker compose logs -f
 - Appliquer les migrations : `python manage.py migrate`
 - Créer un super utilisateur : `python manage.py createsuperuser`
 
+### Tests
+
+#### Backend (Django)
+
+Lancer la suite de tests :
+
+```powershell
+cd backend
+.\venv\Scripts\python.exe manage.py test users producteurs parcelles cooperatives tracabilite dashboard --noinput
+```
+
+**Prérequis (une seule fois, en local sans Docker)** — la base de test étant créée par Django avec l'utilisateur de la DB (`vanille_user`), deux droits sont nécessaires côté PostgreSQL :
+
+1. Droit `CREATEDB` pour l'utilisateur (exécuté en superuser) :
+
+```sql
+ALTER USER vanille_user CREATEDB;
+```
+
+2. Une base template PostGIS (l'utilisateur non-superuser ne peut pas exécuter `CREATE EXTENSION postgis`) :
+
+```sql
+CREATE DATABASE template_postgis;
+\c template_postgis
+CREATE EXTENSION postgis;
+UPDATE pg_database SET datistemplate = TRUE WHERE datname = 'template_postgis';
+```
+
+Puis décommenter dans `backend/.env` :
+
+```env
+DB_TEST_TEMPLATE=template_postgis
+```
+
+> **Astuce** : ajouter `--keepdb` réutilise la base de test entre deux exécutions (gain de temps important, la recréation + migrations prennent plusieurs minutes).
+
+#### Frontend (React + Vitest)
+
+```bash
+cd frontend
+npm test        # mode watch
+npx vitest run  # exécution unique
+```
+
+Les tests se trouvent dans `frontend/src/test/`. La configuration Vitest est dans `vite.config.js` (environnement jsdom, setup `src/test/setup.js`).
+
+> **Note Windows** : si la variable d'environnement globale `NODE_ENV=production` est définie sur la machine, `vite.config.js` la force à `test` sous Vitest (sinon React charge sa build production et Testing Library échoue avec `React.act is not a function`).
+
 ### Frontend (local, sans Docker)
 
 - Lancer le frontend : `npm run dev`
 - Build de production : `npm run build`
+
+---
+
+## Changements récents
+
+### Tests et corrections de bugs (septembre 2026)
+
+**Infrastructure de tests**
+
+- Réparation de l'exécution des tests backend en local : création de la base `template_postgis` + nouvelle variable `DB_TEST_TEMPLATE` (`settings.py`, `.env`, `.env.example`).
+- Correction de la migration `producteurs/0014` : un emoji (`✅`) dans un `print()` cassait les migrations sur console Windows (encodage cp1252).
+- Frontend : création du setup Vitest (`src/test/setup.js` avec `@testing-library/jest-dom`), branché dans la config `vite.config.js` existante.
+- Frontend : contournement d'un `NODE_ENV=production` global qui chargeait la build production de React sous Vitest.
+
+**Nouveaux tests (109 backend + 16 frontend)**
+
+| App backend | Couverture |
+|---|---|
+| `users` (24) | Authentification JWT (login, refresh, blacklist), permissions par rôle (admin/animateur/agent_collecte), création/modification/suppression d'utilisateurs, changement et réinitialisation de mot de passe, statistiques |
+| `producteurs` (26) | CRUD complet, unicité du code, soft delete + restaurer + verifier, filtres (actif, sexe, village, femme leader, recherche), calcul automatique du taux de scolarisation, dotations cumulées |
+| `parcelles` (26) | CRUD, génération automatique du code parcelle, migration GPS → Point PostGIS, endpoints GeoJSON et nearby, filtres (certifiée, type vanille, GPS manquant), calcul des productions par culture |
+| `cooperatives` (17) | CRUD, validation du téléphone (+261), unicité du code, calcul automatique des membres, agrégats annotés (producteurs actifs, superficies), filtres, statistiques |
+| `tracabilite` (18) | Contrôle d'accès `CanManageTracabilite`, bons de collecte (FABC), calcul du montant total, bons de transport + action marquer-recu, perte de poids des lots, soldes de stock cumulés, estimations de production |
+| `frontend` (16) | Cache axios (hit/miss, TTL, invalidation par préfixe) et composant `Badge` (variantes, tailles, props) |
+
+**Corrections de bugs découverts par les tests**
+
+1. **Sécurité** — `users/views.py` : l'action `toggle_active` (activer/désactiver un utilisateur) était accessible à tout utilisateur authentifié ; elle est désormais réservée aux admins.
+2. `cooperatives/models.py` : `date_creation` utilisait `timezone.now` (datetime) comme valeur par défaut d'un `DateField`, ce qui faisait échouer la sérialisation à la création d'une coopérative → remplacé par `timezone.localdate`.
+3. `tracabilite/models.py` : `montant_total_achat` était obligatoire à la création d'un bon de collecte alors qu'il est calculé automatiquement au `save()` → `default=0` ajouté.
+
+Migrations associées : `cooperatives/0008_alter_cooperative_date_creation.py`, `tracabilite/0010_alter_boncollecte_montant_total_achat.py`.
 
 ---
 
