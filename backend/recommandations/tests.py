@@ -95,10 +95,10 @@ class RecommendationCrudApiTests(RecommandationsBaseTestCase):
         )
         response = self.client.get('/api/recommendations/statistics/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['total'], 2)
-        self.assertEqual(response.data['pending'], 1)
-        self.assertEqual(response.data['executed'], 1)
-        self.assertEqual(response.data['rejected'], 0)
+        self.assertEqual(response.data['total_recommendations'], 2)
+        self.assertEqual(response.data['pending_count'], 1)
+        self.assertEqual(response.data['executed_count'], 1)
+        self.assertEqual(response.data['rejected_count'], 0)
 
     def test_anonymous_cannot_list(self):
         client = APIClient()
@@ -190,12 +190,23 @@ class GenerateForProducteurApiTests(RecommandationsBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_generate_returns_response(self):
+        # Le moteur de similarité exige au moins 2 producteurs
+        other = Producteur.objects.create(
+            code='RP02', nom='Ravao', commune='Andapa', village='Antsahabe',
+            sexe='F', actif=True,
+        )
         # Producteur avec données complètes : le moteur doit répondre sans erreur
         Parcelle.objects.create(
             producteur=self.producteur, numero_parcelle=1,
             code_parcelle='RP01-P1', dimension_ha=1.5,
             nombre_pieds=400, estimation_production_kg=120,
             annee_plantation=2018, cultures_pratiquees=['vanille'],
+        )
+        Parcelle.objects.create(
+            producteur=other, numero_parcelle=1,
+            code_parcelle='RP02-P1', dimension_ha=2.0,
+            nombre_pieds=300, estimation_production_kg=80,
+            annee_plantation=2015, cultures_pratiquees=['vanille'],
         )
         response = self.client.post(
             '/api/recommendations/generate-for-producteur/',
@@ -219,7 +230,7 @@ class MahavelonaArchiveApiTests(RecommandationsBaseTestCase):
             'annee_reference': 2025,
             'criteres_version': 'v1.0',
             'archive_json': {'nb_membres': 42},
-        })
+        }, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         self.assertTrue(
             MahavelonaArchive.objects.filter(annee_reference=2025).exists()

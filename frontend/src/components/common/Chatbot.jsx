@@ -27,7 +27,7 @@ function Chatbot() {
         aiMode: response.data.ai_mode || false
       };
       setMessages(prev => [...prev, botMessage]);
-    } catch (error) {
+    } catch {
       const errorMessage = { 
         text: "Désolé, une erreur s'est produite.", 
         sender: 'bot',

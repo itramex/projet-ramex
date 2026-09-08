@@ -24,11 +24,11 @@ const PILIER_COLOR = {
 
 function CycleAnnuel() {
   const [mois, setMois] = useState([]);
-  const [phases, setPhases] = useState([]);
+  const [, setPhases] = useState([]);
   const [campagnes, setCampagnes] = useState([]);
   const [campagneId, setCampagneId] = useState('');
   const [rapport, setRapport] = useState(null);
-  const [phasesCampagne, setPhasesCampagne] = useState([]);
+  const [, setPhasesCampagne] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadRapport, setLoadRapport] = useState(false);
   // Modal CRUD phase agricole
@@ -105,18 +105,6 @@ function CycleAnnuel() {
   const openCreate = () => {
     setEditing(null);
     setForm(defaultForm());
-    setShowModal(true);
-  };
-
-  const openEdit = (p) => {
-    setEditing(p);
-    setForm({
-      code: p.code, nom: p.nom, pilier: p.pilier, type_phase: p.type_phase,
-      mois_debut: p.mois_debut, mois_fin: p.mois_fin,
-      cycle_croise: !!p.cycle_croise, toute_annee: !!p.toute_annee,
-      couleur: p.couleur || '#2563eb', ordre: p.ordre || 0,
-      description: p.description || '', actif: p.actif,
-    });
     setShowModal(true);
   };
 

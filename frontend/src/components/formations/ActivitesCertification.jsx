@@ -327,7 +327,7 @@ function ActivitesCertification() {
                     await formationService.deleteActiviteCertification(showDeleteConfirm.id);
                     setShowDeleteConfirm(null);
                     loadData();
-                  } catch (err) {
+                  } catch {
                     alert("Erreur lors de la suppression.");
                   }
                 }}

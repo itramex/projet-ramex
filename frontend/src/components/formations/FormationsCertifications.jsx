@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+ import { useState, useEffect } from 'react';
 import { formationService, producteurService } from '../../services/api';
 import SearchableSelect from '../common/SearchableSelect';
 import Icon from '../common/Icon';
@@ -170,7 +170,7 @@ function FormationsCertifications() {
       {loading && (
         <div className="mb-4 text-sm text-gray-500 flex items-center gap-2">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-chick-yellow"></div>
-          <span>Mise Ã  jour...</span>
+          <span>Mise Ã  jour...</span>
         </div>
       )}
 
@@ -289,11 +289,11 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
   // Always show producer list in the certifications tab
   const showList = true;
 
-  // Si on est en mode "filtre global", visibleFormations est dÃ©jÃ  filtrÃ© par le backend (props.formations)
+  // Si on est en mode "filtre global", visibleFormations est dÃ©jÃ  filtrÃ© par le backend (props.formations)
   // Si on est en mode "drill-down type" (selectedType), on filtre le tableau existant (si loadData n'a pas filtrÃ©)
   // Mais ici loadData recharge TOUT en fonction des filtres.
   // Donc :
-  // - Si filters actifs : formations contient dÃ©jÃ  le rÃ©sultat.
+  // - Si filters actifs : formations contient dÃ©jÃ  le rÃ©sultat.
   // - Si selectedType actif (sans filters globaux) : formations contient TOUT, on doit filtrer localement.
 
   const visibleFormations = selectedType

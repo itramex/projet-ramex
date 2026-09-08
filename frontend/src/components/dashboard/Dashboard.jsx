@@ -420,36 +420,37 @@ const pieLabelPlugin = {
 };
 
 const OverviewTab = memo(({ data, filters, villagesCommunes, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown, showFokontanyDropdown, setShowFokontanyDropdown, toggleVillage, toggleCommune, toggleFokontany, resetFilters, applyFilters }) => {
-  if (!data) return null;
-
   // Chart data mémoisés pour éviter les re-renders inutiles
+  // (hooks appelés inconditionnellement — règles des hooks React)
   const genreChartData = useMemo(() => ({
-    labels: data.demographics?.par_genre?.map(g => g.sexe === 'M' ? 'Masculin' : 'Féminin') || [],
+    labels: data?.demographics?.par_genre?.map(g => g.sexe === 'M' ? 'Masculin' : 'Féminin') || [],
     datasets: [{
-      data: data.demographics?.par_genre?.map(g => g.count) || [],
+      data: data?.demographics?.par_genre?.map(g => g.count) || [],
       backgroundColor: ['#4B5563', '#FCD34D'],
       borderWidth: 2,
       borderColor: '#fff',
     }]
-  }), [data.demographics?.par_genre]);
+  }), [data?.demographics?.par_genre]);
 
   const ageChartData = useMemo(() => ({
-    labels: data.demographics?.age_distribution?.map(g => g.groupe) || [],
+    labels: data?.demographics?.age_distribution?.map(g => g.groupe) || [],
     datasets: [
       {
         label: 'Hommes',
-        data: data.demographics?.age_distribution?.map(g => g.hommes_abs || g.hommes) || [],
+        data: data?.demographics?.age_distribution?.map(g => g.hommes_abs || g.hommes) || [],
         backgroundColor: '#4B5563',
         borderRadius: 8,
       },
       {
         label: 'Femmes',
-        data: data.demographics?.age_distribution?.map(g => g.femmes_abs || g.femmes) || [],
+        data: data?.demographics?.age_distribution?.map(g => g.femmes_abs || g.femmes) || [],
         backgroundColor: '#FCD34D',
         borderRadius: 8,
       }
     ]
-  }), [data.demographics?.age_distribution]);
+  }), [data?.demographics?.age_distribution]);
+
+  if (!data) return null;
 
   return (
     <>

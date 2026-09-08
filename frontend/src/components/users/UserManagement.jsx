@@ -9,8 +9,8 @@ import { getCurrentUser } from '../../utils/permissions';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-// Service pour les utilisateurs
-export const userService = {
+// Service pour les utilisateurs (local au composant)
+const userService = {
   // Liste des utilisateurs
   getUsers: (params = {}) => {
     return axios.get(`${API_URL}/users/`, {
@@ -185,7 +185,7 @@ function UserManagement() {
     try {
       await userService.deleteUser(id);
       loadData();
-    } catch (err) {
+    } catch {
       alert('Erreur lors de la suppression');
     }
   };
@@ -202,7 +202,7 @@ function UserManagement() {
     try {
       await userService.toggleActive(user.id);
       loadData();
-    } catch (err) {
+    } catch {
       alert('Erreur lors de la modification du statut');
     }
   };

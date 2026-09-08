@@ -244,6 +244,11 @@ class AGRHistorySerializer(serializers.ModelSerializer):
     
     # Champs calculés
     revenu_calcule = serializers.SerializerMethodField(read_only=True)
+    # `revenu_annuel` est optionnel : le modèle le calcule (quantité × prix) au save().
+    # Le rend writable serait incohérent avec la validation croisée dans validate().
+    revenu_annuel = serializers.DecimalField(
+        max_digits=15, decimal_places=2, required=False
+    )
     
     class Meta:
         model = AGRHistory

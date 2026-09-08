@@ -13,7 +13,6 @@ function VillageSelector({
   onVillageDataChange,
   className = '',
   disabled = false,
-  required = false,
   error = null
 }) {
   const [villages, setVillages] = useState([]);

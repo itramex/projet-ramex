@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from 'react';
+import { useState, useEffect, useRef, useDeferredValue, useCallback } from 'react';
 import { producteurService, dashboardService } from '../../services/api';
 import { Pagination } from '../../components/common/Pagination';
 import ProducteurForm from './ProducteurForm';
@@ -539,10 +539,11 @@ function ProducteurList() {
       case 'nb_autres_filles':
         return <span className="text-sm text-gray-900">{prod.nb_autres_filles || 0}</span>;
 
-      case 'total_enfants':
+      case 'total_enfants': {
         const total = (prod.nb_enfants_garcons || 0) + (prod.nb_enfants_filles || 0) +
           (prod.nb_autres_garcons || 0) + (prod.nb_autres_filles || 0);
         return <span className="text-sm text-gray-900">{total}</span>;
+      }
 
       // === SCOLARISATION ===
       case 'nb_enfants_scolarises':

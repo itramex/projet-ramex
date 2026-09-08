@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { tracabiliteService, producteurService } from '../../services/api';
+import { tracabiliteService } from '../../services/api';
 import { Link } from 'react-router-dom';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
@@ -81,13 +81,12 @@ function BonCollecteList() {
     firstItemIndex,
     lastItemIndex,
     goToPage,
-    nextPage,
-    prevPage,
   } = usePagination({
     totalItems: bonsCollecte.length,
     itemsPerPage: 10,
   });
 
+  const paginatedBons = bonsCollecte.slice(firstItemIndex, lastItemIndex);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -242,7 +241,7 @@ function BonCollecteList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {bonsCollecte.map((bon) => (
+              {paginatedBons.map((bon) => (
                 <tr key={bon.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-medium text-dark">{bon.numero_fabc}</span>
@@ -294,6 +293,19 @@ function BonCollecteList() {
               ))}
             </tbody>
           </table>
+          {/* Pagination */}
+          <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
+            <p className="text-sm text-gray-500">
+              {paginatedBons.length} bon(s) affiché(s) sur {bonsCollecte.length} au total
+            </p>
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+              />
+            )}
+          </div>
         </div>
       )}
 

@@ -11,7 +11,7 @@ function BonCollecteForm() {
   const [loading, setLoading] = useState(false);
   const [campagnes, setCampagnes] = useState([]);
   const [producteurs, setProducteurs] = useState([]);
-  const [cooperatives, setCooperatives] = useState([]);
+  const [, setCooperatives] = useState([]);
   const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({

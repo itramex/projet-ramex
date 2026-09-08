@@ -3,7 +3,7 @@ import { tokenStorage } from './tokenStorage';
 import { sessionManager } from './sessionManager';
 import { setupCache, invalidateByPrefix } from './apiCache';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api' || 'http://192.168.1.80:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
 const api = axios.create({
   baseURL: API_URL,

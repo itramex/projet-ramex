@@ -18,7 +18,9 @@ function ParcelleMapViewFullscreen({ parcelles, onClose, enableDraw = false, onP
   const markersLayerRef = useRef(null);
 
   const [drawMode, setDrawMode] = useState(false);
-  const [selectedParcelle, setSelectedParcelle] = useState(null);
+  // État maintenu pour compatibilité : jamais mis à jour dans ce composant
+  // (la parcelle est transmise via props), mais lu lors de la sauvegarde du polygone.
+  const [selectedParcelle] = useState(null);
   const [polygonCoords, setPolygonCoords] = useState(null);
   const [area, setArea] = useState(0);
   const [isLoading, setIsLoading] = useState(false);

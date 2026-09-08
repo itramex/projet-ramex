@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { recommendationService, producteurService } from '../../services/api';
 import { Pagination } from '../../components/common/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import RecommendationCard from './RecommendationCard';
 import RecommendationDetails from './RecommendationDetails';
+
+const ITEMS_PER_PAGE = 9;
 
 function RecommendationList() {
   const [recommendations, setRecommendations] = useState([]);
@@ -13,6 +16,19 @@ function RecommendationList() {
   const [selectedRecommendation, setSelectedRecommendation] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [generating, setGenerating] = useState(false);
+
+  const {
+    currentPage,
+    totalPages,
+    firstItemIndex,
+    lastItemIndex,
+    goToPage,
+  } = usePagination({
+    totalItems: recommendations.length,
+    itemsPerPage: ITEMS_PER_PAGE,
+  });
+
+  const paginatedRecommendations = recommendations.slice(firstItemIndex, lastItemIndex);
 
 
   useEffect(() => {

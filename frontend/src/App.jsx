@@ -5,7 +5,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import PermissionRoute from './components/PermissionRoute';
 import { sessionManager } from './services/sessionManager';
-import { tokenStorage } from './services/tokenStorage';
 
 // Lazy load components for code splitting
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
@@ -65,7 +64,9 @@ const LoadingFallback = () => (
 function App() {
   const [isChatbotOpen, setChatbotOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // L'état d'authentification est maintenu via le sessionManager ; la valeur
+  // n'est pas lue directement ici (ProtectedRoute gère la redirection).
+  const [, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     // Initialiser la session au chargement

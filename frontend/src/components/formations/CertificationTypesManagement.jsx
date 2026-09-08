@@ -453,7 +453,6 @@ function CertificationTypeFormModal({ certification, mode, onClose, onSuccess })
   };
 
   const isReadOnly = mode === 'view';
-  const isCreate = mode === 'create';
   const title = mode === 'create' ? 'Ajouter une Certification' : mode === 'edit' ? 'Modifier la Certification' : 'Détails de la Certification';
 
   const niveauOptions = [

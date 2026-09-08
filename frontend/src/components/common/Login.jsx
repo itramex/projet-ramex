@@ -42,7 +42,7 @@ function Login() {
 
       // ✅ Redirection vers le dashboard
       navigate('/dashboard');
-    } catch (err) {
+    } catch {
       setError('Identifiants incorrects. Veuillez réessayer.');
     } finally {
       setLoading(false);

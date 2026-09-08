@@ -6,7 +6,7 @@ const ExportPersonnalise = ({ isOpen, onClose, service, entityName, colorScheme 
   const [exportFormat, setExportFormat] = useState('csv');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectAllGroups, setSelectAllGroups] = useState({});
+  const [, setSelectAllGroups] = useState({});
 
   useEffect(() => {
     if (isOpen) {

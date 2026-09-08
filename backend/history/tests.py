@@ -19,7 +19,9 @@ class HistoryBaseTestCase(TestCase):
             username='admin', password='AdminPass123!', is_staff=True
         )
         self.user = User.objects.create_user(username='tester', password='pass')
-        self.client.force_authenticate(user=self.user)
+        # Authentifie un admin (staff) : le RBAC autorise admin + superviseur pour
+        # l'écriture des historiques. Le profil du user simple : animateur (lecture).
+        self.client.force_authenticate(user=self.admin)
 
         self.producteur = Producteur.objects.create(
             code='HP01', nom='Rakoto', commune='Sambava', village='Marovovonana',
@@ -95,7 +97,7 @@ class ProductionHistoryApiTests(HistoryBaseTestCase):
             {'parcelle_id': self.parcelle.id},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data.get('results', response.data)
+        data = response.data  # by_* renvoie une liste directe
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]['annee'], 2024)
 
@@ -147,7 +149,7 @@ class AGRHistoryApiTests(HistoryBaseTestCase):
             {'producteur_id': self.producteur.id},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data.get('results', response.data)
+        data = response.data  # by_* renvoie une liste directe
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]['annee'], 2024)
 
@@ -193,9 +195,17 @@ class SocialIndicatorHistoryApiTests(HistoryBaseTestCase):
         self.client.post(
             '/api/history/social-indicator-history/', self._payload()
         )
+        # Envoi d'un payload booléen (sans valeur_numerique) : un indicateur
+        # ne peut porter qu'une seule valeur.
         response = self.client.post(
             '/api/history/social-indicator-history/',
-            self._payload(type_indicateur='eau_potable', valeur_booleen=True),
+            {
+                'producteur': self.producteur.id,
+                'annee': 2024,
+                'type_indicateur': 'eau_potable',
+                'valeur_booleen': True,
+            },
+            format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
 
@@ -208,7 +218,7 @@ class SocialIndicatorHistoryApiTests(HistoryBaseTestCase):
             {'producteur_id': self.producteur.id},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data.get('results', response.data)
+        data = response.data  # by_* renvoie une liste directe
         self.assertEqual(len(data), 1)
 
 
@@ -224,6 +234,10 @@ class TrendAnalysisApiTests(HistoryBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_production_trends_filtered_by_parcelle(self):
+        self.client.post('/api/history/production-history/', {
+            'parcelle': self.parcelle.id, 'annee': 2024,
+            'culture': 'vanille', 'quantite_kg': 100, 'prix_vente_kg': 5000,
+        })
         response = self.client.get(
             '/api/history/trends/production_trends/',
             {'parcelle_id': self.parcelle.id},
@@ -231,6 +245,11 @@ class TrendAnalysisApiTests(HistoryBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_agr_trends(self):
+        self.client.post('/api/history/agr-history/', {
+            'producteur': self.producteur.id, 'annee': 2024,
+            'type_agr': 'pisciculture', 'ordre': 1,
+            'quantite_vendue': 50, 'prix_vente_unitaire': 2000,
+        })
         response = self.client.get('/api/history/trends/agr_trends/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 

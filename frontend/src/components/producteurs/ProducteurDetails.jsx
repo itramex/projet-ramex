@@ -240,7 +240,7 @@ function GeneralSection({ producteur }) {
                         bold
                     />
                     <div className="mt-3 pt-3 border-t border-gray-200">
-                        {producteur.agr_activities.map((agr, index) => (
+                        {producteur.agr_activities.map((agr) => (
                             <div key={agr.id} className="flex justify-between items-center py-1">
                                 <span className="text-sm text-gray-600">
                                     {agr.type_agr_display || agr.type_agr}

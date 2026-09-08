@@ -3,7 +3,6 @@ import { cooperativeService } from '../../services/api';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
 import VillageSelector from '../common/VillageSelector';
-import { iconMap } from '../../styles/icons';
 
 function ProducteurForm({ producteur, onSave, onCancel }) {
   const [activeTab, setActiveTab] = useState('identification');

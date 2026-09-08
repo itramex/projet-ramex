@@ -64,8 +64,6 @@ function AGRList({ producteurId, onAddClick, onEditClick }) {
     firstItemIndex,
     lastItemIndex,
     goToPage,
-    nextPage,
-    prevPage,
   } = usePagination({
     totalItems: sortedAGRs.length,
     itemsPerPage: 5,

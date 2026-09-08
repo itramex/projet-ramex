@@ -1,5 +1,9 @@
 import { canCreate, canUpdate, canDelete, canImport, isAdmin } from '../../utils/permissions';
 
+/* eslint-disable react-refresh/only-export-components -- Fichier de wrappers :
+   withPermission est un HOC (fonction d'ordre supérieur), pas un composant React.
+   Son export depuis ce module est volontaire. */
+
 /**
  * Wrapper component that only renders children if user has permission
  */

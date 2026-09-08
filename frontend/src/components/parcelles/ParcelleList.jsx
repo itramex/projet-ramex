@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo, useDeferredValue, useCallback } from 'react';
-import { parcelleService, producteurService, dashboardService } from '../../services/api';
+import { useState, useEffect, useRef } from 'react';
+import { parcelleService, producteurService } from '../../services/api';
 import ParcelleForm from './ParcelleForm';
 import ParcelleDetails from './ParcelleDetails';
 import ParcelleMapViewFullscreen from './ParcelleMapViewFullscreen';
@@ -28,7 +28,6 @@ function ParcelleList() {
   const [showExportPersonnalise, setShowExportPersonnalise] = useState(false);
   const [selectedParcelle, setSelectedParcelle] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [showInactives, setShowInactives] = useState(false);
   const [viewMode, setViewMode] = useState('list');
   const [filters, setFilters] = useState({
@@ -39,7 +38,7 @@ function ParcelleList() {
     cultures_pratiquees: [],
     gps_missing: false,
   });
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
 
   // Refs pour la synchronisation des barres de défilement
   const topScrollRef = useRef(null);
@@ -213,8 +212,6 @@ function ParcelleList() {
     firstItemIndex,
     lastItemIndex,
     goToPage,
-    nextPage,
-    prevPage,
   } = usePagination({
     totalItems: filteredParcelles.length,
     itemsPerPage,

@@ -114,7 +114,7 @@ function CooperativeList() {
         await cooperativeService.delete(cooperative.id);
         alert('Coopérative supprimée avec succès');
         loadCooperatives();
-      } catch (error) {
+      } catch {
         alert('Erreur lors de la suppression');
       }
     }
@@ -130,7 +130,7 @@ function CooperativeList() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch (error) {
+    } catch {
       alert('Erreur lors de l\'export');
     }
   };

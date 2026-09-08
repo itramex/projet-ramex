@@ -50,7 +50,7 @@ class RecommendationEngine:
         from datetime import datetime
         producteurs = Producteur.objects.filter(actif=True).prefetch_related('parcelles', 'activites')
         
-        print(f"\n🔍 DEBUG - Total producteurs actifs dans la base: {producteurs.count()}")
+        print(f"\n[DEBUG]  DEBUG - Total producteurs actifs dans la base: {producteurs.count()}")
         
         annee_actuelle = datetime.now().year
         
@@ -138,7 +138,7 @@ class RecommendationEngine:
         
         # DEBUG: Afficher les producteurs sans parcelles (mais inclus avec valeurs par défaut)
         if producteurs_sans_parcelles:
-            print(f"\n⚠️ DEBUG - {len(producteurs_sans_parcelles)} producteur(s) sans parcelles actives (inclus avec valeurs par défaut):")
+            print(f"\n[WARNING]  DEBUG - {len(producteurs_sans_parcelles)} producteur(s) sans parcelles actives (inclus avec valeurs par défaut):")
             print(f"   IDs: {producteurs_sans_parcelles[:20]}...")
             if len(producteurs_sans_parcelles) > 20:
                 print(f"   ... et {len(producteurs_sans_parcelles) - 20} autres")
@@ -149,15 +149,15 @@ class RecommendationEngine:
         """
         Entraîne le modèle : extraction + normalisation + calcul similarité
         """
-        print("📊 Extraction des features...")
+        print("[INFO]  Extraction des features...")
         self.producteurs_df = self.extract_features()
         
         if len(self.producteurs_df) < 2:
             raise ValueError("Pas assez de producteurs pour calculer la similarité (minimum 2)")
         
         # DEBUG: Afficher les features du producteur pour diagnostic
-        print(f"\n🔍 DEBUG - Total producteurs dans DataFrame: {len(self.producteurs_df)}")
-        print(f"🔍 DEBUG - IDs des producteurs: {self.producteurs_df['id'].tolist()[:10]}...")
+        print(f"\n[DEBUG]  DEBUG - Total producteurs dans DataFrame: {len(self.producteurs_df)}")
+        print(f"[DEBUG]  DEBUG - IDs des producteurs: {self.producteurs_df['id'].tolist()[:10]}...")
         
         # Sélection des colonnes numériques pour la similarité
         feature_columns = [
@@ -175,17 +175,17 @@ class RecommendationEngine:
         has_inf = np.isinf(features).any()
         
         if has_nan:
-            print("⚠️ WARNING: Des valeurs NaN détectées dans les features")
+            print("[WARNING]  WARNING: Des valeurs NaN détectées dans les features")
             # Remplacer NaN par 0
             features = np.nan_to_num(features, nan=0.0)
         
         if has_inf:
-            print("⚠️ WARNING: Des valeurs Inf détectées dans les features")
+            print("[WARNING]  WARNING: Des valeurs Inf détectées dans les features")
             # Remplacer Inf par 0
             features = np.nan_to_num(features, posinf=0.0, neginf=0.0)
         
         # Normalisation
-        print("🔧 Normalisation des features...")
+        print("[INFO]  Normalisation des features...")
         try:
             features_normalized = self.scaler.fit_transform(features)
             
@@ -194,18 +194,18 @@ class RecommendationEngine:
             has_inf_after = np.isinf(features_normalized).any()
             
             if has_nan_after or has_inf_after:
-                print("⚠️ WARNING: Normalisation a créé des NaN/Inf")
+                print("[WARNING]  WARNING: Normalisation a créé des NaN/Inf")
                 features_normalized = np.nan_to_num(features_normalized, nan=0.0, posinf=0.0, neginf=0.0)
         except Exception as e:
-            print(f"❌ ERREUR lors de la normalisation: {e}")
+            print(f"[ERREUR]  ERREUR lors de la normalisation: {e}")
             # Utiliser les features non normalisées en dernier recours
             features_normalized = features
         
         # Calcul de la matrice de similarité cosinus
-        print("📐 Calcul de la matrice de similarité...")
+        print("[?]  Calcul de la matrice de similarité...")
         self.similarity_matrix = cosine_similarity(features_normalized)
         
-        print(f"✅ Modèle entraîné : {len(self.producteurs_df)} producteurs")
+        print(f"[OK]  Modèle entraîné : {len(self.producteurs_df)} producteurs")
     
     def get_top_similar(self, similarity_matrix, producteur_idx, n=10):
         """
@@ -257,16 +257,16 @@ class RecommendationEngine:
         try:
             producteur = Producteur.objects.get(id=producteur_id)
             if not producteur.actif:
-                print(f"⚠️ Producteur {producteur_id} est inactif - aucune recommandation générée")
+                print(f"[WARNING]  Producteur {producteur_id} est inactif - aucune recommandation générée")
                 return []
         except Producteur.DoesNotExist:
-            print(f"❌ Producteur {producteur_id} n'existe pas")
+            print(f"[ERREUR]  Producteur {producteur_id} n'existe pas")
             return []
         
         # Trouver l'index du producteur dans le DataFrame
-        print(f"\n🔍 DEBUG - Recherche du producteur {producteur_id} dans le DataFrame...")
-        print(f"🔍 DEBUG - DataFrame contient {len(self.producteurs_df)} producteurs")
-        print(f"🔍 DEBUG - Producteur {producteur_id} dans la liste? {producteur_id in self.producteurs_df['id'].values}")
+        print(f"\n[DEBUG]  DEBUG - Recherche du producteur {producteur_id} dans le DataFrame...")
+        print(f"[DEBUG]  DEBUG - DataFrame contient {len(self.producteurs_df)} producteurs")
+        print(f"[DEBUG]  DEBUG - Producteur {producteur_id} dans la liste? {producteur_id in self.producteurs_df['id'].values}")
         
         if producteur_id in self.producteurs_df['id'].values:
             # Afficher les features de ce producteur
@@ -274,21 +274,21 @@ class RecommendationEngine:
             producteur_data = producteur_row.iloc[0]
             producteur_idx = producteur_row.index[0]  # Utiliser l'index pandas
             
-            print(f"\n✅ Producteur {producteur_id} trouvé dans le DataFrame!")
+            print(f"\n[OK]  Producteur {producteur_id} trouvé dans le DataFrame!")
             print(f"   Index pandas: {producteur_idx}")
             print(f"   Features: {producteur_data.to_dict()}")
         else:
-            print(f"\n❌ ERREUR: Producteur {producteur_id} NON trouvé dans le DataFrame")
+            print(f"\n[ERREUR]  ERREUR: Producteur {producteur_id} NON trouvé dans le DataFrame")
             print(f"   IDs disponibles: {self.producteurs_df['id'].tolist()[:20]}...")
-            print(f"⚠️ Producteur {producteur_id} (actif mais sans données suffisantes pour analyse)")
-            print(f"   ✅ Données nécessaires dans les PARCELLES:")
+            print(f"[WARNING]  Producteur {producteur_id} (actif mais sans données suffisantes pour analyse)")
+            print(f"   [OK]  Données nécessaires dans les PARCELLES:")
             print(f"      - Superficie (dimension_ha) > 0")
             print(f"      - Nombre de pieds de vanille (nombre_pieds) > 0")
             print(f"      - Production estimée (estimation_production_kg)")
             print(f"      - Année de plantation (pour calcul d'âge)")
             print(f"      - Cultures pratiquées (diversité)")
             print(f"      - Certification (optionnel mais valorisé)")
-            print(f"   ✅ Données recommandées dans ACTIVITÉS:")
+            print(f"   [OK]  Données recommandées dans ACTIVITÉS:")
             print(f"      - Formations suivies")
             print(f"      - Collectes réalisées (année en cours)")
             return []
@@ -462,12 +462,12 @@ class RecommendationEngine:
                     success_count += 1
                 
                 if i % 10 == 0:
-                    print(f"📊 Progression : {i}/{total} ({i*100//total}%)")
+                    print(f"[INFO]  Progression : {i}/{total} ({i*100//total}%)")
                 
             except Exception as e:
-                print(f"❌ ERREUR Producteur {producteur.id}: {str(e)}")
+                print(f"[ERREUR]  ERREUR Producteur {producteur.id}: {str(e)}")
         
-        print(f"✅ {success_count}/{total} producteurs traités avec succès.")
+        print(f"[OK]  {success_count}/{total} producteurs traités avec succès.")
         print("=" * 60)
         
         return {
