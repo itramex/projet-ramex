@@ -61,6 +61,9 @@ function TracabilityDashboard() {
 
   useEffect(() => {
     fetchData();
+    // fetchData capture `selectedCampagne` à l'exécution ; on ne relance que
+    // lorsque la campagne sélectionnée change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCampagne]);
 
   const fetchData = async () => {

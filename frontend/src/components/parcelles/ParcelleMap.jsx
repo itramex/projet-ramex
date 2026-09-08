@@ -141,6 +141,9 @@ function ParcelleMap({ parcelle }) {
       }
       isInitializedRef.current = false;
     };
+    // Les champs restants (superficie, localisation, pieds…) ne servent qu'au
+    // contenu du popup : les recréer ne justifie pas de réinitialiser la carte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcelle?.latitude, parcelle?.longitude, parcelle?.polygon, parcelle?.polygon_geojson, parcelle?.code_parcelle]);
 
   if (!parcelle?.latitude || !parcelle?.longitude) {

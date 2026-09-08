@@ -46,14 +46,18 @@ function ParcelleList() {
   const tableRef = useRef(null);
   const [tableWidth, setTableWidth] = useState(0);
 
+  // Chargement initial au montage
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Rechargement quand les filtres changent (une fois les producteurs chargés)
   useEffect(() => {
     if (producteurs.length > 0) {
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, showInactives]);
 
   // Calcul de la largeur du tableau pour la barre de défilement supérieure

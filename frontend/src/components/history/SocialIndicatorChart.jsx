@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -44,13 +44,7 @@ function SocialIndicatorChart({ producteurId, typeIndicateur, anneeDebut, anneeF
   const [villageAverages, setVillageAverages] = useState(null);
   const [chartType, setChartType] = useState('line'); // 'line' ou 'radar'
 
-  useEffect(() => {
-    if (producteurId && typeIndicateur) {
-      loadData();
-    }
-  }, [producteurId, typeIndicateur, anneeDebut, anneeFin]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -82,7 +76,13 @@ function SocialIndicatorChart({ producteurId, typeIndicateur, anneeDebut, anneeF
     } finally {
       setLoading(false);
     }
-  };
+  }, [producteurId, typeIndicateur, anneeDebut, anneeFin]);
+
+  useEffect(() => {
+    if (producteurId && typeIndicateur) {
+      loadData();
+    }
+  }, [loadData, producteurId, typeIndicateur]);
 
   if (loading) {
     return (

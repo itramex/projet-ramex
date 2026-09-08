@@ -48,6 +48,10 @@ function CycleAnnuel() {
   useEffect(() => {
     fetchCalendrier();
     fetchCampagnes();
+    // Appels volontairement limités au montage : fetchCampagnes lit campagneId
+    // uniquement pour éviter de re-sélectionner une campagne ; l'inclure dans les
+    // dépendances rechargerait la liste à chaque changement de sélection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCalendrier = async () => {

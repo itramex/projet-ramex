@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { parcelleService } from '../../services/api';
 import ParcelleMapViewFullscreen from './ParcelleMapViewFullscreen';
 import { CanUpdate } from '../common/PermissionWrapper';
@@ -14,11 +14,7 @@ function ParcelleDetails({ parcelleId, onClose, onEdit }) {
  const [activeTab, setActiveTab] = useState('general');
  const [showMapFullscreen, setShowMapFullscreen] = useState(false);
 
- useEffect(() => {
- loadParcelle();
- }, [parcelleId]);
-
- const loadParcelle = async () => {
+ const loadParcelle = useCallback(async () => {
  setLoading(true);
  try {
  const response = await parcelleService.getById(parcelleId);
@@ -29,7 +25,11 @@ function ParcelleDetails({ parcelleId, onClose, onEdit }) {
  } finally {
  setLoading(false);
  }
- };
+ }, [parcelleId]);
+
+ useEffect(() => {
+ loadParcelle();
+ }, [loadParcelle]);
 
  const tabs = [
  { id: 'general', label: 'Général', icon: 'DocumentTextIcon' },

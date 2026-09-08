@@ -34,6 +34,8 @@ const OptimizedImage = ({
   useEffect(() => {
     if (eager) return;
 
+    // Capturer le noeud : imgRef.current peut avoir changé au moment du cleanup
+    const node = imgRef.current;
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -48,13 +50,13 @@ const OptimizedImage = ({
       }
     );
 
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
+    if (node) {
+      observer.observe(node);
     }
 
     return () => {
-      if (imgRef.current) {
-        observer.unobserve(imgRef.current);
+      if (node) {
+        observer.unobserve(node);
       }
     };
   }, [eager]);

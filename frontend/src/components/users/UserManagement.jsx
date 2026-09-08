@@ -153,6 +153,9 @@ function UserManagement() {
     if (activeTab === 'users') {
       loadData();
     }
+    // loadData capture search/roleFilter/statusFilter à l'exécution ; on ne
+    // relance que lorsqu'un filtre ou l'onglet actif change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, roleFilter, statusFilter, activeTab]);
 
   const loadData = async () => {
@@ -573,6 +576,9 @@ function ActivityLogsTab({ users }) {
   useEffect(() => {
     loadLogs();
     loadStatistics();
+    // Les loaders capturent `filters` à l'exécution ; on ne relance que
+    // lorsque les filtres changent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadLogs = async () => {

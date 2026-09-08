@@ -39,6 +39,8 @@ function CommandeExportForm() {
     if (id) {
       fetchCommandeExport();
     }
+    // Chargement initial / changement d'identifiant uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchInitialData = async () => {

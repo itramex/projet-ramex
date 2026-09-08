@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { dashboardService } from '../../services/api';
 import SearchableSelect from '../common/SearchableSelect';
 import Icon from '../common/Icon';
@@ -23,7 +23,7 @@ function Menage() {
 
   useEffect(() => {
     loadData();
-  }, [selectedVillages, selectedCommunes, selectedYear]);
+  }, [loadData]);
 
   const loadFilters = async () => {
     try {
@@ -45,7 +45,7 @@ function Menage() {
     setAvailableYears(years.reverse());
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -76,7 +76,7 @@ function Menage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedVillages, selectedCommunes, selectedYear]);
 
   const handleResetFilters = () => {
     setSelectedVillages([]);

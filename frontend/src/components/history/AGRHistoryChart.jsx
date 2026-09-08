@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -42,13 +42,10 @@ function AGRHistoryChart({ producteurId, anneeDebut, anneeFin, typesAgr = [] }) 
   const [trends, setTrends] = useState(null);
   const [viewMode, setViewMode] = useState('stacked'); // 'stacked' ou 'line'
 
-  useEffect(() => {
-    if (producteurId) {
-      loadData();
-    }
-  }, [producteurId, anneeDebut, anneeFin, JSON.stringify(typesAgr)]);
+  // Sérialiser `typesAgr` pour obtenir une dépendance stable
+  const typesAgrKey = JSON.stringify(typesAgr);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -72,7 +69,13 @@ function AGRHistoryChart({ producteurId, anneeDebut, anneeFin, typesAgr = [] }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [producteurId, anneeDebut, anneeFin]);
+
+  useEffect(() => {
+    if (producteurId) {
+      loadData();
+    }
+  }, [loadData, producteurId, typesAgrKey]);
 
   if (loading) {
     return (

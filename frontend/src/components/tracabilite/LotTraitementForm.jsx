@@ -34,6 +34,8 @@ function LotTraitementForm() {
     if (id) {
       fetchLotTraitement();
     }
+    // Chargement initial / changement d'identifiant uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchInitialData = async () => {

@@ -48,6 +48,8 @@ function AdhesionsHistoryView() {
     console.log('useEffect triggered, fetching data...');
     fetchData();
     fetchCooperatives();
+    // Chargement initial au montage uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async (customFilters = null) => {

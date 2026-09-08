@@ -40,6 +40,8 @@ function BonTransportForm() {
     if (id) {
       fetchBonTransport();
     }
+    // Chargement initial / changement d'identifiant uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchInitialData = async () => {

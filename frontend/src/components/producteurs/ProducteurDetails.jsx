@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { producteurService, formationService, dotationService } from '../../services/api';
 import { CanUpdate } from '../common/PermissionWrapper';
 import Icon from '../common/Icon';
@@ -13,11 +13,7 @@ function ProducteurDetails({ producteurId, onClose, onEdit }) {
     const [activeSection, setActiveSection] = useState('general');
 
 
-    useEffect(() => {
-        loadProducteur();
-    }, [producteurId]);
-
-    const loadProducteur = async () => {
+    const loadProducteur = useCallback(async () => {
         try {
             const response = await producteurService.getById(producteurId);
             setProducteur(response.data);
@@ -27,7 +23,11 @@ function ProducteurDetails({ producteurId, onClose, onEdit }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [producteurId]);
+
+    useEffect(() => {
+        loadProducteur();
+    }, [loadProducteur]);
 
 
 
@@ -500,11 +500,7 @@ function FormationsSection({ producteur }) {
     const [certifications, setCertifications] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
 
-    useEffect(() => {
-        loadFormationsEtCertifications();
-    }, [producteur.id]);
-
-    const loadFormationsEtCertifications = async () => {
+    const loadFormationsEtCertifications = useCallback(async () => {
         try {
             setLoadingData(true);
             const [formationsRes, certificationsRes] = await Promise.all([
@@ -518,7 +514,11 @@ function FormationsSection({ producteur }) {
         } finally {
             setLoadingData(false);
         }
-    };
+    }, [producteur.id]);
+
+    useEffect(() => {
+        loadFormationsEtCertifications();
+    }, [loadFormationsEtCertifications]);
 
     const getStatutBadge = (statut) => {
         const variantMap = {

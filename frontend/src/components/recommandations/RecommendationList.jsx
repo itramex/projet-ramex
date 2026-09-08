@@ -34,6 +34,9 @@ function RecommendationList() {
   useEffect(() => {
     fetchRecommendations();
     fetchProducteurs();
+    // Les loaders capturent les filtres à l'exécution ; on ne relance que
+    // lorsqu'un filtre change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProducteur, selectedStatut]);
 
   const fetchRecommendations = async () => {

@@ -57,7 +57,7 @@ function Dashboard() {
   useEffect(() => {
     loadDashboard();
     loadVillagesCommunes();
-  }, []);
+  }, [loadDashboard, loadVillagesCommunes]);
 
   useEffect(() => {
     if (activeTab === 'production') {
@@ -70,7 +70,7 @@ function Dashboard() {
     if (activeTab === 'social') {
       loadSocialData();
     }
-  }, [activeTab, filters]);
+  }, [activeTab, filters, loadProductionData, loadCultureDetail, loadDecisionData, loadSocialData]);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);

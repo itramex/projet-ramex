@@ -47,6 +47,9 @@ function FichesStock() {
 
   useEffect(() => {
     fetchAll();
+    // Chargement initial : le filtrage par magasin est appliqué via
+    // fetchAll(filtre) lors des interactions utilisateur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAll = async () => {

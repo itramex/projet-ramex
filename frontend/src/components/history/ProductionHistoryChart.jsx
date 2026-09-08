@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -39,13 +39,10 @@ function ProductionHistoryChart({ parcelleId, anneeDebut, anneeFin, cultures = [
   const [error, setError] = useState(null);
   const [trends, setTrends] = useState(null);
 
-  useEffect(() => {
-    if (parcelleId) {
-      loadData();
-    }
-  }, [parcelleId, anneeDebut, anneeFin, JSON.stringify(cultures)]);
+  // Sérialiser `cultures` pour obtenir une dépendance stable
+  const culturesKey = JSON.stringify(cultures);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -69,7 +66,13 @@ function ProductionHistoryChart({ parcelleId, anneeDebut, anneeFin, cultures = [
     } finally {
       setLoading(false);
     }
-  };
+  }, [parcelleId, anneeDebut, anneeFin]);
+
+  useEffect(() => {
+    if (parcelleId) {
+      loadData();
+    }
+  }, [loadData, parcelleId, culturesKey]);
 
   if (loading) {
     return (

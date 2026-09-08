@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { cooperativeService } from '../../services/api';
 import { CanUpdate } from '../common/PermissionWrapper';
 import Icon from '../common/Icon';
@@ -26,11 +26,7 @@ function CooperativeDetails({ cooperativeId, onClose, onEdit }) {
  const [adhLoading, setAdhLoading] = useState(false);
  const [adhFilters, setAdhFilters] = useState({ granularite: 'annee', actif: true, start: '', end: '' });
 
- useEffect(() => {
- loadCooperative();
- }, [cooperativeId]);
-
- const loadCooperative = async () => {
+ const loadCooperative = useCallback(async () => {
  setLoading(true);
  try {
  const response = await cooperativeService.getById(cooperativeId);
@@ -41,7 +37,11 @@ function CooperativeDetails({ cooperativeId, onClose, onEdit }) {
  } finally {
  setLoading(false);
  }
- };
+ }, [cooperativeId]);
+
+ useEffect(() => {
+ loadCooperative();
+ }, [loadCooperative]);
 
  const loadAdhesions = async () => {
  setAdhLoading(true);
@@ -65,6 +65,9 @@ function CooperativeDetails({ cooperativeId, onClose, onEdit }) {
  if (activeTab === 'adhesions') {
  loadAdhesions();
  }
+ // loadAdhesions capture `adhFilters` à l'exécution ; on ne relance que
+ // lorsque l'onglet ou la coopérative change.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [activeTab, cooperativeId]);
 
  if (loading) {

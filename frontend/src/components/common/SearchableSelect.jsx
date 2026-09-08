@@ -83,6 +83,28 @@ function SearchableSelect({
     setHighlightedIndex(0);
   }, [filteredOptions.length]);
 
+  const handleSelect = useCallback((option) => {
+    if (multiple) {
+      const newValue = [...(Array.isArray(value) ? value : [])];
+      const optionValue = option[valueKey];
+      const index = newValue.indexOf(optionValue);
+
+      if (index === -1) {
+        newValue.push(optionValue);
+      } else {
+        newValue.splice(index, 1);
+      }
+      onChange(newValue);
+      // Garder ouvert pour sélection multiple
+      setTimeout(() => inputRef.current?.focus(), 0);
+    } else {
+      onChange(option[valueKey]);
+      setIsOpen(false);
+      setSearchTerm('');
+      setHighlightedIndex(0);
+    }
+  }, [multiple, value, valueKey, onChange]);
+
   // Navigation au clavier
   const handleKeyDown = useCallback((e) => {
     if (!isOpen && (e.key === 'Enter' || e.key === 'ArrowDown')) {
@@ -122,29 +144,7 @@ function SearchableSelect({
       default:
         break;
     }
-  }, [isOpen, filteredOptions, highlightedIndex]);
-
-  const handleSelect = useCallback((option) => {
-    if (multiple) {
-      const newValue = [...(Array.isArray(value) ? value : [])];
-      const optionValue = option[valueKey];
-      const index = newValue.indexOf(optionValue);
-
-      if (index === -1) {
-        newValue.push(optionValue);
-      } else {
-        newValue.splice(index, 1);
-      }
-      onChange(newValue);
-      // Garder ouvert pour sélection multiple
-      setTimeout(() => inputRef.current?.focus(), 0);
-    } else {
-      onChange(option[valueKey]);
-      setIsOpen(false);
-      setSearchTerm('');
-      setHighlightedIndex(0);
-    }
-  }, [multiple, value, valueKey, onChange]);
+  }, [isOpen, filteredOptions, highlightedIndex, handleSelect]);
 
   const handleClear = useCallback((e) => {
     e.stopPropagation();

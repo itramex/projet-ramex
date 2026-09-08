@@ -86,7 +86,7 @@ function ProducteurList() {
   useEffect(() => {
     loadProducteurs(1);
     setCurrentPage(1);
-  }, [deferredSearchTerm, filters, showInactifs]);
+  }, [loadProducteurs]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);

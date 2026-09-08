@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { cooperativeService } from '../../services/api';
 import CooperativeForm from './CooperativeForm';
 import CooperativeDetails from './CooperativeDetails';
@@ -23,11 +23,7 @@ function CooperativeList() {
     certifiee: [],
   });
 
-  useEffect(() => {
-    loadCooperatives();
-  }, [showInactives, filters]);
-
-  const loadCooperatives = async () => {
+  const loadCooperatives = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
@@ -43,7 +39,11 @@ function CooperativeList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showInactives, filters]);
+
+  useEffect(() => {
+    loadCooperatives();
+  }, [loadCooperatives]);
 
   const handleSave = async (formData) => {
     try {

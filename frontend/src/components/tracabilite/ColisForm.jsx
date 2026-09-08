@@ -29,6 +29,8 @@ function ColisForm() {
     if (id) {
       fetchColis();
     }
+    // Chargement initial / changement d'identifiant uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchLotsTraitement = async () => {

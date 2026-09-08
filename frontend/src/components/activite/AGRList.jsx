@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Card from '../common/Card';
 import { usePagination } from '../../hooks/usePagination';
 import { Pagination } from '../../components/common/Pagination';
@@ -13,13 +13,7 @@ function AGRList({ producteurId, onAddClick, onEditClick }) {
   const [filterType, setFilterType] = useState('');
   const [sortBy, setSortBy] = useState('ordre'); // 'ordre' or 'revenu'
 
-  useEffect(() => {
-    if (producteurId) {
-      loadAGRs();
-    }
-  }, [producteurId]);
-
-  const loadAGRs = async () => {
+  const loadAGRs = useCallback(async () => {
     setLoading(true);
     try {
       const response = await agrService.getByProducteur(producteurId);
@@ -28,7 +22,13 @@ function AGRList({ producteurId, onAddClick, onEditClick }) {
       console.error('Erreur chargement AGR:', error);
     }
     setLoading(false);
-  };
+  }, [producteurId]);
+
+  useEffect(() => {
+    if (producteurId) {
+      loadAGRs();
+    }
+  }, [loadAGRs, producteurId]);
 
   const handleDelete = async (agrId) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette AGR ?')) {

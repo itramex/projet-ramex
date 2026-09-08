@@ -68,6 +68,9 @@ function TrendAnalysisDashboard() {
       setAgrTrends(null);
       setSocialTrends(null);
     }
+    // loadTrends capture `filters` à l'exécution ; on ne relance que sur
+    // changement des filtres déterminants.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.parcelle, filters.producteur, filters.anneeDebut, filters.anneeFin]);
 
   const loadInitialData = async () => {

@@ -41,6 +41,9 @@ function SocialIndicatorTable() {
   useEffect(() => {
     loadIndicators();
     loadProducteurs();
+    // Les loaders capturent `filters` à l'exécution ; on ne relance que
+    // lorsqu'une page ou un tri change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, page, sortConfig]);
 
   useEffect(() => {

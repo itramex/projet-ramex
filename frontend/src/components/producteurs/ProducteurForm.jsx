@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cooperativeService } from '../../services/api';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
@@ -106,7 +106,8 @@ function ProducteurForm({ producteur, onSave, onCancel }) {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const tabs = [
+  // Stable entre les rendus : référencé dans les dépendances d'un useEffect
+  const tabs = useMemo(() => [
     { id: 'identification', label: 'Identification', icon: 'UserIcon' },
     { id: 'personnel', label: 'Infos Personnelles', icon: 'ClipboardDocumentListIcon' },
     { id: 'cooperative', label: 'Coopérative', icon: 'UserGroupIcon' },
@@ -115,7 +116,7 @@ function ProducteurForm({ producteur, onSave, onCancel }) {
     { id: 'environnement', label: 'Environnement', icon: 'GlobeAltIcon' },
     { id: 'activites', label: 'Activités', icon: 'BriefcaseIcon' },
     { id: 'formations', label: 'Formations', icon: 'AcademicCapIcon' },
-  ];
+  ], []);
 
   useEffect(() => {
     loadCooperatives();

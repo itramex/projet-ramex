@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const ExportPersonnalise = ({ isOpen, onClose, service, entityName, colorScheme = 'green' }) => {
   const [fieldGroups, setFieldGroups] = useState({});
@@ -8,13 +8,7 @@ const ExportPersonnalise = ({ isOpen, onClose, service, entityName, colorScheme 
   const [error, setError] = useState(null);
   const [, setSelectAllGroups] = useState({});
 
-  useEffect(() => {
-    if (isOpen) {
-      loadAvailableFields();
-    }
-  }, [isOpen]);
-
-  const loadAvailableFields = async () => {
+  const loadAvailableFields = useCallback(async () => {
     try {
       setLoading(true);
       const response = await service.getAvailableFields();
@@ -26,7 +20,13 @@ const ExportPersonnalise = ({ isOpen, onClose, service, entityName, colorScheme 
     } finally {
       setLoading(false);
     }
-  };
+  }, [service]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadAvailableFields();
+    }
+  }, [isOpen, loadAvailableFields]);
 
   const toggleField = (fieldName) => {
     setSelectedFields(prev => {

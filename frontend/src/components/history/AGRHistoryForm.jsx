@@ -61,6 +61,9 @@ function AGRHistoryForm({ mode = 'create', initialData = null, onSuccess, onCanc
         setFormData(prev => ({ ...prev, revenu_annuel: calculatedRevenu }));
       }
     }
+    // Volontairement sans `formData.revenu_annuel` : inclure ce champ
+    // écraserait la saisie manuelle de l'utilisateur à chaque frappe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.quantite_vendue, formData.prix_vente_unitaire]);
 
   // Vérification de la cohérence revenu = quantité × prix

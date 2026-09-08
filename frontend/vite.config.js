@@ -40,12 +40,23 @@ export default defineConfig({
     // Code splitting configuration
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Vendor chunks for better caching
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'chart-vendor': ['chart.js', 'react-chartjs-2'],
-          'map-vendor': ['leaflet', 'react-leaflet', 'leaflet-draw'],
-          'icons': ['@heroicons/react']
+        // Forme fonction : capture TOUS les modules d'un paquet (y compris les
+        // sous-chemins comme @heroicons/react/24/outline ou react-dom/client),
+        // contrairement à la forme objet qui ne cible que le point d'entrée.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('@heroicons')) return 'icons';
+          if (id.includes('chart.js') || id.includes('react-chartjs-2')) return 'chart-vendor';
+          if (id.includes('leaflet')) return 'map-vendor';
+          if (
+            id.includes('react-dom') ||
+            id.includes('scheduler') ||
+            /[\\/]node_modules[\\/](react|react-router|react-router-dom)[\\/]/.test(id)
+          ) {
+            return 'react-vendor';
+          }
+          // Tous les autres modules tiers (axios, etc.)
+          return 'vendor';
         }
       }
     },

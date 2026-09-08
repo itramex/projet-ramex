@@ -72,6 +72,9 @@ function Dotations() {
   useEffect(() => {
     loadDotations();
     loadProducteurs();
+    // Chargement initial uniquement : le rechargement filtré est déjà géré
+    // par l'effet debouncé ci-dessous (search/typeFilter/anneeFilter).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
