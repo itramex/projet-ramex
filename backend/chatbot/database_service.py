@@ -23,7 +23,9 @@ class DatabaseService:
     @staticmethod
     def list_villages() -> list:
         """Liste tous les villages uniques"""
-        villages = Producteur.objects.values_list('village', flat=True).distinct()
+        # order_by() neutralise le Meta.ordering du modèle : sans lui, Django
+        # ajoute les colonnes d'ordre au SELECT DISTINCT et les doublons survivent.
+        villages = Producteur.objects.order_by().values_list('village', flat=True).distinct()
         return list(villages)
     
     @staticmethod
