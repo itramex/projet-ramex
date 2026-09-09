@@ -50,10 +50,12 @@ export default function ProducteursList() {
         });
         if (currentRequest !== requestId.current) return; // réponse périmée
         const data = response.data;
-        setCount(data.count);
+        // Défensif : garantit un tableau même si le serveur renvoie un shape inattendu
+        const results = Array.isArray(data.results) ? data.results : [];
+        setCount(data.count ?? results.length);
         setPage(targetPage);
         setHasMore(Boolean(data.next));
-        setItems((prev) => (replace ? data.results : [...prev, ...data.results]));
+        setItems((prev) => (replace ? results : [...prev, ...results]));
       } catch {
         if (currentRequest === requestId.current) {
           setError('Impossible de charger les producteurs. Vérifiez votre connexion.');
@@ -84,31 +86,35 @@ export default function ProducteursList() {
     fetchPage(1, true);
   };
 
-  const renderItem = ({ item }: { item: Producteur }) => (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={() => router.push(`/producteur/${item.id}`)}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {(item.nom || '?').charAt(0).toUpperCase()}
-          </Text>
+  const renderItem = ({ item }: { item: Producteur }) => {
+    // Défensif : ignore tout élément sans identifiant exploitable
+    if (!item || !item.id) return null;
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        onPress={() => router.push(`/producteur/${item.id}`)}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {(item.nom || '?').charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.cardMain}>
+            <Text style={styles.cardName} numberOfLines={1}>
+              {item.nom_complet || `${item.nom} ${item.prenom ?? ''}`.trim()}
+            </Text>
+            <Text style={styles.cardSub} numberOfLines={1}>
+              {item.code} · {item.village || item.commune || 'Village non renseigné'}
+            </Text>
+          </View>
+          <View style={[styles.badge, item.actif ? styles.badgeOk : styles.badgeOff]}>
+            <Text style={styles.badgeText}>{item.actif ? 'Actif' : 'Inactif'}</Text>
+          </View>
         </View>
-        <View style={styles.cardMain}>
-          <Text style={styles.cardName} numberOfLines={1}>
-            {item.nom_complet || `${item.nom} ${item.prenom ?? ''}`.trim()}
-          </Text>
-          <Text style={styles.cardSub} numberOfLines={1}>
-            {item.code} · {item.village || item.commune || 'Village non renseigné'}
-          </Text>
-        </View>
-        <View style={[styles.badge, item.actif ? styles.badgeOk : styles.badgeOff]}>
-          <Text style={styles.badgeText}>{item.actif ? 'Actif' : 'Inactif'}</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -136,7 +142,9 @@ export default function ProducteursList() {
 
       <FlatList
         data={items}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) =>
+          item && item.id != null ? String(item.id) : `key-${index}`
+        }
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         onEndReached={handleLoadMore}

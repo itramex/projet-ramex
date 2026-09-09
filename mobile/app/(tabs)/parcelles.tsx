@@ -54,10 +54,12 @@ export default function ParcellesList() {
         });
         if (currentRequest !== requestId.current) return; // réponse périmée
         const data = response.data;
-        setCount(data.count);
+        // Défensif : garantit un tableau même si le serveur renvoie un shape inattendu
+        const results = Array.isArray(data.results) ? data.results : [];
+        setCount(data.count ?? results.length);
         setPage(targetPage);
         setHasMore(Boolean(data.next));
-        setItems((prev) => (replace ? data.results : [...prev, ...data.results]));
+        setItems((prev) => (replace ? results : [...prev, ...results]));
       } catch {
         if (currentRequest === requestId.current) {
           setError('Impossible de charger les parcelles. Vérifiez votre connexion.');
@@ -88,44 +90,47 @@ export default function ParcellesList() {
     fetchPage(1, true);
   };
 
-  const renderItem = ({ item }: { item: Parcelle }) => (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={() => router.push(`/parcelle/${item.id}`)}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>P</Text>
-        </View>
-        <View style={styles.cardMain}>
-          <Text style={styles.cardName} numberOfLines={1}>
-            {item.code_parcelle}
-          </Text>
-          <Text style={styles.cardSub} numberOfLines={1}>
-            {item.producteur_nom} · {item.village || item.producteur_commune}
-          </Text>
-          <Text style={[styles.cardSub, { fontStyle: 'italic' }]} numberOfLines={1}>
-            {item.type_vanille_display} · {formatHa(item.dimension_ha)} · {item.nombre_pieds ?? '±'} pieds
-          </Text>
-        </View>
-      </View>
-      <View style={styles.badgesRow}>
-        <View style={[styles.badge, item.active ? styles.badgeOk : styles.badgeOff]}>
-          <Text style={styles.badgeText}>{item.active ? 'Active' : 'Inactive'}</Text>
-        </View>
-        {item.certifiee ? (
-          <View style={styles.badgeCert}>
-            <Text style={styles.badgeText}>Certifiée</Text>
+  const renderItem = ({ item }: { item: Parcelle }) => {
+    if (!item || !item.id) return null;
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        onPress={() => router.push(`/parcelle/${item.id}`)}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>P</Text>
           </View>
-        ) : null}
-        {item.age_parcelle != null ? (
-          <View style={styles.badgeAge}>
-            <Text style={styles.badgeText}>{item.age_parcelle} ans</Text>
+          <View style={styles.cardMain}>
+            <Text style={styles.cardName} numberOfLines={1}>
+              {item.code_parcelle}
+            </Text>
+            <Text style={styles.cardSub} numberOfLines={1}>
+              {item.producteur_nom} · {item.village || item.producteur_commune}
+            </Text>
+            <Text style={[styles.cardSub, { fontStyle: 'italic' }]} numberOfLines={1}>
+              {item.type_vanille_display} · {formatHa(item.dimension_ha)} · {item.nombre_pieds ?? '±'} pieds
+            </Text>
           </View>
-        ) : null}
-      </View>
-    </Pressable>
-  );
+        </View>
+        <View style={styles.badgesRow}>
+          <View style={[styles.badge, item.active ? styles.badgeOk : styles.badgeOff]}>
+            <Text style={styles.badgeText}>{item.active ? 'Active' : 'Inactive'}</Text>
+          </View>
+          {item.certifiee ? (
+            <View style={styles.badgeCert}>
+              <Text style={styles.badgeText}>Certifiée</Text>
+            </View>
+          ) : null}
+          {item.age_parcelle != null ? (
+            <View style={styles.badgeAge}>
+              <Text style={styles.badgeText}>{item.age_parcelle} ans</Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -151,7 +156,9 @@ export default function ParcellesList() {
 
       <FlatList
         data={items}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) =>
+          item && item.id != null ? String(item.id) : `key-${index}`
+        }
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         onEndReached={handleLoadMore}
