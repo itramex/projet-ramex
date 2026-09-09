@@ -2,6 +2,8 @@
 
 Application mobile du projet RAMEX (gestion de la production de vanille), connectée à **la même API Django** que le frontend web. Fait partie du monorepo : `backend/` (API), `frontend/` (web), `mobile/` (cette app).
 
+**Stack** : Expo **SDK 57** (`expo@57.0.21`, `react-native@0.86.3`, `expo-router@57.0.20`, TypeScript 6) — compatible avec Expo Go du store.
+
 ## 🚀 Démarrage
 
 ```bash
