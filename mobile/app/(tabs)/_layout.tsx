@@ -27,6 +27,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="parcelles"
+        options={{
+          title: 'Parcelles',
+          tabBarIcon: ({ color, size }) => <Ionicons name="map-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="profil"
         options={{
           title: 'Profil',

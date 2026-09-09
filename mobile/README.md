@@ -48,14 +48,19 @@ Par défaut l'app appelle `http://127.0.0.1:8000/api` (backend Django local).
 - **Login** — mêmes identifiants que l'application web
 - **Accueil** — statistiques producteurs (total / actifs / inactifs) + rôle de l'utilisateur
 - **Producteurs** — liste paginée (20/page) avec recherche serveur anti-rebond, pull-to-refresh
+- **Parcelles** — liste paginée avec recherche (code, producteur, lieu), détail (type de vanille, superficie, pieds, GPS), lien vers la fiche du producteur
 - **Détail producteur** — village, commune, fokontany, téléphone, badges actif/sexe/vérifié
 - **Profil** — rôle, agence/coopérative, déconnexion
 
 ## 🗺️ Roadmap
 
-- **Phase 2** : saisie terrain (formulaires création/édition, photos, GPS)
-- **Phase 3** : offline-first — cache de lecture, file d'écriture locale (SQLite), synchronisation incrémentale (nécessitera des endpoints `?updated_since=` côté backend)
+- ✅ **Lot 1 — Parcelles** : liste, recherche, détail, lien producteur (fait)
+- **Lot 2** : traçabilité consultation (FABC, fiches collecte, transport, lots, colis)
+- **Lot 3** : saisie terrain (formulaires création/édition, photos, GPS)
+- **Phase suivante** : offline-first — cache de lecture, file d'écriture locale (SQLite), synchronisation incrémentale (nécessitera des endpoints `?updated_since=` côté backend)
 - **Phase 4** : build APK/AAB via EAS Build, déploiement
+
+> Note : les *typed routes* d'Expo Router sont désactivées (`app.json`) pour permettre l'ajout d'écrans sans régénération de types — les `router.push()` acceptent des chemins dynamiques.
 
 ## 🧪 Qualité
 
