@@ -12,6 +12,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
+# En développement, on accepte toutes les origines : le téléphone / l'émulateur
+# joignent le PC via son IP Wi-Fi, qui peut changer. En production (DEBUG=False),
+# la liste stricte du fichier .env s'applique.
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
 
 # ============================================
 # APPLICATION DEFINITION
