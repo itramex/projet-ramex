@@ -109,9 +109,9 @@ export default function ParcelleDetail() {
             <InfoRow icon="leaf-outline" label="Culture principale" value={parcelle.culture_principale_display} />
             <InfoRow icon="resize-outline" label="Superficie" value={parcelle.dimension_ha != null ? `${parcelle.dimension_ha} ha` : null} />
             <InfoRow icon="bar-chart-outline" label="Nombre de pieds" value={parcelle.nombre_pieds} />
-            <InfoRow icon="arrow-trend-up-outline" label="Estimation production" value={parcelle.estimation_production_kg != null ? `${parcelle.estimation_production_kg} kg` : null} />
+            <InfoRow icon="pulse-outline" label="Estimation production" value={parcelle.estimation_production_kg != null ? `${parcelle.estimation_production_kg} kg` : null} />
             <InfoRow icon="home-outline" label="Localisation" value={parcelle.localisation} />
-            <InfoRow icon="shield-check-outline" label="Type de propriété" value={parcelle.type_propriete_display} />
+            <InfoRow icon="lock-closed-outline" label="Type de propriété" value={parcelle.type_propriete_display} />
             <InfoRow icon="map-outline" label="Profil de parcelle" value={parcelle.profil_parcelle_display} />
             <InfoRow icon="clock-outline" label="Distance habitation" value={parcelle.distance_habitation_display} />
             <InfoRow icon="location-outline" label="Latitude" value={parcelle.latitude} />
