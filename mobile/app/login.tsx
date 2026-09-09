@@ -35,8 +35,21 @@ export default function Login() {
     try {
       await signIn(username.trim(), password);
       // La redirection est déclenchée par le bloc ci-dessus (user non null)
-    } catch {
-      setError('Identifiants invalides ou serveur injoignable.');
+    } catch (err) {
+      // Distingue les causes : 401 = mauvais identifiants,
+      // réponse réseau présente mais refusée = config serveur, sinon = injoignable
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Identifiants invalides.');
+      } else if (status === 400) {
+        setError(
+          "Le serveur refuse la requete (Host). Ajoutez l'IP du PC a ALLOWED_HOSTS dans backend/.env et relancez Django."
+        );
+      } else {
+        setError(
+          'Serveur injoignable. Lancez Django avec: python manage.py runserver 0.0.0.0:8000 (et autorisez le port 8000 dans le pare-feu Windows).'
+        );
+      }
     } finally {
       setLoading(false);
     }

@@ -23,6 +23,19 @@ Par défaut l'app appelle `http://127.0.0.1:8000/api` (backend Django local).
 | Émulateur Android | `10.0.2.2` remplace localhost (alias du PC hôte) |
 | Appareil physique (même Wi-Fi) | Créer `mobile/.env` avec `EXPO_PUBLIC_API_URL=http://<IP-du-PC>:8000/api` (IP visible via `ipconfig`) et lancer le backend avec `python manage.py runserver 0.0.0.0:8000` |
 
+### Dépannage « serveur injoignable » sur téléphone
+
+1. **`backend/.env`** : ajouter l'IP du PC à `ALLOWED_HOSTS` puis **redémarrer Django** :
+   ```
+   ALLOWED_HOSTS=localhost,127.0.0.1,<IP-du-PC>
+   ```
+2. **Binding** : lancer le serveur sur toutes les interfaces : `python manage.py runserver 0.0.0.0:8000`
+3. **Pare-feu Windows** : autoriser le port 8000 (à exécuter en admin) :
+   ```powershell
+   netsh advfirewall firewall add rule name="RAMEX Django 8000" dir=in action=allow protocol=TCP localport=8000 profile=any
+   ```
+4. Vérifier la connexion depuis le PC : `Test-NetConnection <IP-du-PC> -Port 8000`
+
 ## 🔐 Authentification (JWT — identique au web)
 
 - `POST /api/token/` : login (renvoie access, refresh **et** le profil utilisateur avec rôle)
