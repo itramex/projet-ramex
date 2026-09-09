@@ -1,0 +1,76 @@
+/**
+ * Client axios partagé avec l'API Django (mêmes endpoints que le frontend web).
+ * Intercepteurs : Bearer token automatique + refresh silencieux sur 401.
+ */
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { tokenStore } from './tokenStore';
+import { Paginated, Producteur } from '../types/api';
+
+/**
+ * URL de l'API. Sur un appareil physique, localhost ne pointe pas vers le PC :
+ * définir EXPO_PUBLIC_API_URL dans mobile/.env (ex: http://192.168.1.10:8000/api)
+ * ou modifier la valeur par défaut ci-dessous.
+ */
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+});
+
+api.interceptors.request.use(async (config) => {
+  const token = await tokenStore.getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Un seul refresh à la fois, partagé par toutes les requêtes en 401
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = await tokenStore.getRefreshToken();
+  if (!refresh) return null;
+  try {
+    const response = await axios.post<{ access: string }>(`${API_BASE_URL}/token/refresh/`, {
+      refresh,
+    });
+    const access = response.data.access;
+    await tokenStore.saveTokens(access, refresh);
+    return access;
+  } catch {
+    // Refresh token invalide/expiré : session terminée
+    await tokenStore.clear();
+    return null;
+  }
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    if (error.response?.status === 401 && original && !original._retry) {
+      original._retry = true;
+      refreshPromise = refreshPromise || refreshAccessToken();
+      const newToken = await refreshPromise.finally(() => {
+        refreshPromise = null;
+      });
+      if (newToken) {
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+/** Producteurs : liste paginée + recherche serveur */
+export const producteurService = {
+  list: (params: { page?: number; page_size?: number; search?: string; actif?: string }) =>
+    api.get<Paginated<Producteur>>('/producteurs/', { params }),
+  detail: (id: number | string) => api.get<Producteur>(`/producteurs/${id}/`),
+  statistiques: () => api.get('/producteurs/statistiques/'),
+};
+
+export default api;

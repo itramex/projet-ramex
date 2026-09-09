@@ -42,3 +42,7 @@ CODELY.md
 spec-chaine-valeur-vanille-ramex.md
 ANALYSE_SPEC.md
 mem-log/
+
+# Expo (app mobile)
+mobile/.expo/
+mobile/web/
