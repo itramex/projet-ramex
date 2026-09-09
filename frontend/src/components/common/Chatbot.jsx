@@ -1,43 +1,74 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Icon from './Icon';
 import { chatbotService } from '../../services/api';
 
+// Questions suggérées, affichées tant que la conversation n'a pas commencé
+const SUGGESTIONS = [
+  'Combien de producteurs ?',
+  "Combien d'inactifs ?",
+  'Combien de femmes productrices ?',
+  'Liste des villages',
+  'Statistiques',
+  'Que sais-tu faire ?',
+];
+
+const WELCOME_MESSAGE = {
+  text: "Bonjour ! Je suis Assistant Vanille. Je réponds aux questions sur les producteurs, les villages et les statistiques. Choisissez une suggestion ou posez votre question.",
+  sender: 'bot',
+};
+
 function Chatbot() {
-  const [messages, setMessages] = useState([
-    { text: "Bonjour! Je suis Assistant Vanille avec IA. Je peux vous aider avec des informations sur les producteurs, coopératives, parcelles et statistiques.", sender: 'bot', aiMode: true }
-  ]);
+  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
 
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  // Fait défiler vers le dernier message à chaque mise à jour
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
-    // Ajoute le message utilisateur
-    const userMessage = { text: input, sender: 'user' };
-    setMessages([...messages, userMessage]);
+  const sendMessage = async (text) => {
+    const trimmed = (text ?? '').trim();
+    if (!trimmed || loading) return;
+
+    const userMessage = { text: trimmed, sender: 'user' };
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
 
     try {
-      const response = await chatbotService.sendMessage(input);
-      const botMessage = { 
-        text: response.data.response, 
+      const response = await chatbotService.sendMessage(trimmed);
+      const botMessage = {
+        text: response.data.response,
         sender: 'bot',
         intent: response.data.intent,
-        aiMode: response.data.ai_mode || false
+        aiMode: response.data.ai_mode || false,
       };
       setMessages(prev => [...prev, botMessage]);
     } catch {
-      const errorMessage = { 
-        text: "Désolé, une erreur s'est produite.", 
+      const errorMessage = {
+        text: "Désolé, une erreur s'est produite.",
         sender: 'bot',
-        aiMode: false
+        aiMode: false,
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    sendMessage(input);
+  };
+
+  const clearConversation = () => {
+    setMessages([WELCOME_MESSAGE]);
+  };
+
+  // Le badge IA ne s'affiche que si l'IA est réellement utilisée
+  const aiActive = messages.some((msg) => msg.aiMode);
 
   return (
     <div className="absolute bottom-20 right-0 w-96 bg-white rounded-lg shadow-2xl overflow-hidden">
@@ -48,8 +79,19 @@ function Chatbot() {
           <h3 className="font-bold">Assistant Vanille</h3>
         </div>
         <div className="flex items-center space-x-2">
-          <span className="text-xs bg-green-600 px-2 py-1 rounded-full">IA</span>
-          <span className="text-xs text-gray-300">En ligne</span>
+          <span
+            className={`text-xs px-2 py-1 rounded-full ${aiActive ? 'bg-green-600' : 'bg-gray-500'}`}
+          >
+            {aiActive ? 'IA' : 'Local'}
+          </span>
+          <button
+            type="button"
+            onClick={clearConversation}
+            title="Vider la conversation"
+            className="text-gray-300 hover:text-white"
+          >
+            <Icon name="TrashIcon" size="sm" />
+          </button>
         </div>
       </div>
 
@@ -93,24 +135,43 @@ function Chatbot() {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
+      {/* Suggestions */}
+      {messages.length <= 1 && !loading && (
+        <div className="px-4 pt-3 border-t bg-gray-50">
+          <div className="flex flex-wrap gap-2 pb-3">
+            {SUGGESTIONS.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => sendMessage(suggestion)}
+                className="text-xs px-3 py-1 border border-gray-300 rounded-full text-gray-600 hover:bg-primary-yellow hover:border-primary-yellow hover:text-dark transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
-      <form onSubmit={sendMessage} className="p-4 border-t">
+      <form onSubmit={handleSubmit} className="p-4 border-t">
         <div className="flex space-x-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Posez-moi une question sur les producteurs, coopératives, statistiques..."
+            placeholder="Posez-moi une question sur les producteurs, villages, statistiques..."
             className="flex-1 px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-primary-yellow"
           />
           <button
             type="submit"
             disabled={loading}
-            className="bg-primary-yellow text-dark px-6 py-2 rounded font-semibold hover:bg-yellow-500 disabled:opacity-50"
+            className="bg-primary-yellow text-dark px-4 py-2 rounded font-semibold hover:bg-yellow-500 disabled:opacity-50 flex items-center justify-center"
           >
-            ➤
+            <Icon name="PaperAirplaneIcon" size="md" />
           </button>
         </div>
       </form>

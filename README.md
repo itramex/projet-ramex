@@ -203,6 +203,12 @@ DB_PORT=5432
 # --- CORS ---
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
+# --- Chatbot (optionnel) ---
+# IA locale Ollama désactivée par défaut : l'assistant utilise l'analyse
+# locale par patterns (aucun appel réseau). Mettre True pour activer Ollama
+# (modèle llama3.2 attendu sur localhost:11434).
+CHATBOT_USE_OLLAMA=False
+
 # --- GDAL / GEOS (Windows uniquement) ---
 # Laissez vide si GDAL est dans le PATH système ou si vous utilisez Linux/Mac
 GDAL_LIBRARY_PATH=

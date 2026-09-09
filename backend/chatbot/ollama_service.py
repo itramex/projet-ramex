@@ -120,7 +120,7 @@ class OllamaService:
             sql_query = response['response'].strip()
             
             # Validation de sécurité basique
-            forbidden_keywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE']
+            forbidden_keywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE', 'EXEC']
             if any(keyword in sql_query.upper() for keyword in forbidden_keywords):
                 logger.warning(f"Requête SQL potentiellement dangereuse bloquée: {sql_query}")
                 return None

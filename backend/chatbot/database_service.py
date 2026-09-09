@@ -54,3 +54,30 @@ class DatabaseService:
             'pourcentage_actifs': round((actifs / total * 100) if total > 0 else 0, 2),
             'top_villages': list(villages)
         }
+    
+    @staticmethod
+    def count_producteurs_par_village(village: str) -> int:
+        """Compte les producteurs d'un village (recherche insensible à la casse)"""
+        if not village:
+            return 0
+        return Producteur.objects.filter(village__icontains=village).count()
+    
+    @staticmethod
+    def count_producteurs_par_sexe(sexe: str) -> int:
+        """Compte les producteurs par genre ('M' ou 'F')"""
+        return Producteur.objects.filter(sexe=sexe).count()
+    
+    @staticmethod
+    def list_producteurs_par_village(village: str) -> list:
+        """Liste les producteurs d'un village (recherche insensible à la casse)"""
+        if not village:
+            return []
+        producteurs = Producteur.objects.filter(village__icontains=village)
+        return list(producteurs.values('code', 'nom', 'prenom', 'telephone', 'village'))
+    
+    @staticmethod
+    def list_producteurs(limit: int = 10) -> list:
+        """Liste les premiers producteurs (10 par défaut)"""
+        return list(
+            Producteur.objects.values('code', 'nom', 'prenom', 'telephone', 'village')[:limit]
+        )

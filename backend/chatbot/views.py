@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from decouple import config
 from .intent_analyzer import IntentAnalyzer
 from .database_service import DatabaseService
 from .calculator_service import CalculatorService
@@ -15,11 +16,17 @@ class ChatbotView(APIView):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.intent_analyzer = IntentAnalyzer()
+        self.intent_analyzer = IntentAnalyzer(use_ollama=False)
         self.db_service = DatabaseService()
         self.calculator = CalculatorService()
-        self.ollama_service = OllamaService()
-        self.use_ollama = self.ollama_service.is_available()
+        # Ollama est optionnel : activé uniquement via CHATBOT_USE_OLLAMA=True
+        # dans le .env. Par défaut, aucune connexion réseau n'est tentée et
+        # l'analyse locale par patterns répond instantanément.
+        self.ollama_service = None
+        self.use_ollama = False
+        if config('CHATBOT_USE_OLLAMA', default=False, cast=bool):
+            self.ollama_service = OllamaService()
+            self.use_ollama = self.ollama_service.is_available()
     
     def post(self, request):
         message = request.data.get('message', '').strip()
@@ -79,6 +86,43 @@ class ChatbotView(APIView):
             count = self.db_service.count_producteurs_inactifs()
             return f"Il y a {count} producteur(s) inactif(s)."
         
+        elif intent == 'count_producteurs_femmes':
+            count = self.db_service.count_producteurs_par_sexe('F')
+            return f"Il y a {count} femme(s) productrice(s)."
+        
+        elif intent == 'count_producteurs_hommes':
+            count = self.db_service.count_producteurs_par_sexe('M')
+            return f"Il y a {count} homme(s) producteur(s)."
+        
+        elif intent == 'count_producteurs_village':
+            village = self.intent_analyzer.extract_village(message)
+            count = self.db_service.count_producteurs_par_village(village)
+            if count == 0:
+                return f"Aucun producteur trouvé pour le village '{village}'."
+            return f"Il y a {count} producteur(s) au village '{village}'."
+        
+        elif intent == 'list_producteurs_village':
+            village = self.intent_analyzer.extract_village(message)
+            producteurs = self.db_service.list_producteurs_par_village(village)
+            if not producteurs:
+                return f"Aucun producteur trouvé pour le village '{village}'."
+            lines = [f"Producteurs du village '{village}' ({len(producteurs)}):"]
+            for prod in producteurs:
+                lines.append(f"- {prod['nom']} {prod['prenom']} ({prod['code']}) - {prod['village']}")
+            return '\n'.join(lines)
+        
+        elif intent == 'list_producteurs':
+            producteurs = self.db_service.list_producteurs()
+            if not producteurs:
+                return "Aucun producteur enregistré."
+            lines = [f"Voici les {len(producteurs)} premier(s) producteur(s):"]
+            for prod in producteurs:
+                lines.append(f"- {prod['nom']} {prod['prenom']} ({prod['code']}) - {prod['village']}")
+            return '\n'.join(lines)
+        
+        elif intent == 'greeting':
+            return "Bonjour ! Je suis Assistant Vanille. Posez-moi une question sur les producteurs et les villages, ou tapez 'aide' pour voir ce que je sais faire."
+        
         elif intent == 'list_villages':
             villages = self.db_service.list_villages()
             if villages:
@@ -128,10 +172,14 @@ Top 5 Villages:"""
         else:
             return """Je peux vous aider avec:
 - Compter les producteurs (ex: "Combien de producteurs ?")
+- Producteurs actifs / inactifs (ex: "Combien d'inactifs ?")
+- Par genre (ex: "Combien de femmes productrices ?")
+- Par village (ex: "Combien de producteurs a Ambanja ?")
+- Lister les producteurs (ex: "Liste des producteurs")
 - Lister les villages (ex: "Liste des villages")
-- Rechercher un producteur (ex: "Cherche producteur Dupont")
+- Rechercher un producteur (ex: "Cherche le producteur Rakoto")
 - Afficher des statistiques (ex: "Statistiques")
-- Faire des calculs (ex: "Combien fait 10 + 5 ?")"""
+- Faire des calculs (ex: "Combien fait 5 + 3 ?")"""
     
     def _process_with_ollama(self, message: str) -> str:
         """Traite le message avec Ollama pour une compréhension avancée"""

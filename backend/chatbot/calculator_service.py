@@ -55,5 +55,12 @@ class CalculatorService:
                     'result': result
                 }
         
-        # Par défaut, essaie d'évaluer directement
-        return CalculatorService.calculate(' '.join(map(str, numbers)))
+        # Opérateurs arithmétiques explicites dans le message ("Combien fait 5 + 3 ?")
+        if re.search(r'\d\s*[+\-*/x×÷]\s*\d', message):
+            return CalculatorService.calculate(message)
+        
+        # Ni mot-clé ni opérateur : impossible de deviner l'opération demandée
+        return {
+            'success': False,
+            'error': "Précisez l'opération (addition, soustraction, multiplication, division)"
+        }
