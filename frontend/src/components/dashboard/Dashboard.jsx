@@ -54,24 +54,6 @@ function Dashboard() {
   const [showCommuneDropdown, setShowCommuneDropdown] = useState(false);
   const [showFokontanyDropdown, setShowFokontanyDropdown] = useState(false);
 
-  useEffect(() => {
-    loadDashboard();
-    loadVillagesCommunes();
-  }, [loadDashboard, loadVillagesCommunes]);
-
-  useEffect(() => {
-    if (activeTab === 'production') {
-      loadProductionData();
-      loadCultureDetail();
-    }
-    if (activeTab === 'decisionnel') {
-      loadDecisionData();
-    }
-    if (activeTab === 'social') {
-      loadSocialData();
-    }
-  }, [activeTab, filters, loadProductionData, loadCultureDetail, loadDecisionData, loadSocialData]);
-
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -189,6 +171,26 @@ function Dashboard() {
       setLoading(false);
     }
   }, []);
+
+  // Effets déclarés APRÈS les useCallback (sinon erreur TDZ « Cannot access
+  // 'loadDashboard' before initialization » → page blanche)
+  useEffect(() => {
+    loadDashboard();
+    loadVillagesCommunes();
+  }, [loadDashboard, loadVillagesCommunes]);
+
+  useEffect(() => {
+    if (activeTab === 'production') {
+      loadProductionData();
+      loadCultureDetail();
+    }
+    if (activeTab === 'decisionnel') {
+      loadDecisionData();
+    }
+    if (activeTab === 'social') {
+      loadSocialData();
+    }
+  }, [activeTab, filters, loadProductionData, loadCultureDetail, loadDecisionData, loadSocialData]);
 
   const handleFilterChange = useCallback((filterName, value) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
