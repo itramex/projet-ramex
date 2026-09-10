@@ -16,15 +16,6 @@ function Menage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState([]);
 
-  useEffect(() => {
-    loadFilters();
-    loadAvailableYears();
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
   const loadFilters = async () => {
     try {
       const response = await dashboardService.getVillagesAndCommunes();
@@ -77,6 +68,17 @@ function Menage() {
       setLoading(false);
     }
   }, [selectedVillages, selectedCommunes, selectedYear]);
+
+  // Effets déclarés APRÈS les fonctions (sinon TDZ « Cannot access 'loadData'
+  // before initialization » → page blanche)
+  useEffect(() => {
+    loadFilters();
+    loadAvailableYears();
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleResetFilters = () => {
     setSelectedVillages([]);
