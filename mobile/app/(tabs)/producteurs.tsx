@@ -119,7 +119,15 @@ export default function ProducteursList() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Producteurs</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Producteurs</Text>
+          <Pressable
+            style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push('/producteur/form')}
+          >
+            <Text style={styles.addBtnText}>+ Ajouter</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>
           {count} enregistré{count === 1 ? '' : 's'}
         </Text>
@@ -190,6 +198,15 @@ const styles = StyleSheet.create({
   header: { padding: spacing.lg, paddingBottom: spacing.sm },
   title: { fontSize: 24, fontWeight: 'bold', color: colors.text },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.md },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  addBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    elevation: 2,
+  },
+  addBtnText: { fontSize: 14, fontWeight: '800', color: colors.dark },
   search: {
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -250,6 +267,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 6,
+    zIndex: 100,
     shadowColor: colors.dark,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
