@@ -173,6 +173,14 @@ export default function ProducteursList() {
           ) : null
         }
       />
+
+      {/* Bouton flottant : nouvel producteur */}
+      <Pressable
+        style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
+        onPress={() => router.push('/producteur/form')}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </Pressable>
     </View>
   );
 }
@@ -232,4 +240,20 @@ const styles = StyleSheet.create({
   loader: { marginTop: spacing.xl },
   footerLoader: { paddingVertical: spacing.md },
   empty: { textAlign: 'center', color: colors.textSecondary, marginTop: spacing.xl },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.xl,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.dark,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+  fabText: { fontSize: 30, fontWeight: '800', color: colors.dark },
 });

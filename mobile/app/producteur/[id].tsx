@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { producteurService } from '../../src/services/api';
 import { colors, spacing } from '../../src/constants/theme';
@@ -28,6 +29,7 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value?: 
 
 export default function ProducteurDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const [producteur, setProducteur] = useState<Producteur | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -49,6 +51,34 @@ export default function ProducteurDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const confirmDelete = () => {
+    if (!producteur) return;
+    Alert.alert(
+      'Supprimer ce producteur ?',
+      `${producteur.nom} ${producteur.prenom ?? ''} sera définitivement supprimé.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await producteurService.delete(producteur.id);
+              router.replace('/(tabs)/producteurs');
+            } catch {
+              Alert.alert('Erreur', 'Impossible de supprimer ce producteur. Réessayez.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const goEdit = () => {
+    if (!producteur) return;
+    router.push(`/producteur/form?id=${producteur.id}`);
+  };
 
   const nomComplet = producteur
     ? producteur.nom_complet || `${producteur.nom} ${producteur.prenom ?? ''}`.trim()
@@ -102,6 +132,21 @@ export default function ProducteurDetail() {
             <InfoRow icon="map-outline" label="Commune" value={producteur.commune} />
             <InfoRow icon="people-outline" label="Fokontany" value={producteur.fokontany} />
             <InfoRow icon="call-outline" label="Téléphone" value={producteur.telephone} />
+          </View>
+
+          <View style={styles.actionsCard}>
+            <Pressable
+              style={({ pressed }) => [styles.editButton, pressed && styles.editPressed]}
+              onPress={goEdit}
+            >
+              <Text style={styles.editText}>Modifier</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.deleteButton, pressed && styles.deletePressed]}
+              onPress={confirmDelete}
+            >
+              <Text style={styles.deleteText}>Supprimer</Text>
+            </Pressable>
           </View>
         </ScrollView>
       )}
@@ -168,4 +213,29 @@ const styles = StyleSheet.create({
   infoMain: { marginLeft: spacing.md, flex: 1 },
   infoLabel: { fontSize: 11, color: colors.textSecondary, textTransform: 'uppercase' },
   infoValue: { fontSize: 15, color: colors.text, marginTop: 2 },
+  actionsCard: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  editButton: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  editPressed: { backgroundColor: colors.primaryDim },
+  editText: { color: colors.dark, fontWeight: '700', fontSize: 15 },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  deletePressed: { backgroundColor: '#FEF2F2' },
+  deleteText: { color: colors.danger, fontWeight: '700', fontSize: 15 },
 });

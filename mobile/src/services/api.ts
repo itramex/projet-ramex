@@ -4,7 +4,7 @@
  */
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { tokenStore } from './tokenStore';
-import { Paginated, Producteur } from '../types/api';
+import { Paginated, Producteur, ProducteurPayload } from '../types/api';
 
 /**
  * URL de l'API. Sur un appareil physique, localhost ne pointe pas vers le PC :
@@ -71,6 +71,10 @@ export const producteurService = {
     api.get<Paginated<Producteur>>('/producteurs/', { params }),
   detail: (id: number | string) => api.get<Producteur>(`/producteurs/${id}/`),
   statistiques: () => api.get('/producteurs/statistiques/'),
+  create: (data: ProducteurPayload) => api.post<Producteur>('/producteurs/', data),
+  update: (id: number | string, data: ProducteurPayload) =>
+    api.put<Producteur>(`/producteurs/${id}/`, data),
+  delete: (id: number | string) => api.delete(`/producteurs/${id}/`),
 };
 
 export default api;

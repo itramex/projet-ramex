@@ -41,6 +41,19 @@ export interface Producteur {
   superficie_totale_ha?: number | null;
 }
 
+/** Payload pour la création / édition (ProducteurCreateUpdateSerializer) */
+export interface ProducteurPayload {
+  code: string;
+  nom: string;
+  prenom: string;
+  commune?: string;
+  village?: string;
+  fokontany?: string;
+  sexe: 'M' | 'F';
+  telephone?: string;
+  actif: boolean;
+}
+
 /** Réponse paginée standard de Django REST Framework */
 export interface Paginated<T> {
   count: number;
