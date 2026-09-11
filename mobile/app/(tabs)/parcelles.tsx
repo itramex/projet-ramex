@@ -135,7 +135,15 @@ export default function ParcellesList() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Parcelles</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Parcelles</Text>
+          <Pressable
+            style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push('/parcelle/form')}
+          >
+            <Text style={styles.addBtnText}>+ Ajouter</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>{count} enregistrée{count === 1 ? '' : 's'}</Text>
         <TextInput
           style={styles.search}
@@ -194,6 +202,15 @@ export default function ParcellesList() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { padding: spacing.lg, paddingBottom: spacing.sm },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  addBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    elevation: 2,
+  },
+  addBtnText: { fontSize: 14, fontWeight: '800', color: colors.dark },
   title: { fontSize: 24, fontWeight: 'bold', color: colors.text },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.md },
   search: {

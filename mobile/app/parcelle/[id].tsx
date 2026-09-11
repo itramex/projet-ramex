@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -58,6 +59,29 @@ export default function ParcelleDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const confirmDelete = () => {
+    if (!parcelle) return;
+    Alert.alert(
+      'Supprimer cette parcelle ?',
+      `${parcelle.code_parcelle} sera définitivement supprimée.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await parcelleService.remove(parcelle.id);
+              router.replace('/(tabs)/parcelles');
+            } catch {
+              Alert.alert('Erreur', 'Impossible de supprimer cette parcelle. Réessayez.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -125,6 +149,23 @@ export default function ParcelleDetail() {
             <Ionicons name="person-outline" size={18} color={colors.dark} />
             <Text style={styles.producteurText}>Voir le producteur</Text>
           </Pressable>
+
+          <View style={styles.actionsRow}>
+            <Pressable
+              style={({ pressed }) => [styles.editButton, pressed && styles.editPressed]}
+              onPress={() => router.push(`/parcelle/form?id=${parcelle.id}`)}
+            >
+              <Ionicons name="create-outline" size={18} color={colors.dark} />
+              <Text style={styles.editText}>Modifier</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.deleteButton, pressed && styles.deletePressed]}
+              onPress={confirmDelete}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+              <Text style={styles.deleteText}>Supprimer</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       )}
     </View>
@@ -201,4 +242,35 @@ const styles = StyleSheet.create({
   },
   producteurPressed: { backgroundColor: colors.primaryDim },
   producteurText: { color: colors.dark, fontWeight: '700', fontSize: 15 },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  editPressed: { backgroundColor: colors.primaryDim },
+  editText: { color: colors.dark, fontWeight: '700', fontSize: 15 },
+  deleteButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  deletePressed: { backgroundColor: '#FEF2F2' },
+  deleteText: { color: colors.danger, fontWeight: '700', fontSize: 15 },
 });

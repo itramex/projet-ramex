@@ -54,6 +54,30 @@ export interface ProducteurPayload {
   actif: boolean;
 }
 
+/** Parcelle (champs principaux du serializer DRF) */
+export interface Parcelle {
+  id: number;
+  producteur: number;
+  code_parcelle: string;
+  numero_parcelle: number;
+  localisation?: string;
+  type_vanille: 'planifolia' | 'tahitensis' | 'pompona';
+  culture_principale: 'vanille' | 'cafe' | 'girofle' | 'autre';
+  dimension_ha?: number | null;
+  annee_plantation?: number | null;
+  nombre_pieds?: number | null;
+  certifiee: boolean;
+  type_certification?: string;
+  active: boolean;
+  gps_latitude?: number | null;
+  gps_longitude?: number | null;
+  /** Propriétés calculées (lecture seule) */
+  producteur_nom?: string;
+  age_parcelle?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
 /** Réponse paginée standard de Django REST Framework */
 export interface Paginated<T> {
   count: number;

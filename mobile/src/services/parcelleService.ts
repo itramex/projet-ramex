@@ -18,4 +18,8 @@ export const parcelleService = {
   list: (params: ParcelleListParams = {}) =>
     api.get<Paginated<Parcelle>>('/parcelles/', { params }),
   detail: (id: number | string) => api.get<Parcelle>(`/parcelles/${id}/`),
+  create: (payload: Record<string, unknown>) => api.post<Parcelle>('/parcelles/', payload),
+  update: (id: number | string, payload: Record<string, unknown>) =>
+    api.patch<Parcelle>(`/parcelles/${id}/`, payload),
+  remove: (id: number | string) => api.delete<void>(`/parcelles/${id}/`),
 };
