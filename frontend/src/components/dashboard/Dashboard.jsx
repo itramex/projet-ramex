@@ -155,10 +155,14 @@ function Dashboard() {
     setLoading(true);
     setError(null);
     try {
+      const params = new URLSearchParams();
+      filters.villages.forEach(v => params.append('village', v));
+      filters.communes.forEach(c => params.append('commune', c));
+      filters.fokontanys.forEach(f => params.append('fokontany', f));
       const [hygiene, enfants, environnement] = await Promise.all([
-        dashboardService.getHygiene(),
-        dashboardService.getEnfants(),
-        dashboardService.getEnvironnement(),
+        dashboardService.getHygiene(params),
+        dashboardService.getEnfants(params),
+        dashboardService.getEnvironnement(params),
       ]);
       setSocialData({
         hygiene: hygiene.data,
@@ -170,7 +174,7 @@ function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filters]);
 
   // Effets déclarés APRÈS les useCallback (sinon erreur TDZ « Cannot access
   // 'loadDashboard' before initialization » → page blanche)

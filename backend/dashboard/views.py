@@ -12,6 +12,49 @@ from parcelles.models import Parcelle
 from tracabilite.models import BonCollecte, LotTraitement, Colis, CommandeExport, TracabiliteChain
 
 
+def _dashboard_base_queryset(request):
+    """Queryset Producteur actif filtré par village/commune/fokontany (query params GET).
+
+    Réutilisé par les endpoints du dashboard (hygiene, environnement, enfants…)
+    pour que les filtres du frontend s'appliquent à tous les onglets.
+    """
+    qs = Producteur.objects.filter(actif=True)
+    villages = [v for v in request.query_params.getlist('village') if v]
+    if villages:
+        qs = qs.filter(village__in=villages)
+    communes = [c for c in request.query_params.getlist('commune') if c]
+    if communes:
+        qs = qs.filter(commune__in=communes)
+    fokontanys = [f for f in request.query_params.getlist('fokontany') if f]
+    if fokontanys:
+        qs = qs.filter(fokontany__in=fokontanys)
+    return qs
+
+
+def _children_school_age_and_schooled(queryset, ref_year):
+    """Règle métier unique: scolarisation sur enfants 3-18 ans.
+
+    Optimisé: utilise values_list pour ne charger que les champs nécessaires.
+    Réutilisé par dashboard_global et dashboard_enfants (les champs agrégés
+    nb_enfants_scolarises peuvent rester à 0 dans la base).
+    """
+    child_fields = [f'annee_naissance_enfant_{i}' for i in range(1, 11)]
+    school_fields = [f'continue_ecole_enfant_{i}' for i in range(1, 11)]
+    total_school_age = 0
+    total_schooled = 0
+    for row in queryset.values_list(*child_fields, *school_fields):
+        for i in range(10):
+            annee_naissance = row[i]
+            if not annee_naissance:
+                continue
+            age = ref_year - annee_naissance
+            if 3 <= age <= 18:
+                total_school_age += 1
+                if row[10 + i]:
+                    total_schooled += 1
+    return total_school_age, total_schooled
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_global(request):
@@ -58,25 +101,6 @@ def dashboard_global(request):
             base_queryset = base_queryset.filter(fokontany__in=fokontanys)
             base_queryset_all = base_queryset_all.filter(fokontany__in=fokontanys)
 
-    def _children_school_age_and_schooled(queryset, ref_year):
-        """Règle métier unique: scolarisation sur enfants 3-18 ans.
-        Optimisé: utilise values_list pour ne charger que les champs nécessaires."""
-        child_fields = [f'annee_naissance_enfant_{i}' for i in range(1, 11)]
-        school_fields = [f'continue_ecole_enfant_{i}' for i in range(1, 11)]
-        total_school_age = 0
-        total_schooled = 0
-        for row in queryset.values_list(*child_fields, *school_fields):
-            for i in range(10):
-                annee_naissance = row[i]
-                if not annee_naissance:
-                    continue
-                age = ref_year - annee_naissance
-                if 3 <= age <= 18:
-                    total_school_age += 1
-                    if row[10 + i]:
-                        total_schooled += 1
-        return total_school_age, total_schooled
-    
     # Statistiques globales (sans filtres pour le total)
     # TOTAL = TOUS LES PRODUCTEURS (actifs + inactifs)
     total = Producteur.objects.count()  # Tous les producteurs
@@ -640,37 +664,41 @@ def dashboard_hygiene(request):
     Statistiques spécifiques à l'hygiène
     GET /api/dashboard/hygiene/
     """
-    actifs = Producteur.objects.actifs().count()
-    
+    base_queryset = _dashboard_base_queryset(request)
+    actifs = base_queryset.count()
+
+    def _count(**filters):
+        return base_queryset.filter(**filters).count()
+
     data = {
         'total_producteurs': actifs,
         'poubelles_triees': {
-            'count': Producteur.objects.filter(actif=True, a_poubelles_triees=True).count(),
+            'count': _count(a_poubelles_triees=True),
             'pourcentage': 0,
         },
         'wc_maison': {
-            'count': Producteur.objects.filter(actif=True, wc_maison=True).count(),
+            'count': _count(wc_maison=True),
             'pourcentage': 0,
         },
         'wc_champ': {
-            'count': Producteur.objects.filter(actif=True, wc_champ=True).count(),
+            'count': _count(wc_champ=True),
             'pourcentage': 0,
         },
         'eau_potable': {
-            'count': Producteur.objects.filter(actif=True, eau_potable=True).count(),
+            'count': _count(eau_potable=True),
             'pourcentage': 0,
         },
         'assurance_sante': {
-            'count': Producteur.objects.filter(actif=True, a_assurance_sante=True).count(),
+            'count': _count(a_assurance_sante=True),
             'pourcentage': 0,
         },
     }
-    
+
     # Calculer les pourcentages
     if actifs > 0:
         for key in ['poubelles_triees', 'wc_maison', 'wc_champ', 'eau_potable', 'assurance_sante']:
             data[key]['pourcentage'] = round((data[key]['count'] / actifs) * 100, 2)
-    
+
     return Response(data)
 
 
@@ -681,17 +709,18 @@ def dashboard_environnement(request):
     Statistiques spécifiques à l'environnement
     GET /api/dashboard/environnement/
     """
-    actifs = Producteur.objects.actifs().count()
-    
+    base_queryset = _dashboard_base_queryset(request)
+    actifs = base_queryset.count()
+
     data = {
         'total_producteurs': actifs,
-        'respecte_dina': Producteur.objects.filter(actif=True, respecte_dina=True).count(),
-        'ne_brule_pas_foret': Producteur.objects.filter(actif=True, ne_brule_pas_foret=True).count(),
-        'ne_coupe_pas_foret': Producteur.objects.filter(actif=True, ne_coupe_pas_foret=True).count(),
-        'pratique_tavy': Producteur.objects.filter(actif=True, pratique_tavy=True).count(),
-        'pratique_peche': Producteur.objects.filter(actif=True, pratique_peche=True).count(),
+        'respecte_dina': base_queryset.filter(respecte_dina=True).count(),
+        'ne_brule_pas_foret': base_queryset.filter(ne_brule_pas_foret=True).count(),
+        'ne_coupe_pas_foret': base_queryset.filter(ne_coupe_pas_foret=True).count(),
+        'pratique_tavy': base_queryset.filter(pratique_tavy=True).count(),
+        'pratique_peche': base_queryset.filter(pratique_peche=True).count(),
     }
-    
+
     return Response(data)
 
 
@@ -827,45 +856,36 @@ def dashboard_enfants(request):
     Statistiques spécifiques aux enfants
     GET /api/dashboard/enfants/
     """
-    base_queryset = Producteur.objects.filter(actif=True)
-    
+    base_queryset = _dashboard_base_queryset(request)
+
     agregats = base_queryset.aggregate(
-        total_enfants=Sum(
-            F('nb_enfants_garcons') + F('nb_enfants_filles') + 
-            F('nb_autres_garcons') + F('nb_autres_filles')
-        ),
-        enfants_scolarises=Sum('nb_enfants_scolarises'),
-        enfants_non_scolarises=Sum('nb_enfants_non_scolarises'),
         total_garcons=Sum(F('nb_enfants_garcons') + F('nb_autres_garcons')),
         total_filles=Sum(F('nb_enfants_filles') + F('nb_autres_filles')),
     )
-    
-    total_enfants = agregats['total_enfants'] or 0
-    enfants_scolarises = agregats['enfants_scolarises'] or 0
-    
-    # Calculer le nombre d'enfants en âge scolaire (3-18 ans) à partir des années de naissance
-    from datetime import datetime
+
+    total_garcons = agregats['total_garcons'] or 0
+    total_filles = agregats['total_filles'] or 0
+    total_enfants = total_garcons + total_filles
+
+    # Scolarisation : calculer depuis les enfants détaillés (règle 3-18 ans).
+    # Les champs agrégés nb_enfants_scolarises peuvent rester à 0 dans la base.
     annee_actuelle = datetime.now().year
-    enfants_en_age_scolaire = 0
-    
-    for producteur in base_queryset:
-        for i in range(1, 11):  # annee_naissance_enfant_1 à annee_naissance_enfant_10
-            annee_naissance = getattr(producteur, f'annee_naissance_enfant_{i}', None)
-            if annee_naissance:
-                age = annee_actuelle - annee_naissance
-                if 3 <= age <= 18:
-                    enfants_en_age_scolaire += 1
-    
+    enfants_en_age_scolaire, enfants_scolarises = _children_school_age_and_schooled(
+        base_queryset,
+        annee_actuelle,
+    )
+    enfants_non_scolarises = max(0, enfants_en_age_scolaire - enfants_scolarises)
+
     data = {
         'total_enfants': total_enfants,
         'enfants_scolarises': enfants_scolarises,
-        'enfants_non_scolarises': agregats['enfants_non_scolarises'] or 0,
+        'enfants_non_scolarises': enfants_non_scolarises,
         'enfants_en_age_scolaire': enfants_en_age_scolaire,
-        'total_garcons': agregats['total_garcons'] or 0,
-        'total_filles': agregats['total_filles'] or 0,
+        'total_garcons': total_garcons,
+        'total_filles': total_filles,
         'taux_scolarisation': round((enfants_scolarises / enfants_en_age_scolaire * 100) if enfants_en_age_scolaire > 0 else 0, 2),
     }
-    
+
     return Response(data)
 
 

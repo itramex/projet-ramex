@@ -92,14 +92,18 @@ class ParcelleViewSet(viewsets.ModelViewSet):
             else:
                 queryset = queryset.filter(producteur__village=village)
 
-        # Filtre multi-cultures pratiquées — filtre sur culture_principale
+        # Filtre multi-cultures pratiquées — matche la liste JSON `cultures_pratiquees`
+        # ET la culture principale (les parcelles anciennes n'ont que `culture_principale`).
         cultures_pratiquees = self.request.query_params.get('cultures_pratiquees', None)
         if cultures_pratiquees:
             cultures = [c.strip().lower() for c in str(cultures_pratiquees).split(',') if c.strip()]
-            if len(cultures) == 1:
-                queryset = queryset.filter(culture_principale=cultures[0])
-            elif len(cultures) > 1:
-                queryset = queryset.filter(culture_principale__in=cultures)
+            if cultures:
+                from django.db.models import Q as _Q
+                q_cultures = _Q(culture_principale__in=cultures)
+                for culture in cultures:
+                    # JSONField (PostgreSQL) : lignes dont la liste contient la culture
+                    q_cultures |= _Q(cultures_pratiquees__contains=[culture])
+                queryset = queryset.filter(q_cultures)
 
         # Filtre qualité GPS (coordonnées absentes)
         gps_missing = self.request.query_params.get('gps_missing', None)
