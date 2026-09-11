@@ -704,6 +704,52 @@ def dashboard_hygiene(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def dashboard_hygiene_absents(request):
+    """
+    Liste des producteurs ACTIFS manquant un indicateur d'hygiène/santé.
+    GET /api/dashboard/hygiene/absents/?champ=wc_maison
+
+    Champs autorisés (liste blanche) : wc_maison, wc_champ, eau_potable,
+    a_assurance_sante, a_poubelles_triees.
+    Retourne : [{ id, code, nom_complet, village, commune, fokontany, telephone }]
+    """
+    CHAMPS_AUTORISES = {
+        'wc_maison': 'WC à la maison',
+        'wc_champ': 'WC au champ',
+        'eau_potable': "Accès à l'eau potable",
+        'a_assurance_sante': 'Assurance santé',
+        'a_poubelles_triees': 'Poubelles triées',
+    }
+    champ = request.query_params.get('champ', '')
+    if champ not in CHAMPS_AUTORISES:
+        return Response(
+            {'detail': f"Champ invalide. Champs autorisés : {', '.join(CHAMPS_AUTORISES)}."},
+            status=400,
+        )
+
+    producteurs = _dashboard_base_queryset(request).filter(**{champ: False}).order_by('code')
+    data = [
+        {
+            'id': p.id,
+            'code': p.code,
+            'nom_complet': p.nom_complet,
+            'village': p.village,
+            'commune': p.commune,
+            'fokontany': p.fokontany,
+            'telephone': p.telephone,
+        }
+        for p in producteurs
+    ]
+    return Response({
+        'champ': champ,
+        'label': CHAMPS_AUTORISES[champ],
+        'count': len(data),
+        'producteurs': data,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def dashboard_environnement(request):
     """
     Statistiques spécifiques à l'environnement

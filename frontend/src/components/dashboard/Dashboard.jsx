@@ -380,7 +380,7 @@ function Dashboard() {
           setShowCommuneDropdown={setShowCommuneDropdown}
         />
       ) : activeTab === 'agr' ? (
-        <AGRStats />
+        <AGRStats filters={filters} />
       ) : activeTab === 'social' ? (
         <SocialTab
           data={socialData}
@@ -1416,6 +1416,9 @@ SocialTab.displayName = 'SocialTab';
 
 // ----- Vue Hygiène & Santé -----
 const HygieneView = memo(({ data }) => {
+  const [absentsModal, setAbsentsModal] = useState(null); // { champ, label }
+  const [absentsData, setAbsentsData] = useState(null);
+  const [absentsLoading, setAbsentsLoading] = useState(false);
   const indicateurs = [
     { key: 'poubelles_triees', label: 'Poubelles triées', color: 'bg-green-500' },
     { key: 'wc_maison', label: 'WC à la maison', color: 'bg-blue-500' },
@@ -1423,6 +1426,29 @@ const HygieneView = memo(({ data }) => {
     { key: 'eau_potable', label: 'Accès à l\'eau potable', color: 'bg-teal-500' },
     { key: 'assurance_sante', label: 'Assurance santé', color: 'bg-purple-500' },
   ];
+
+  const CHAMP_PAR_KEY = {
+    poubelles_triees: 'a_poubelles_triees',
+    wc_maison: 'wc_maison',
+    wc_champ: 'wc_champ',
+    eau_potable: 'eau_potable',
+    assurance_sante: 'a_assurance_sante',
+  };
+
+  const openAbsents = async (champ, label) => {
+    setAbsentsModal({ champ, label });
+    setAbsentsLoading(true);
+    setAbsentsData(null);
+    try {
+      const response = await dashboardService.getHygieneAbsents({ champ });
+      setAbsentsData(response.data);
+    } catch (error) {
+      console.error('Erreur chargement liste absents:', error);
+      setAbsentsData({ producteurs: [], count: 0 });
+    } finally {
+      setAbsentsLoading(false);
+    }
+  };
 
   return (
     <>
@@ -1445,12 +1471,69 @@ const HygieneView = memo(({ data }) => {
                 <div className="w-full bg-gray-200 rounded-full h-3">
                   <div className={`${ind.color} h-3 rounded-full transition-all`} style={{ width: `${Math.min(item.pourcentage || 0, 100)}%` }} />
                 </div>
+                <div className="flex justify-end mt-1">
+                  <button
+                    type="button"
+                    onClick={() => openAbsents(CHAMP_PAR_KEY[ind.key], ind.label)}
+                    className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    Voir la liste
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
       </Card>
-    </>
+    
+      {absentsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-bold text-dark">Producteurs sans : {absentsModal.label}</h3>
+                <p className="text-xs text-gray-500">{absentsData ? `${absentsData.count} producteur(s)` : 'Chargement…'}</p>
+              </div>
+              <button onClick={() => setAbsentsModal(null)} className="text-gray-400 hover:text-gray-700">
+                <Icon name="XMarkIcon" size="md" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-5 py-3">
+              {absentsLoading ? (
+                <div className="py-10 text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-yellow" />
+                </div>
+              ) : !absentsData || absentsData.producteurs.length === 0 ? (
+                <p className="py-10 text-center text-gray-500">Aucun producteur concerne.</p>
+              ) : (
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500 uppercase">
+                      <th className="py-2">Code</th>
+                      <th className="py-2">Nom</th>
+                      <th className="py-2">Village</th>
+                      <th className="py-2">Commune</th>
+                      <th className="py-2">Telephone</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {absentsData.producteurs.map(p => (
+                      <tr key={p.id} className="hover:bg-amber-50">
+                        <td className="py-2 font-medium text-dark">{p.code}</td>
+                        <td className="py-2">{p.nom_complet}</td>
+                        <td className="py-2 text-gray-600">{p.village}</td>
+                        <td className="py-2 text-gray-600">{p.commune}</td>
+                        <td className="py-2 text-gray-600">{p.telephone || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+</>
   );
 });
 

@@ -7,6 +7,7 @@ urlpatterns = [
     path('decisionnel/', views.dashboard_decisionnel, name='dashboard_decisionnel'),
     path('producteurs/', views.dashboard_producteurs, name='dashboard_producteurs'),
     path('hygiene/', views.dashboard_hygiene, name='dashboard_hygiene'),
+    path('hygiene/absents/', views.dashboard_hygiene_absents, name='dashboard_hygiene_absents'),
     path('environnement/', views.dashboard_environnement, name='dashboard_environnement'),
     path('enfants/', views.dashboard_enfants, name='dashboard_enfants'),
     path('villages-communes/', views.get_villages_and_communes, name='get_villages_and_communes'),

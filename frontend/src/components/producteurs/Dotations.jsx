@@ -39,6 +39,45 @@ function Dotations() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Bénéficiaires (liste des producteurs ayant reçu une rubrique)
+  const [beneficiairesModal, setBeneficiairesModal] = useState(null); // { type, label }
+  const [beneficiaires, setBeneficiaires] = useState([]);
+  const [beneficiairesLoading, setBeneficiairesLoading] = useState(false);
+
+  const openBeneficiaires = async (type, label) => {
+    setBeneficiairesModal({ type, label });
+    setBeneficiairesLoading(true);
+    try {
+      const params = { type_dotation: type };
+      if (anneeFilter) params.annee = anneeFilter;
+      const res = await dotationService.getAll(params);
+      const rows = res.data.results || res.data || [];
+      // Regrouper par producteur (une ligne par bénéficiaire, quantités cumulées)
+      const map = new Map();
+      rows.forEach((d) => {
+        const key = d.producteur;
+        const prev = map.get(key) || {
+          producteur: key,
+          nom: d.producteur_nom || d.producteur_code || '-',
+          code: d.producteur_code || '',
+          total: 0,
+          annees: new Set(),
+        };
+        prev.total += d.quantite || 0;
+        if (d.annee) prev.annees.add(d.annee);
+        map.set(key, prev);
+      });
+      setBeneficiaires(
+        [...map.values()].sort((a, b) => b.total - a.total)
+      );
+    } catch (err) {
+      console.error('Erreur chargement bénéficiaires:', err);
+      setBeneficiaires([]);
+    } finally {
+      setBeneficiairesLoading(false);
+    }
+  };
+
   const loadDotations = async () => {
     setLoading(true);
     setError('');
@@ -215,6 +254,14 @@ return (
                   />
                 </div>
                 <span className="w-10 text-right font-medium text-dark">{r.qte}</span>
+                <button
+                  type="button"
+                  onClick={() => openBeneficiaires(r.type, r.label)}
+                  className="text-[11px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
+                  title={`Voir les bénéficiaires — ${r.label}`}
+                >
+                  Bénéficiaires
+                </button>
               </div>
             ))}
           </div>
@@ -434,6 +481,70 @@ return (
               >
                 {deleting ? 'Suppression…' : 'Supprimer'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale Bénéficiaires */}
+      {beneficiairesModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-bold text-dark">
+                  Bénéficiaires — {beneficiairesModal.label}
+                </h3>
+                {anneeFilter && (
+                  <p className="text-xs text-gray-500">Année {anneeFilter}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setBeneficiairesModal(null)}
+                className="text-gray-400 hover:text-gray-700"
+              >
+                <Icon name="XMarkIcon" size="md" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-5 py-3">
+              {beneficiairesLoading ? (
+                <div className="py-10 text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-yellow" />
+                </div>
+              ) : beneficiaires.length === 0 ? (
+                <p className="py-10 text-center text-gray-500">
+                  Aucun bénéficiaire pour cette rubrique.
+                </p>
+              ) : (
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500 uppercase">
+                      <th className="py-2">Producteur</th>
+                      <th className="py-2">Code</th>
+                      <th className="py-2 text-right">Quantité totale</th>
+                      <th className="py-2 text-right">Années</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {beneficiaires.map((b) => (
+                      <tr key={b.producteur} className="hover:bg-amber-50">
+                        <td className="py-2 font-medium text-dark">{b.nom}</td>
+                        <td className="py-2 text-gray-500">{b.code}</td>
+                        <td className="py-2 text-right font-semibold text-blue-600">
+                          {b.total.toLocaleString('fr-FR')}
+                        </td>
+                        <td className="py-2 text-right text-gray-500">
+                          {[...b.annees].sort().join(', ')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-gray-200 text-xs text-gray-500">
+              {beneficiaires.length} bénéficiaire{beneficiaires.length > 1 ? 's' : ''}
+              {' '}— quantités cumulées par producteur (pas de total global cumulé).
             </div>
           </div>
         </div>

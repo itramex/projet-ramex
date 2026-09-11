@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { agrService } from '../../services/api';
 import Icon from '../common/Icon';
 import Card from '../common/Card';
@@ -25,28 +25,31 @@ ChartJS.register(
   ArcElement
 );
 
-function AGRStats() {
+function AGRStats({ filters }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await agrService.getStats();
+      const params = {};
+      if (filters?.villages?.length) params.village = filters.villages;
+      if (filters?.communes?.length) params.commune = filters.communes;
+      const response = await agrService.getStats(params);
       setData(response.data);
     } catch (error) {
       setError(error.response?.data?.detail || error.message || 'Erreur lors du chargement des statistiques AGR');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
   if (loading) {
     return (
@@ -181,6 +184,47 @@ function AGRStats() {
                 }
               }}
               plugins={[pieLabelPlugin]}
+            />
+          </ChartCard>
+        )}
+
+        {/* Total Revenue by Type - Bar Chart */}
+        {data.total_revenue_by_type && Object.keys(data.total_revenue_by_type).length > 0 && (
+          <ChartCard title="Revenu Total par Type d'AGR">
+            <Bar
+              data={{
+                labels: Object.keys(data.total_revenue_by_type).map(type => formatAGRType(type)),
+                datasets: [{
+                  label: 'Revenu Total (Ar)',
+                  data: Object.values(data.total_revenue_by_type),
+                  backgroundColor: '#34D399',
+                  borderRadius: 8,
+                }]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: (context) => {
+                        return `Revenu total: ${formatCurrency(context.parsed.y)}`;
+                      }
+                    }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: (value) => formatCurrency(value, true)
+                    }
+                  }
+                }
+              }}
             />
           </ChartCard>
         )}

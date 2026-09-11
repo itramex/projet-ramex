@@ -1198,39 +1198,63 @@ class AGRViewSet(viewsets.ModelViewSet):
         """
         Get AGR statistics
         GET /api/agr/stats/
+
+        Filtres optionnels (multi-sélection possible) :
+        - village, commune : filtrent par producteur
+        - produit avec les mêmes paramètres que la liste
         """
-        # Total AGRs
-        total_agr = AGR.objects.filter(active=True).count()
-        
-        # AGRs by type
+        # ---- Filtres communs (réutilisés pour toutes les agrégations) ----
+        villagers = request.query_params.getlist('village')
+        communes = request.query_params.getlist('commune')
+        villages_clean = [v for v in villagers if v]
+        communes_clean = [c for c in communes if c]
+
+        qs = AGR.objects.filter(active=True)
+        if villages_clean:
+            qs = qs.filter(producteur__village__in=villages_clean)
+        if communes_clean:
+            qs = qs.filter(producteur__commune__in=communes_clean)
+
+        # ---- Total AGRs ----
+        total_agr = qs.count()
+
+        # ---- AGRs by type ----
         by_type = {}
-        type_counts = AGR.objects.filter(active=True).values('type_agr').annotate(
+        type_counts = qs.values('type_agr').annotate(
             count=Count('id')
         ).order_by('-count')
-        
+
         for item in type_counts:
             by_type[item['type_agr']] = item['count']
-        
-        # Total revenue
-        total_revenue = AGR.objects.filter(active=True).aggregate(
+
+        # ---- Total revenue (global) + par type ----
+        total_revenue = qs.aggregate(
             total=Sum('revenu_annuel_estime')
         )['total'] or 0
-        
-        # Average revenue by type
+
+        total_revenue_by_type = {}
+        rev_by_type = qs.values('type_agr').annotate(
+            total_revenu=Sum('revenu_annuel_estime')
+        )
+        for item in rev_by_type:
+            if item['total_revenu']:
+                total_revenue_by_type[item['type_agr']] = float(item['total_revenu'])
+
+        # ---- Average revenue by type ----
         average_revenue_by_type = {}
-        avg_by_type = AGR.objects.filter(active=True).values('type_agr').annotate(
+        avg_by_type = qs.values('type_agr').annotate(
             avg_revenue=Avg('revenu_annuel_estime')
         )
-        
+
         for item in avg_by_type:
             if item['avg_revenue']:
                 average_revenue_by_type[item['type_agr']] = float(item['avg_revenue'])
-        
-        # Producteurs with AGR
-        producteurs_with_agr = AGR.objects.filter(active=True).values('producteur').distinct().count()
-        
-        # Producteurs with multiple AGRs
-        producteurs_with_multiple = AGR.objects.filter(active=True).values('producteur').annotate(
+
+        # ---- Producteurs avec AGR ----
+        producteurs_with_agr = qs.values('producteur').distinct().count()
+
+        # ---- Producteurs avec multiple AGRs ----
+        producteurs_with_multiple = qs.values('producteur').annotate(
             agr_count=Count('id')
         ).filter(agr_count__gt=1).count()
         
@@ -1256,10 +1280,12 @@ class AGRViewSet(viewsets.ModelViewSet):
             'total_agr': total_agr,
             'by_type': by_type,
             'total_revenue': float(total_revenue),
+            'total_revenue_by_type': total_revenue_by_type,
             'average_revenue_by_type': average_revenue_by_type,
             'producteurs_with_agr': producteurs_with_agr,
             'producteurs_with_multiple_agr': producteurs_with_multiple,
-            'top_producteurs': top_producteurs
+            'top_producteurs': top_producteurs,
+            'filtres_appliques': bool(villages_clean or communes_clean),
         }
         
         # Log activity

@@ -313,6 +313,7 @@ export const dashboardService = {
   getProduction: (params = {}) => api.get('/dashboard/production/', { params }),
   getProductionParCulture: (params = {}) => api.get('/dashboard/production-par-culture/', { params }),
   getHygiene: (params = {}) => api.get('/dashboard/hygiene/', { params }),
+  getHygieneAbsents: (params = {}) => api.get('/dashboard/hygiene/absents/', { params }),
   getEnfants: (params = {}) => api.get('/dashboard/enfants/', { params }),
   getEnvironnement: (params = {}) => api.get('/dashboard/environnement/', { params }),
   createVillage: (data) => api.post('/dashboard/villages/', data),
@@ -561,7 +562,7 @@ export const agrService = {
   create: (data) => api.post('/agr/', data),
   update: (id, data) => api.put(`/agr/${id}/`, data),
   delete: (id) => api.delete(`/agr/${id}/`),
-  getStats: () => api.get('/agr/stats/'),
+  getStats: (params = {}) => api.get('/agr/stats/', { params }),
   getByProducteur: (producteurId) => api.get('/agr/', { params: { producteur: producteurId, active: true } })
 };
 

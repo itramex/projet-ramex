@@ -9,11 +9,11 @@
 
 | Statut | Nombre | Signification |
 |---|---|---|
-| ✅ Terminés | **11** | Déjà réalisé |
-| 🔶 En cours | **13** | Corrections / ajustements à faire |
+| ✅ Terminés | **14** | Déjà réalisé |
+| 🔶 En cours | **10** | Corrections / ajustements à faire |
 | ⛔ Bloqués | **0** | — |
 | 🔴 À faire | **12** | Restant à développer |
-| **Total** | **36** | Avancement **~31 %** |
+| **Total** | **36** | Avancement **~39 %** |
 
 **Répartition** : Coopérative 5 · Producteur 4 · Ménage 4 · Parcelle 2 · Certification & Formation 6 · Activités 5 · Scolarisation 1 · Dotation 1 · Admin 2 · Dashboard 6.
 
@@ -78,7 +78,7 @@
 
 | # | Demande | Statut | Commentaire d'origine (traduction) |
 |---|---|---|---|
-| 22 | **Dotation : préciser de quoi on a doté les producteurs** (kits scolaires ? poisson ? volailles ? etc.) | 🔶 En cours | *« il ne faut pas faire un calcul cumulé du nombre des dotations mais séparé selon la rubrique / Asiana bouton afahana mijery liste des bénéficiaires si possible »* → **Ne pas faire de total cumulé : séparer par rubrique. Ajouter un bouton pour voir la liste des bénéficiaires.** |
+| 22 | **Dotation : préciser de quoi on a doté les producteurs** (kits scolaires ? poisson ? volailles ? etc.) — ✅ fait | ✅ Terminés | *« il ne faut pas faire un calcul cumulé du nombre des dotations mais séparé selon la rubrique / Asiana bouton afahana mijery liste des bénéficiaires si possible »* → **Fait : la page Dotations sépare déjà les cumuls par rubrique (cumul_par_type du backend) + bouton « Bénéficiaires » par rubrique (modale listant les producteurs, quantités cumulées par bénéficiaire, années, respectant le filtre année).** |
 | 23 | **Mahavelona : année ? Possibilité de voir les archivages par an** (les critères changeront à chaque fois) | 🔶 En cours | — |
 | 24 | **Gestion AGR : filtre par producteur, village, année** | 🔶 En cours | *« possibilité de cumuler les données d'un prod/village sur plusieurs années ? »* → **Possibilité de cumuler les données d'un producteur / village sur plusieurs années ?** |
 | 25 | **Historique des activités** | 🔶 En cours | *« possibilité de cumuler les données d'un prod/village sur plusieurs années ? »* → **Idem : possibilité de cumul multi-années.** |
@@ -116,8 +116,8 @@
 | # | Demande | Statut | Commentaire d'origine (traduction) |
 |---|---|---|---|
 | 31 | **Les filtres à vérifier** — ✅ corrigé | ✅ Terminés | *« Tsy manaraka filtre ny résultat affiché »* → **Les onglets Hygiène / Enfants / Environnement ignoraient les filtres (le loadSocialData n'envoyait AUCUN paramètre, et les endpoints backend ne les écoutaient pas). Corrigé des deux côtés : les 3 endpoints appliquent désormais village / commune / fokontany.** |
-| 32 | **Statistiques AGR à revoir** | 🔶 En cours | *« Tsy cumulena ny total fa sarahana par type / Tsy cumulena ihany koa ny total revenu fa sarahana par type »* → **Le total n'est pas cumulé mais séparé par type / le total des revenus non plus : les séparer par type.** |
-| 33 | **Social : ajouter une option pour voir la liste des producteurs qui n'ont pas de WC / assurance santé** (par exemple) | 🔶 En cours | *« tokony asiana option voir liste ireo producteur tsy manana WC/assurance santé par exemple »* → **Il faut une option pour lister les producteurs sans WC / sans assurance santé.** |
+| 32 | **Statistiques AGR à revoir** — ✅ fait | ✅ Terminés | *« Tsy cumulena ny total fa sarahana par type / Tsy cumulena ihany koa ny total revenu fa sarahana par type »* → **Fait : l'endpoint /agr/stats/ renvoie désormais `total_revenue_by_type` (revenu total par type : aviculture 78,4 M Ar / pisciculture 94,0 M Ar) + graphique « Revenu Total par Type d'AGR » + les stats respectent les filtres village/commune du Dashboard (filtres_appliques exposé).** |
+| 33 | **Social : ajouter une option pour voir la liste des producteurs qui n'ont pas de WC / assurance santé** (par exemple) — ✅ fait | ✅ Terminés | *« tokony asiana option voir liste ireo producteur tsy manana WC/assurance santé par exemple »* → **Fait : bouton « Voir la liste » sous chaque indicateur d'hygiène + nouvel endpoint `/dashboard/hygiene/absents/?champ=` (liste blanche de champs sécurisée, filtres village/commune/fokontany). Testé : 20 producteurs sans WC maison.** |
 | 34 | **Enfants et scolarisation : à revoir** — ✅ corrigé | ✅ Terminés | *« Lasa 0 enfant scolarisé »* → **Le score sommait le champ agrégé `nb_enfants_scolarises` (laissé à 0) au lieu des enfants détaillés `continue_ecole_enfant_N`. Corrigé : calcul depuis les enfants 3-18 ans (même règle que le dashboard global), avec filtres village/commune/fokontany.** |
 | 35 | **Décisionnel : à discuter avec les concernés** | 🔴 À faire | — |
 | 36 | **Autre produit : seule l'estimation est dispo, le reste manque** — analyse de la résilience des producteurs (ex. : est-ce vendu ou consommé ? Si vendu, quel %) | 🔶 En cours | *« tokony affiché ilay % raha amidy, firy % raha ohanina / tsy cumulena ny total »* → **Afficher le % si vendu, le % si consommé / le total n'est pas cumulé.** |
@@ -138,8 +138,8 @@
 - **#30** Méthode de mise à jour des données (à discuter)
 - **#35** Dashboard décisionnel (à discuter)
 
-### 🔶 À affiner (En cours — 13)
-- Cumuls multi-années par producteur/village (**#8, #24, #25**), fiche récap producteur (**#9**), visuels d'impact (**#13, #23, #36**), ventes/consommations (**#36**), statistiques AGR par type (**#32**), liste des bénéficiaires et rubriques dotations (**#22**), liste des sans-WC / sans-assurance (**#33**), taux de scolarisation (**#11, #12**).
+### 🔶 À affiner (En cours — 10)
+- Cumuls multi-années par producteur/village (**#8, #24, #25**), fiche récap producteur (**#9**), visuels d'impact (**#13, #23, #36**), ventes/consommations (**#36**), filtre formation par prod (**#18**), taux de scolarisation (**#11, #12**).
 
 ---
 
@@ -149,3 +149,4 @@
 |---|---|---|
 | 10/09/2026 | Test checklist par la direction | ~22 % (8 Terminés / 16 En cours / 12 À faire) |
 | 11/09/2026 | **3 bogues corrigés** : #14 filtre Parcelle multi-cultures (matche `culture_principale` + JSON `cultures_pratiquees`), #31 filtres Dashboard appliqués aux onglets Hygiène/Enfants/Environnement (backend + frontend), #34 scolarisation recalculée depuis les enfants détaillés 3-18 ans | ~31 % (11 / 13 / 12) |
+| 11/09/2026 | **3 points « En cours » finalisés** : #22 dotations par rubrique + modale Bénéficiaires, #32 stats AGR par type (`total_revenue_by_type` + graphique + filtres village/commune), #33 liste des producteurs sans WC/assurance (`/dashboard/hygiene/absents/`) | ~39 % (14 / 10 / 12) |
