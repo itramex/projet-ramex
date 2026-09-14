@@ -53,6 +53,7 @@ class CertificationSerializer(serializers.ModelSerializer):
     est_valide = serializers.BooleanField(read_only=True)
     niveau_certification_display = serializers.CharField(source='type_certification.get_niveau_display', read_only=True)
     entite_label = serializers.CharField(read_only=True)
+    fichier_certificat_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Certification
@@ -62,7 +63,7 @@ class CertificationSerializer(serializers.ModelSerializer):
             'type_certification', 'type_certification_nom', 'type_certification_code',
             'numero_certificat', 'date_obtention', 'date_expiration',
             'statut', 'statut_display', 'est_valide', 'niveau_certification_display',
-            'entite_label',
+            'entite_label', 'fichier_certificat_url',
         )
         read_only_fields = ('date_enregistrement', 'enregistre_par', 'date_modification', 'modifie_par')
 
@@ -71,6 +72,16 @@ class CertificationSerializer(serializers.ModelSerializer):
 
     def get_producteur_code(self, obj):
         return obj.producteur.code if obj.producteur else None
+
+    def get_fichier_certificat_url(self, obj):
+        """URL absolue du certificat joint (pièce jointe #20)."""
+        if not obj.fichier_certificat:
+            return None
+        request = self.context.get('request')
+        url = obj.fichier_certificat.url
+        if request:
+            return request.build_absolute_uri(url)
+        return url
 
     def validate(self, attrs):
         """Au moins un producteur OU une coopérative doit être renseigné."""
@@ -118,10 +129,21 @@ class AuditCertificationSerializer(serializers.ModelSerializer):
     type_certification_code = serializers.CharField(source='type_certification.code', read_only=True)
     resultat_display = serializers.CharField(source='get_resultat_display', read_only=True)
     nb_nonconformites = serializers.IntegerField(read_only=True)
+    rapport_fichier_url = serializers.SerializerMethodField()
 
     class Meta:
         model = AuditCertification
         fields = '__all__'
+
+    def get_rapport_fichier_url(self, obj):
+        """URL du rapport d'audit joint (pièce jointe #20)."""
+        if not obj.rapport_fichier:
+            return None
+        request = self.context.get('request')
+        url = obj.rapport_fichier.url
+        if request:
+            return request.build_absolute_uri(url)
+        return url
 
 
 class NonConformiteSerializer(serializers.ModelSerializer):
@@ -130,10 +152,21 @@ class NonConformiteSerializer(serializers.ModelSerializer):
     producteur_nom = serializers.CharField(source='producteur.nom_complet', read_only=True)
     type_display = serializers.CharField(source='get_type_display', read_only=True)
     statut_display = serializers.CharField(source='get_statut_display', read_only=True)
+    fichier_preuve_url = serializers.SerializerMethodField()
 
     class Meta:
         model = NonConformite
         fields = '__all__'
+
+    def get_fichier_preuve_url(self, obj):
+        """URL de la preuve jointe à la non-conformité (#20)."""
+        if not obj.fichier_preuve:
+            return None
+        request = self.context.get('request')
+        url = obj.fichier_preuve.url
+        if request:
+            return request.build_absolute_uri(url)
+        return url
 
 
 class ActiviteCertificationSerializer(serializers.ModelSerializer):

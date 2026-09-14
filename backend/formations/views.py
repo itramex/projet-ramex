@@ -367,7 +367,12 @@ class CertificationViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def historique(self, request):
-        """Historique des certifications par année avec liste des producteurs"""
+        """Historique des certifications par année avec liste des producteurs (#20).
+
+        Renvoie en plus des séries :
+        - `par_annee` : certifications détaillées (avec pièce jointe), audits et
+          non-conformités (avec preuves) groupés par année.
+        """
         qs = self.filter_queryset(self.get_queryset())
         type_id = request.query_params.get('type_certification')
         start = request.query_params.get('start')
@@ -380,6 +385,7 @@ class CertificationViewSet(viewsets.ModelViewSet):
         if end and end.isdigit():
             qs = qs.filter(date_obtention__year__lte=int(end))
 
+        qs = qs.select_related('producteur', 'cooperative', 'type_certification')
         qs_annee = qs.annotate(annee=ExtractYear('date_obtention'))
         series = list(
             qs_annee.values('annee').annotate(count=Count('id')).order_by('annee')
@@ -396,10 +402,98 @@ class CertificationViewSet(viewsets.ModelViewSet):
                 'code': r['producteur__code'],
             })
 
+        # ---- Detail par annee (pieces jointes + audits + non-conformites) ----
+        par_annee = {}
+        for cert in qs_annee:
+            y = cert.annee
+            bucket = par_annee.setdefault(y, {
+                'certifications': [], 'audits': [], 'nonconformites': [],
+                'producteurs': [], 'cooperatives': [],
+            })
+            bucket['certifications'].append({
+                'id': cert.id,
+                'entite_label': cert.entite_label,
+                'producteur_code': cert.producteur.code if cert.producteur else None,
+                'producteur_nom': cert.producteur.nom_complet if cert.producteur else None,
+                'cooperative_nom': cert.cooperative.nom if cert.cooperative else None,
+                'type_certification_nom': cert.type_certification.nom if cert.type_certification else None,
+                'type_certification_code': cert.type_certification.code if cert.type_certification else None,
+                'numero_certificat': cert.numero_certificat,
+                'date_obtention': cert.date_obtention,
+                'date_expiration': cert.date_expiration,
+                'statut': cert.statut,
+                'est_valide': cert.est_valide,
+                'fichier_certificat_url': self._abs_url(request, cert.fichier_certificat),
+            })
+            if cert.producteur_id:
+                bucket['producteurs'].append(cert.producteur_id)
+            if cert.cooperative_id:
+                bucket['cooperatives'].append(cert.cooperative.nom)
+
+        # Audits + non-conformites, regroupes par annee de date_audit
+        audits_qs = AuditCertification.objects.select_related('type_certification').prefetch_related('nonconformites')
+        if type_id:
+            audits_qs = audits_qs.filter(type_certification_id=type_id)
+        if start and start.isdigit():
+            audits_qs = audits_qs.filter(date_audit__year__gte=int(start))
+        if end and end.isdigit():
+            audits_qs = audits_qs.filter(date_audit__year__lte=int(end))
+        for audit in audits_qs:
+            year = audit.date_audit.year if audit.date_audit else None
+            if year is None:
+                continue
+            bucket = par_annee.setdefault(year, {
+                'certifications': [], 'audits': [], 'nonconformites': [],
+                'producteurs': [], 'cooperatives': [],
+            })
+            ncs = list(audit.nonconformites.all())
+            bucket['audits'].append({
+                'id': audit.id,
+                'date_audit': audit.date_audit,
+                'organisme': audit.organisme,
+                'resultat': audit.resultat,
+                'resultat_display': audit.get_resultat_display(),
+                'nb_nonconformites': len(ncs),
+                'rapport_fichier_url': self._abs_url(request, audit.rapport_fichier),
+            })
+            for nc in ncs:
+                bucket['nonconformites'].append({
+                    'id': nc.id,
+                    'audit_id': nc.audit_id,
+                    'producteur_code': nc.producteur.code if nc.producteur else None,
+                    'producteur_nom': nc.producteur.nom_complet if nc.producteur else None,
+                    'type': nc.type,
+                    'type_display': nc.get_type_display(),
+                    'description': nc.description,
+                    'action_corrective': nc.action_corrective,
+                    'statut': nc.statut,
+                    'statut_display': nc.get_statut_display(),
+                    'date_limite': nc.date_limite,
+                    'date_resolution': nc.date_resolution,
+                    'fichier_preuve_url': self._abs_url(request, nc.fichier_preuve),
+                })
+
+        # Tri des annees decroissant + deduplication producteurs
+        for y, bucket in par_annee.items():
+            bucket['producteurs'] = sorted(set(bucket['producteurs']))
+        par_annee = dict(sorted(par_annee.items(), reverse=True))
+
         return Response({
             'series': series,
             'producteurs_par_annee': producteurs_par_annee,
+            'par_annee': par_annee,
+            'total': qs.count(),
         })
+
+    @staticmethod
+    def _abs_url(request, field):
+        """URL absolue d'une piece jointe (ou None)."""
+        if not field:
+            return None
+        url = field.url
+        if request:
+            return request.build_absolute_uri(url)
+        return url
 
     @action(detail=False, methods=['get'], url_path='comparatif')
     def comparatif(self, request):

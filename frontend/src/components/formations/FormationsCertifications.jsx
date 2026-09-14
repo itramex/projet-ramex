@@ -1391,6 +1391,145 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
         )}
       </div>
 
+      {/* Detail historique par annee (#20) : certifications + piece jointe, audits, non-conformites */}
+      {historyData?.par_annee && Object.keys(historyData.par_annee).length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+          <h3 className="text-lg font-bold text-dark mb-4 flex items-center gap-2">
+            <Icon name="CalendarIcon" size="md" className="text-gray-600" />
+            Detail par annee
+          </h3>
+          {Object.entries(historyData.par_annee).map(([annee, bucket]) => (
+            <div key={annee} className="mb-6 border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <Badge variant="info" size="md">{annee}</Badge>
+                <span className="text-sm text-gray-600">
+                  {bucket.certifications.length} certification(s) · {bucket.audits.length} audit(s) · {bucket.nonconformites.length} non-conformite(s)
+                </span>
+              </div>
+
+              {bucket.certifications.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Certifications</p>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Entite</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">N°</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Obtention</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Piece jointe</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {bucket.certifications.map(cert => (
+                          <tr key={cert.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-gray-800">{cert.entite_label}</td>
+                            <td className="px-3 py-2 text-gray-600">{cert.type_certification_nom}</td>
+                            <td className="px-3 py-2 text-gray-600 font-mono">{cert.numero_certificat || '-'}</td>
+                            <td className="px-3 py-2 text-gray-600">{cert.date_obtention}</td>
+                            <td className="px-3 py-2">{getStatutBadge(cert.statut)}</td>
+                            <td className="px-3 py-2">
+                              {cert.fichier_certificat_url ? (
+                                <a href={cert.fichier_certificat_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
+                                  <Icon name="ArrowDownTrayIcon" size="sm" />
+                                  Certificat
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+{bucket.audits.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Audits</p>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Organisme</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Resultat</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">NC</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rapport</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {bucket.audits.map(audit => (
+                          <tr key={audit.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-gray-800">{audit.date_audit}</td>
+                            <td className="px-3 py-2 text-gray-600">{audit.organisme || '-'}</td>
+                            <td className="px-3 py-2 text-gray-600">{audit.resultat_display}</td>
+                            <td className="px-3 py-2 text-gray-600">{audit.nb_nonconformites}</td>
+                            <td className="px-3 py-2">
+                              {audit.rapport_fichier_url ? (
+                                <a href={audit.rapport_fichier_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
+                                  <Icon name="DocumentTextIcon" size="sm" />
+                                  Rapport
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+{bucket.nonconformites.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Non-conformites</p>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Audit</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Producteur</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Preuve</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {bucket.nonconformites.map(nc => (
+                          <tr key={nc.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-gray-600">#{nc.audit_id}</td>
+                            <td className="px-3 py-2 text-gray-800">{nc.producteur_nom || '-'}</td>
+                            <td className="px-3 py-2 text-gray-600">{nc.type_display}</td>
+                            <td className="px-3 py-2 text-gray-600 max-w-xs truncate">{nc.description}</td>
+                            <td className="px-3 py-2 text-gray-600">{nc.statut_display}</td>
+                            <td className="px-3 py-2">
+                              {nc.fichier_preuve_url ? (
+                                <a href={nc.fichier_preuve_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
+                                  <Icon name="PaperClipIcon" size="sm" />
+                                  Preuve
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Audits & Non-conformitÃ©s */}
       <div className="bg-white rounded-lg shadow-md p-6 mt-6">
         <div className="flex items-center justify-between mb-4">
