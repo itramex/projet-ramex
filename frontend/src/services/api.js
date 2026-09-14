@@ -588,6 +588,7 @@ export const historyService = {
     api.get('/history/agr-history/by_producteur/', { params: { producteur_id: producteurId, ...params } }),
   getAGRTrends: (params = {}) => api.get('/history/agr-history/trends/', { params }),
   getAGRTotalByYear: (params = {}) => api.get('/history/agr-history/total_by_year/', { params }),
+  getAGRStats: (params = {}) => api.get('/history/agr-history/stats/', { params }),
 
   // Social Indicator History
   getSocialIndicatorHistory: (params = {}) => api.get('/history/social-indicator-history/', { params }),

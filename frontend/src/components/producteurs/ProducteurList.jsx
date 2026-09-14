@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useDeferredValue, useCallback } from 'react';
-import { producteurService, dashboardService } from '../../services/api';
+import { producteurService, dashboardService, geographieService } from '../../services/api';
+import { isAdmin } from '../../utils/permissions';
 import { Pagination } from '../../components/common/Pagination';
 import ProducteurForm from './ProducteurForm';
 import ProducteurDetails from './ProducteurDetails';
@@ -26,6 +27,7 @@ function ProducteurList() {
     commune: [],
     ageMin: '',
     ageMax: '',
+    agence: [],
   });
   const [showInactifs, setShowInactifs] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -39,10 +41,23 @@ function ProducteurList() {
   // Options pour les dropdowns de filtre (chargées depuis le dashboard)
   const [villageOptions, setVillageOptions] = useState([]);
   const [communeOptions, setCommuneOptions] = useState([]);
+  const [agenceOptions, setAgenceOptions] = useState([]);
 
   useEffect(() => {
     loadVillagesCommunes();
+    // Filtre par agence : réservé à l'admin (confidentialité)
+    if (isAdmin()) loadAgences();
   }, []);
+
+  const loadAgences = async () => {
+    try {
+      const response = await geographieService.getAgences();
+      const agences = (response.data.results || response.data) || [];
+      setAgenceOptions(agences.map(a => ({ value: String(a.id), label: a.nom })));
+    } catch (e) {
+      console.error('Erreur chargement agences:', e);
+    }
+  };
 
   const loadVillagesCommunes = async () => {
     try {
@@ -69,6 +84,7 @@ function ProducteurList() {
       if (filters.sexe && filters.sexe.length > 0) params.sexe = filters.sexe.join(',');
       if (filters.village && filters.village.length > 0) params.village = filters.village.join(',');
       if (filters.commune && filters.commune.length > 0) params.commune = filters.commune.join(',');
+      if (filters.agence && filters.agence.length > 0) params.agence = filters.agence.join(',');
       if (filters.ageMin) params.age_min = filters.ageMin;
       if (filters.ageMax) params.age_max = filters.ageMax;
 
@@ -364,7 +380,7 @@ function ProducteurList() {
   // Fonction pour réinitialiser les filtres
   const resetFilters = () => {
     setSearchTerm('');
-    setFilters({ sexe: [], village: [], commune: [], ageMin: '', ageMax: '' });
+    setFilters({ sexe: [], village: [], commune: [], agence: [], ageMin: '', ageMax: '' });
   };
 
   // Compter les filtres actifs
@@ -373,6 +389,7 @@ function ProducteurList() {
     filters.sexe && filters.sexe.length > 0,
     filters.village && filters.village.length > 0,
     filters.commune && filters.commune.length > 0,
+    filters.agence && filters.agence.length > 0,
     filters.ageMin,
     filters.ageMax
   ].filter(Boolean).length;
@@ -1150,6 +1167,18 @@ function ProducteurList() {
                       valueKey="value"
                       multiple={true}
                     />
+
+                    {isAdmin() && (
+                      <SearchableSelect
+                        options={agenceOptions}
+                        value={filters.agence}
+                        onChange={(value) => setFilters({ ...filters, agence: value })}
+                        placeholder="Toutes les agences (#7)"
+                        displayKey="label"
+                        valueKey="value"
+                        multiple={true}
+                      />
+                    )}
 
                     <label className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-gray-300 rounded">
                       <input

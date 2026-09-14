@@ -352,9 +352,61 @@ class AGRHistoryViewSet(viewsets.ModelViewSet):
     serializer_class = AGRHistorySerializer
     permission_classes = [IsAdminOrManagerOrReadOnly]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['annee', 'producteur', 'type_agr', 'ordre']
+    # Note: 'annee'/'producteur'/'type_agr' gérés en multi-valeurs (virgules) dans get_queryset (#25)
+    filterset_fields = ['ordre']
     ordering_fields = ['annee', 'revenu_annuel', 'date_enregistrement']
     ordering = ['-annee']
+
+    def get_queryset(self):
+        """Filtres étendus (#24/#25) : multi-valeurs (virgules) + village/commune."""
+        queryset = super().get_queryset()
+        params = self.request.query_params
+
+        def _parse_int_list(raw):
+            ids = []
+            for part in str(raw or '').split(','):
+                part = part.strip()
+                if part.isdigit():
+                    ids.append(int(part))
+            return ids
+
+        # Multi-valeurs : annee=2023,2024 / producteur=1,2 / type_agr=a,b (#25)
+        annees_raw = params.get('annee')
+        if annees_raw:
+            if ',' in annees_raw:
+                ids = _parse_int_list(annees_raw)
+                if ids:
+                    queryset = queryset.filter(annee__in=ids)
+            elif str(annees_raw).strip().isdigit():
+                queryset = queryset.filter(annee=int(str(annees_raw).strip()))
+
+        prod_raw = params.get('producteur')
+        if prod_raw:
+            if ',' in prod_raw:
+                ids = _parse_int_list(prod_raw)
+                if ids:
+                    queryset = queryset.filter(producteur_id__in=ids)
+            elif str(prod_raw).strip().isdigit():
+                queryset = queryset.filter(producteur_id=int(str(prod_raw).strip()))
+
+        type_raw = params.get('type_agr')
+        if type_raw:
+            if ',' in type_raw:
+                parts = [p.strip() for p in type_raw.split(',') if p.strip()]
+                if parts:
+                    queryset = queryset.filter(type_agr__in=parts)
+            else:
+                queryset = queryset.filter(type_agr=type_raw.strip())
+
+        # Filtres géographiques via le producteur (#24)
+        village = params.get('village')
+        if village:
+            queryset = queryset.filter(producteur__village__icontains=village.strip())
+        commune = params.get('commune')
+        if commune:
+            queryset = queryset.filter(producteur__commune__icontains=commune.strip())
+
+        return queryset
     
     @action(detail=False, methods=['get'])
     def by_producteur(self, request):
@@ -484,6 +536,31 @@ class AGRHistoryViewSet(viewsets.ModelViewSet):
         ).order_by('annee')
         
         return Response(list(totaux))
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Agregats AGR multi-annees + filtres geo (#25) : cumul fiable cote serveur."""
+        queryset = self.get_queryset()
+        totals_by_year = list(
+            queryset.values('annee').annotate(
+                total_revenu=Sum('revenu_annuel'),
+                nombre_activites=Count('id'),
+                nb_producteurs=Count('producteur', distinct=True),
+            ).order_by('annee')
+        )
+        overall = queryset.aggregate(
+            total_revenu=Sum('revenu_annuel'),
+            nombre_activites=Count('id'),
+            nb_producteurs=Count('producteur', distinct=True),
+        )
+        return Response({
+            'totals_by_year': totals_by_year,
+            'global_total': {
+                'total_revenu': float(overall.get('total_revenu') or 0),
+                'nombre_activites': overall.get('nombre_activites') or 0,
+                'nb_producteurs': overall.get('nb_producteurs') or 0,
+            },
+        })
 
 
 

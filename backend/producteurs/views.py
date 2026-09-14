@@ -283,7 +283,15 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, viewsets.ModelViewSet):
         mahavelona = self.request.query_params.get('mahavelona', None)
         if mahavelona is not None:
             queryset = queryset.filter(mahavelona=mahavelona.lower() == 'true')
-            
+
+        # Filtre par agence RAMEX (via la coopérative du producteur)
+        # Supporte plusieurs agences séparées par des virgules (IDs)
+        agence = self.request.query_params.get('agence', None)
+        if agence is not None:
+            agences = [a.strip() for a in str(agence).split(',') if a.strip()]
+            if agences:
+                queryset = queryset.filter(cooperative__agence_id__in=agences)
+
         # Filtre par dotation (nouveau modèle Dotation)
         has_dotation = self.request.query_params.get('has_dotation', None)
         if has_dotation is not None and has_dotation.lower() == 'true':
@@ -1141,9 +1149,16 @@ class AGRViewSet(viewsets.ModelViewSet):
     ordering = ['producteur', 'ordre']
     
     def get_queryset(self):
-        """Filter AGRs with optimized queries"""
+        """Filter AGRs with optimized queries + village/commune (#24)."""
         queryset = super().get_queryset()
         queryset = queryset.select_related('producteur', 'enregistre_par')
+        params = self.request.query_params
+        village = params.get('village')
+        if village:
+            queryset = queryset.filter(producteur__village__icontains=village.strip())
+        commune = params.get('commune')
+        if commune:
+            queryset = queryset.filter(producteur__commune__icontains=commune.strip())
         return queryset
     
     def perform_create(self, serializer):

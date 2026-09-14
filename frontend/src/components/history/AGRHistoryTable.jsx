@@ -23,6 +23,9 @@ function AGRHistoryTable() {
   const [showForm, setShowForm] = useState(false);
   const [selectedAGR, setSelectedAGR] = useState(null);
   const [yearTotals, setYearTotals] = useState({});
+  const [cumul, setCumul] = useState(null);
+  const [village, setVillage] = useState('');
+  const [communeFilter, setCommuneFilter] = useState('');
 
   // Refs pour la synchronisation des barres de défilement
   const topScrollRef = useRef(null);
@@ -92,21 +95,30 @@ function AGRHistoryTable() {
       if (filters.annee && filters.annee.length > 0) params.annee = filters.annee.join(',');
       if (filters.producteur && filters.producteur.length > 0) params.producteur = filters.producteur.join(',');
       if (filters.type_agr && filters.type_agr.length > 0) params.type_agr = filters.type_agr.join(',');
+      if (village.trim()) params.village = village.trim();
+      if (communeFilter.trim()) params.commune = communeFilter.trim();
 
       const response = await historyService.getAGRHistory(params);
+      // Cumul multi-années fiable côté serveur (#25) — n'échoue pas le tableau si indisponible
+      let statsResp = null;
+      try {
+        statsResp = await historyService.getAGRStats(params);
+      } catch (statsError) {
+        console.warn('Stats AGR cumul indisponibles:', statsError?.response?.status);
+      }
       const data = response.data.results || response.data;
       setAgrHistory(data);
       setTotalPages(Math.ceil((response.data.count || data.length) / 50));
       
-      // Calculer les totaux par année
-      calculateYearTotals(data);
+      // Calculer les totaux par année (+ cumul serveur #25)
+      calculateYearTotals(data, statsResp);
     } catch (error) {
       console.error('Erreur chargement AGR:', error);
     }
     setLoading(false);
   };
 
-  const calculateYearTotals = (data) => {
+  const calculateYearTotals = (data, statsResp = null) => {
     const totals = {};
     data.forEach(agr => {
       if (!totals[agr.annee]) {
@@ -119,6 +131,18 @@ function AGRHistoryTable() {
       totals[agr.annee].count += 1;
     });
     setYearTotals(totals);
+
+    // Cumul global serveur (#25) si disponible, sinon repli local page courante
+    if (statsResp?.data?.global_total) {
+      setCumul(statsResp.data.global_total);
+    } else {
+      const local = Object.values(totals).reduce((acc, t) => ({
+        total_revenu: acc.total_revenu + (t.revenu_total || 0),
+        total_menages: acc.total_menages,
+        nombre_activites: acc.nombre_activites + (t.count || 0),
+      }), { total_revenu: 0, total_menages: 0, nombre_activites: 0 });
+      setCumul(local);
+    }
   };
 
   const loadProducteurs = async () => {
@@ -267,6 +291,26 @@ function AGRHistoryTable() {
             multiple={true}
           />
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Village (#24)</label>
+            <input
+              type="text"
+              value={village}
+              onChange={(e) => { setVillage(e.target.value); setPage(1); }}
+              placeholder="Ex : Andampy"
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Commune (#24)</label>
+            <input
+              type="text"
+              value={communeFilter}
+              onChange={(e) => { setCommuneFilter(e.target.value); setPage(1); }}
+              placeholder="Ex : Sambava"
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            />
+          </div>
           <SearchableSelect
             options={typeAGROptions}
             value={filters.type_agr}
@@ -277,6 +321,16 @@ function AGRHistoryTable() {
             multiple={true}
           />
         </div>
+
+        {cumul && (
+          <div className="mb-4 text-sm text-gray-700 bg-primary-yellow bg-opacity-15 border border-primary-yellow rounded-md px-3 py-2 inline-block">
+            <span className="font-semibold">Cumul selection (#25)</span>
+            {' - '}
+            {Number(cumul.total_revenu || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 })} Ar
+            {' - '}
+            {cumul.nombre_activites || 0} AGR
+          </div>
+        )}
 
         {activeFiltersCount > 0 && (
           <div className="mt-4 flex items-center justify-between">
