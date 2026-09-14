@@ -136,6 +136,18 @@ export default function ProducteurDetail() {
 
           <View style={styles.actionsCard}>
             <Pressable
+              style={({ pressed }) => [styles.menageButton, pressed && styles.menagePressed]}
+              onPress={() => router.push({ pathname: '/producteur/dotations', params: { id: String(producteur.id) } })}
+            >
+              <Text style={styles.menageText}>Dotations</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.menageButton, pressed && styles.menagePressed]}
+              onPress={() => router.push({ pathname: '/producteur/menage', params: { id: String(producteur.id) } })}
+            >
+              <Text style={styles.menageText}>Ménage</Text>
+            </Pressable>
+            <Pressable
               style={({ pressed }) => [styles.editButton, pressed && styles.editPressed]}
               onPress={goEdit}
             >
@@ -218,6 +230,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.lg,
   },
+  menageButton: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  menagePressed: { backgroundColor: colors.primaryDim },
+  menageText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
   editButton: {
     flex: 1,
     backgroundColor: colors.primary,

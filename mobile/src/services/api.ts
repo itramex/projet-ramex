@@ -4,7 +4,7 @@
  */
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { tokenStore } from './tokenStore';
-import { Paginated, Producteur, ProducteurPayload } from '../types/api';
+import { Dotation, DotationPayload, DotationsResponse, Paginated, Producteur, ProducteurPayload } from '../types/api';
 
 /**
  * URL de l'API. Sur un appareil physique, localhost ne pointe pas vers le PC :
@@ -74,7 +74,19 @@ export const producteurService = {
   create: (data: ProducteurPayload) => api.post<Producteur>('/producteurs/', data),
   update: (id: number | string, data: ProducteurPayload) =>
     api.put<Producteur>(`/producteurs/${id}/`, data),
+  /** PATCH partiel : utilisé pour l'écran Ménage (composition du foyer) */
+  patch: (id: number | string, data: Partial<ProducteurPayload>) =>
+    api.patch<Producteur>(`/producteurs/${id}/`, data),
   delete: (id: number | string) => api.delete(`/producteurs/${id}/`),
+};
+
+/** Dotations : saisie terrain par producteur (kit scolaire, poisson, volaille…) */
+export const dotationService = {
+  /** Liste des dotations d'un producteur + cumuls (cumul_par_type, cumul_total) */
+  listByProducteur: (producteurId: number | string) =>
+    api.get<DotationsResponse>('/dotations/', { params: { producteur: producteurId } }),
+  create: (data: DotationPayload) => api.post<Dotation>('/dotations/', data),
+  remove: (id: number | string) => api.delete(`/dotations/${id}/`),
 };
 
 export default api;

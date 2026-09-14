@@ -78,6 +78,59 @@ export interface Parcelle {
   longitude?: number | null;
 }
 
+/** Champs « ménage » du Producteur (composition du foyer + scolarisation).
+ * Mêmes noms que le backend (ProducteurCreateUpdateSerializer) pour un PATCH partiel. */
+export interface MenagePayload {
+  nb_adultes_plus_18?: number;
+  nb_hommes_adultes?: number;
+  nb_femmes_adultes?: number;
+  nb_enfants_garcons?: number;
+  nb_enfants_filles?: number;
+  nb_autres_garcons?: number;
+  nb_autres_filles?: number;
+  nb_enfants_scolarises?: number;
+  nb_enfants_non_scolarises?: number;
+  personne_handicap_foyer?: boolean;
+}
+
+/** Types de dotation (backend : Dotation.TYPE_DOTATION_CHOICES) */
+export const DOTATION_TYPES = [
+  { value: 'kit_scolaire', label: 'Kit scolaire' },
+  { value: 'poisson', label: 'Poisson' },
+  { value: 'volaille', label: 'Volaille' },
+  { value: 'autre', label: 'Autre' },
+] as const;
+
+export type DotationType = (typeof DOTATION_TYPES)[number]['value'];
+
+/** Dotation reçue par un producteur (historisée par année) */
+export interface Dotation {
+  id: number;
+  producteur: number;
+  producteur_code?: string;
+  producteur_nom?: string;
+  type_dotation: DotationType;
+  annee: number;
+  quantite: number;
+  details?: string;
+  date_enregistrement?: string;
+}
+
+/** Payload de création d'une dotation */
+export interface DotationPayload {
+  producteur: number;
+  type_dotation: DotationType;
+  annee: number;
+  quantite: number;
+  details?: string;
+}
+
+/** Réponse de GET /dotations/ : liste + agrégats cumulés ajoutés par le viewset */
+export interface DotationsResponse extends Paginated<Dotation> {
+  cumul_par_type?: Record<string, number>;
+  cumul_total?: number;
+}
+
 /** Réponse paginée standard de Django REST Framework */
 export interface Paginated<T> {
   count: number;
