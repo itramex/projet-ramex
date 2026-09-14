@@ -7,6 +7,7 @@ import { iconMap } from '../../styles/icons';
 function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const [tracabiliteOpen, setTracabiliteOpen] = useState(false);
   const [formationsOpen, setFormationsOpen] = useState(false);
+  const [activiteOpen, setActiviteOpen] = useState(false);
   const location = useLocation();
 
   const menuItems = [
@@ -67,12 +68,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       iconKey: 'activite',
       path: '/activite',
       description: 'Activité des producteurs',
-    },
-    {
-      title: 'Dotations',
-      iconKey: 'dotations',
-      path: '/dotations',
-      description: 'Kits scolaires, poissons, volailles',
+      hasSubmenu: true,
     },
     {
       title: 'Recommandations',
@@ -129,6 +125,19 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       title: 'Spécifications',
       iconKey: 'information',
       path: '/formations/specifications',
+    },
+  ];
+
+  const activiteItems = [
+    {
+      title: 'Activité des producteurs',
+      iconKey: 'activite',
+      path: '/activite',
+    },
+    {
+      title: 'Dotations',
+      iconKey: 'dotations',
+      path: '/dotations',
     },
   ];
 
@@ -202,6 +211,8 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
   const isActive = (path) => location.pathname === path;
   const isTracabiliteActive = () => location.pathname.startsWith('/tracabilite');
+  const isActiviteActive = () =>
+    location.pathname.startsWith('/activite') || location.pathname.startsWith('/dotations');
 
   // Ouvrir automatiquement les sous-menus si on est sur une page correspondante
   useEffect(() => {
@@ -210,6 +221,9 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
     }
     if (location.pathname.startsWith('/formations')) {
       setFormationsOpen(true);
+    }
+    if (location.pathname.startsWith('/dotations') || location.pathname === '/activite') {
+      setActiviteOpen(true);
     }
   }, [location.pathname]);
 
@@ -336,6 +350,63 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
             }
 
             // Élément normal sans sous-menu
+            if (item.hasSubmenu && item.title === 'Activité') {
+              return (
+                <div key={item.path || `menu-${index}`}>
+                  <button
+                    onClick={() => setActiviteOpen(!activiteOpen)}
+                    className={`w-full flex items-center gap-4 px-4 py-3 mx-2 rounded-lg transition-all ${
+                      isActiviteActive()
+                        ? 'bg-chick-yellow text-gray-900 font-semibold shadow-md'
+                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                    }`}
+                  >
+                    <Icon
+                      name={iconMap[item.iconKey]}
+                      size="lg"
+                      className="flex-shrink-0"
+                    />
+                    {sidebarOpen && (
+                      <>
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="font-medium truncate">{item.title}</p>
+                          <p className="text-xs opacity-75 truncate">{item.description}</p>
+                        </div>
+                        <Icon
+                          name="ChevronRightIcon"
+                          size="md"
+                          className={`transition-transform ${activiteOpen ? 'rotate-90' : ''}`}
+                        />
+                      </>
+                    )}
+                  </button>
+
+                  {/* Sous-menu Activité */}
+                  {sidebarOpen && activiteOpen && (
+                    <div className="ml-4 mt-2 space-y-1 border-l-2 border-chick-yellow pl-4">
+                      {activiteItems.map((subItem, subIndex) => (
+                        <Link
+                          key={subIndex}
+                          to={subItem.path}
+                          className={`flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors ${
+                            isActive(subItem.path)
+                              ? 'bg-chick-yellow/20 text-chick-yellow font-medium'
+                              : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                          }`}
+                        >
+                          <Icon
+                            name={iconMap[subItem.iconKey]}
+                            size="sm"
+                          />
+                          <span>{subItem.title}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.path || `menu-${index}`}
