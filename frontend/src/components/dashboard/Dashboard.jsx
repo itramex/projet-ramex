@@ -239,7 +239,10 @@ function Dashboard() {
     });
   }, []);
 
-  if (loading) {
+  // Ne bloquer l'affichage que lors du tout premier chargement : sinon chaque
+  // changement de filtre démonterait la page (dont les listes déroulantes de
+  // filtres) et provoquerait un flash « Chargement du dashboard... ».
+  if (loading && !data) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">

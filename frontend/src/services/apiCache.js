@@ -7,10 +7,62 @@ const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 
 const cache = new Map();
 
+/**
+ * Sérialise les paramètres d'une requête en une chaîne stable et comparable.
+ *
+ * ⚠️ Ne pas se contenter de JSON.stringify(config.params) : plusieurs pages
+ * (Dashboard, Ménage, Historique des adhésions…) construisent leurs filtres
+ * avec `new URLSearchParams()`. Or JSON.stringify sur un URLSearchParams
+ * renvoie '{}' (les paires sont stockées en interne, en dehors des propriétés
+ * énumérables). Toutes les requêtes partageaient alors la même clé de cache et
+ * la première réponse (non filtrée) était resservie pendant 5 min : les
+ * filtres semblaient ne pas fonctionner.
+ */
+function serializeParams(params) {
+  if (!params) return '';
+
+  // Déjà une chaîne de requête
+  if (typeof params === 'string') return params;
+
+  // URLSearchParams : on utilise la vraie sérialisation des paires
+  if (typeof URLSearchParams !== 'undefined' && params instanceof URLSearchParams) {
+    return [...params.entries()]
+      .map(([key, value]) => `${key}=${value}`)
+      .sort()
+      .join('&');
+  }
+
+  if (Array.isArray(params)) {
+    return params.map(serializeParams).filter(Boolean).join('&');
+  }
+
+  // Objet simple : clés triées (ordre d'insertion stable) et tableaux répétés
+  // comme le fait axios avec `paramsSerializer.indexes: null`.
+  if (typeof params === 'object') {
+    return Object.keys(params)
+      .sort()
+      .map((key) => {
+        const value = params[key];
+        if (value === undefined || value === null || value === '') return '';
+        if (Array.isArray(value)) {
+          return value
+            .filter((item) => item !== undefined && item !== null)
+            .map((item) => `${key}=${item}`)
+            .join('&');
+        }
+        return `${key}=${value}`;
+      })
+      .filter(Boolean)
+      .join('&');
+  }
+
+  return String(params);
+}
+
 function buildKey(config) {
   const url = config.baseURL ? config.baseURL + config.url : config.url;
-  const params = config.params ? JSON.stringify(config.params) : '';
-  return `${config.method || 'get'}:${url}:${params}`;
+  const method = (config.method || 'get').toLowerCase();
+  return `${method}:${url}:${serializeParams(config.params)}`;
 }
 
 /**

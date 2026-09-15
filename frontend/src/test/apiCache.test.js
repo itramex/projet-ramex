@@ -119,6 +119,66 @@ describe('apiCache', () => {
     expect(sameParams.data).toEqual({ results: ['andapa'] });
   });
 
+  it('distingue les filtres passés en URLSearchParams (régression Dashboard)', async () => {
+    // Le Dashboard / Ménage construisent leurs filtres avec new URLSearchParams().
+    // JSON.stringify renvoyant '{}' pour un URLSearchParams, toutes les requêtes
+    // partageaient la même clé de cache → les filtres semblaient inopérants.
+    const withCommune = new URLSearchParams();
+    withCommune.append('commune', 'Andapa');
+
+    const first = await simulateGet(interceptors, '/dashboard/', withCommune);
+    expect(first.__miss).toBe(true);
+    await simulateNetworkResponse(interceptors, first.config, { total_filtres: 10 });
+
+    const otherCommune = new URLSearchParams();
+    otherCommune.append('commune', 'Sambava');
+
+    const other = await simulateGet(interceptors, '/dashboard/', otherCommune);
+    expect(other.__miss).toBe(true);
+
+    // Mêmes filtres → on retrouve bien la réponse mise en cache
+    const same = await simulateGet(interceptors, '/dashboard/', withCommune);
+    expect(same.data).toEqual({ total_filtres: 10 });
+  });
+
+  it('ignore l’ordre des paramètres URLSearchParams dans la clé', async () => {
+    const ordered = new URLSearchParams();
+    ordered.append('commune', 'Andapa');
+    ordered.append('village', 'Ambodivoara');
+
+    const first = await simulateGet(interceptors, '/dashboard/', ordered);
+    await simulateNetworkResponse(interceptors, first.config, { total_filtres: 3 });
+
+    const reordered = new URLSearchParams();
+    reordered.append('village', 'Ambodivoara');
+    reordered.append('commune', 'Andapa');
+
+    const same = await simulateGet(interceptors, '/dashboard/', reordered);
+    expect(same.data).toEqual({ total_filtres: 3 });
+  });
+
+  it('normalise les paramètres équivalents (objet vs URLSearchParams)', async () => {
+    const viaObject = await simulateGet(interceptors, '/dashboard/', { commune: 'Andapa' });
+    await simulateNetworkResponse(interceptors, viaObject.config, { total_filtres: 7 });
+
+    const viaSearchParams = new URLSearchParams();
+    viaSearchParams.append('commune', 'Andapa');
+
+    const same = await simulateGet(interceptors, '/dashboard/', viaSearchParams);
+    expect(same.data).toEqual({ total_filtres: 7 });
+  });
+
+  it('sérialise les tableaux de filtres (multi-sélection)', async () => {
+    const multi = await simulateGet(interceptors, '/dashboard/', { commune: ['Andapa', 'Sambava'] });
+    await simulateNetworkResponse(interceptors, multi.config, { total_filtres: 42 });
+
+    const otherMulti = await simulateGet(interceptors, '/dashboard/', { commune: ['Andapa'] });
+    expect(otherMulti.__miss).toBe(true);
+
+    const sameMulti = await simulateGet(interceptors, '/dashboard/', { commune: ['Andapa', 'Sambava'] });
+    expect(sameMulti.data).toEqual({ total_filtres: 42 });
+  });
+
   it('expire les entrées après le TTL par défaut (5 min)', async () => {
     vi.useFakeTimers();
     const first = await simulateGet(interceptors, '/producteurs/');
