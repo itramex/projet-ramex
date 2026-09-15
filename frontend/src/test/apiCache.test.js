@@ -179,6 +179,26 @@ describe('apiCache', () => {
     expect(sameMulti.data).toEqual({ total_filtres: 42 });
   });
 
+  it('invalide le cache du dashboard après une mutation réussie', async () => {
+    const dashboard = await simulateGet(interceptors, '/dashboard/');
+    await simulateNetworkResponse(interceptors, dashboard.config, { total_filtres: 393 });
+
+    // Le dashboard est bien servi depuis le cache au 2e appel
+    const cached = await simulateGet(interceptors, '/dashboard/');
+    expect(cached.data).toEqual({ total_filtres: 393 });
+
+    // Une création de producteur réussie doit invalider les statistiques
+    interceptors.responseInterceptor({
+      config: { method: 'post', url: '/producteurs/' },
+      status: 201,
+      data: { id: 1 },
+      headers: {},
+    });
+
+    const after = await simulateGet(interceptors, '/dashboard/');
+    expect(after.__miss).toBe(true);
+  });
+
   it('expire les entrées après le TTL par défaut (5 min)', async () => {
     vi.useFakeTimers();
     const first = await simulateGet(interceptors, '/producteurs/');

@@ -92,8 +92,20 @@ function cacheRequestInterceptor(config) {
  * Intercepteur de réponse : stocke les réponses GET réussies dans le cache.
  */
 function cacheResponseInterceptor(response) {
+  const method = (response.config?.method || 'get').toLowerCase();
+  const isSuccess = response.status >= 200 && response.status < 300;
+
+  // Une mutation réussie change les agrégats du dashboard (comptages
+  // producteurs / parcelles / coopératives…). Les services invalident déjà leur
+  // propre ressource via invalidateByPrefix() avant la requête, mais pas
+  // '/dashboard/ ' : sans ce nettoyage, les statistiques resteraient périmées
+  // jusqu'à l'expiration du TTL (5 min).
+  if (isSuccess && method !== 'get') {
+    invalidateByPrefix('/dashboard/');
+  }
+
   const key = response.config?.__cacheKey;
-  if (key && response.status >= 200 && response.status < 300) {
+  if (key && isSuccess) {
     cache.set(key, {
       data: response.data,
       status: response.status,
