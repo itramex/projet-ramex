@@ -47,18 +47,26 @@ Par défaut l'app appelle `http://127.0.0.1:8000/api` (backend Django local).
 
 - **Login** — mêmes identifiants que l'application web
 - **Accueil** — statistiques producteurs (total / actifs / inactifs) + rôle de l'utilisateur
-- **Producteurs** — liste paginée (20/page) avec recherche serveur anti-rebond, pull-to-refresh
-- **Parcelles** — liste paginée avec recherche (code, producteur, lieu), détail (type de vanille, superficie, pieds, GPS), lien vers la fiche du producteur
-- **Détail producteur** — village, commune, fokontany, téléphone, badges actif/sexe/vérifié
+- **Producteurs** — liste paginée (20/page), recherche serveur anti-rebond, pull-to-refresh, **création / modification / suppression**
+- **Détail producteur** — village, commune, fokontany, téléphone, badges actif/sexe/vérifié, accès à ses dotations, modifier / supprimer
+- **Dotations producteur** — liste des dotations d'un producteur (type, année, quantité) + formulaire de saisie
+- **Parcelles** — liste paginée avec recherche (code, producteur, lieu), détail (type de vanille, superficie, pieds, GPS), lien vers la fiche du producteur, **création / modification / suppression**
 - **Profil** — rôle, agence/coopérative, déconnexion
 
-## 🗺️ Roadmap
+## 🗺️ Roadmap — priorité à la collecte de données
 
-- ✅ **Lot 1 — Parcelles** : liste, recherche, détail, lien producteur (fait)
-- **Lot 2** : traçabilité consultation (FABC, fiches collecte, transport, lots, colis)
-- **Lot 3** : saisie terrain (formulaires création/édition, photos, GPS)
-- **Phase suivante** : offline-first — cache de lecture, file d'écriture locale (SQLite), synchronisation incrémentale (nécessitera des endpoints `?updated_since=` côté backend)
-- **Phase 4** : build APK/AAB via EAS Build, déploiement
+L'objectif premier de l'app mobile est la **saisie terrain** (les données sont ensuite traitées sur le web) : les CRUD passent donc avant les écrans de consultation restants.
+
+- ✅ **Socle** — login JWT (secure-store), accueil statistiques, profil, client API partagé avec le web
+- ✅ **Consultation Producteurs & Parcelles** — listes paginées, recherche, fiches détail
+- ✅ **Lot C1 — CRUD Producteurs** — formulaire création/édition, suppression, bouton « + Ajouter »
+- ✅ **Lot C2 — CRUD Parcelles** — formulaire (producteur, culture, superficie, pieds, GPS), modifier, supprimer
+- ✅ **Lot C4 — Dotations producteur** — liste + formulaire de saisie
+- ⏭️ **Lot C3 — CRUD Ménages** (composition du ménage par producteur)
+- ⏭️ **Lot C5 — Saisie Traçabilité** (FABC, fiches de collecte, transport, lots, colis)
+- ⏭️ **Lot C6 — Consultations restantes** (coopératives, cycle annuel, formations, développement durable)
+- ⏭️ **Lot C7 — Offline-first** : cache de lecture, file d'écriture locale (SQLite), synchronisation incrémentale (nécessitera des endpoints `?updated_since=` côté backend)
+- ⏭️ **Lot C8 — Build APK/AAB** via EAS Build, déploiement
 
 > Note : les *typed routes* d'Expo Router sont désactivées (`app.json`) pour permettre l'ajout d'écrans sans régénération de types — les `router.push()` acceptent des chemins dynamiques.
 
