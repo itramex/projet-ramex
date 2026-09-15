@@ -144,6 +144,7 @@ GRANT CREATE ON SCHEMA public to vanille_user;
 
 \c vanille_db;
 CREATE EXTENSION IF NOT EXISTS postgis;
+ALTER DATABASE vanille_db OWNER TO vanille_user;
 ```
 
 Tu peux changer les noms et le mot de passe, mais il faudra adapter la configuration dans le fichier `.env` du backend.
