@@ -10,6 +10,7 @@ urlpatterns = [
     path('hygiene/absents/', views.dashboard_hygiene_absents, name='dashboard_hygiene_absents'),
     path('environnement/', views.dashboard_environnement, name='dashboard_environnement'),
     path('enfants/', views.dashboard_enfants, name='dashboard_enfants'),
+    path('scolarisation/evolution/', views.dashboard_scolarisation_evolution, name='dashboard_scolarisation_evolution'),
     path('villages-communes/', views.get_villages_and_communes, name='get_villages_and_communes'),
     path('village-references/', views.get_village_references, name='get_village_references'),
     path('villages/', views.create_village, name='create_village'),

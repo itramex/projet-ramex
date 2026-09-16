@@ -315,6 +315,7 @@ export const dashboardService = {
   getHygiene: (params = {}) => api.get('/dashboard/hygiene/', { params }),
   getHygieneAbsents: (params = {}) => api.get('/dashboard/hygiene/absents/', { params }),
   getEnfants: (params = {}) => api.get('/dashboard/enfants/', { params }),
+  getScolarisationEvolution: (params = {}) => api.get('/dashboard/scolarisation/evolution/', { params }),
   getEnvironnement: (params = {}) => api.get('/dashboard/environnement/', { params }),
   createVillage: (data) => api.post('/dashboard/villages/', data),
   importVillagesExcel: (formData) => api.post('/dashboard/villages/import-excel/', formData, {

@@ -159,15 +159,17 @@ function Dashboard() {
       filters.villages.forEach(v => params.append('village', v));
       filters.communes.forEach(c => params.append('commune', c));
       filters.fokontanys.forEach(f => params.append('fokontany', f));
-      const [hygiene, enfants, environnement] = await Promise.all([
+      const [hygiene, enfants, environnement, evolution] = await Promise.all([
         dashboardService.getHygiene(params),
         dashboardService.getEnfants(params),
         dashboardService.getEnvironnement(params),
+        dashboardService.getScolarisationEvolution(params),
       ]);
       setSocialData({
         hygiene: hygiene.data,
         enfants: enfants.data,
         environnement: environnement.data,
+        scolarisationEvolution: evolution.data,
       });
     } catch (error) {
       setError(error.response?.data?.detail || error.message || 'Erreur lors du chargement');
@@ -1409,7 +1411,12 @@ const SocialTab = memo(({ data, subTab, onSubTabChange }) => {
       </Card>
 
       {subTab === 'hygiene' && <HygieneView data={data.hygiene} />}
-      {subTab === 'enfants' && <EnfantsView data={data.enfants} />}
+      {subTab === 'enfants' && (
+        <EnfantsView
+          data={data.enfants}
+          evolution={data.scolarisationEvolution}
+        />
+      )}
       {subTab === 'environnement' && <EnvironnementView data={data.environnement} />}
     </>
   );
@@ -1543,11 +1550,15 @@ const HygieneView = memo(({ data }) => {
 HygieneView.displayName = 'HygieneView';
 
 // ----- Vue Enfants & Scolarisation -----
-const EnfantsView = memo(({ data }) => {
+const EnfantsView = memo(({ data, evolution }) => {
   const horsAge = Math.max(
     (data.total_enfants || 0) - (data.enfants_scolarises || 0) - (data.enfants_non_scolarises || 0),
     0
   );
+
+  // Évolution annuelle (#12) : archives annuelles + année courante (live)
+  const annees = evolution?.annees || [];
+  const aPlusieursAnnees = annees.length > 1;
 
   return (
     <>
@@ -1615,6 +1626,101 @@ const EnfantsView = memo(({ data }) => {
               plugins: { legend: { position: 'bottom' } },
             }}
           />
+        </ChartCard>
+      </div>
+
+      {/* Évolution annuelle du taux de scolarisation (#12).
+          Sources : archives annuelles (ProducteurSnapshot) + année courante (live). */}
+      <div className="mt-6">
+        <ChartCard title="Évolution du taux de scolarisation par année">
+          {aPlusieursAnnees ? (
+            <Line
+              data={{
+                labels: annees.map(a => a.annee),
+                datasets: [
+                  {
+                    label: 'Taux de scolarisation (%)',
+                    data: annees.map(a => a.taux_scolarisation),
+                    borderColor: '#10B981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    tension: 0.3,
+                    fill: true,
+                  },
+                  {
+                    label: 'Enfants scolarisés',
+                    data: annees.map(a => a.scolarises),
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    tension: 0.3,
+                    yAxisID: 'y1',
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Taux (%)' },
+                  },
+                  y1: {
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'Enfants scolarisés' },
+                  },
+                },
+              }}
+            />
+          ) : (
+            <p className="text-sm text-gray-600 py-4">
+              {evolution?.message_donnees
+                || "Aucune donnée annuelle disponible pour le moment."}
+            </p>
+          )}
+
+          <div className="overflow-x-auto mt-4">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b">
+                  <th className="py-2 pr-4">Année</th>
+                  <th className="py-2 pr-4">Enfants</th>
+                  <th className="py-2 pr-4">Scolarisés</th>
+                  <th className="py-2 pr-4">Non scolarisés</th>
+                  <th className="py-2 pr-4">Taux</th>
+                  <th className="py-2">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {annees.map(a => (
+                  <tr key={a.annee} className="border-b last:border-0">
+                    <td className="py-2 pr-4 font-semibold">{a.annee}</td>
+                    <td className="py-2 pr-4">{a.total_enfants}</td>
+                    <td className="py-2 pr-4 text-green-700">{a.scolarises}</td>
+                    <td className="py-2 pr-4 text-red-700">{a.non_scolarises}</td>
+                    <td className="py-2 pr-4">{a.taux_scolarisation} %</td>
+                    <td className="py-2 text-gray-500">
+                      {a.source === 'live' ? 'Données actuelles' : 'Archive annuelle'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {annees.length > 1 && evolution?.cumul && (
+                <tfoot>
+                  <tr className="font-semibold bg-gray-50">
+                    <td className="py-2 pr-4">Cumul ({annees.length} ans)</td>
+                    <td className="py-2 pr-4">{evolution.cumul.total_enfants}</td>
+                    <td className="py-2 pr-4 text-green-700">{evolution.cumul.scolarises}</td>
+                    <td className="py-2 pr-4">—</td>
+                    <td className="py-2 pr-4">{evolution.cumul.taux_scolarisation} %</td>
+                    <td className="py-2" />
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
         </ChartCard>
       </div>
     </>

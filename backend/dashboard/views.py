@@ -1019,6 +1019,109 @@ def dashboard_enfants(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def dashboard_scolarisation_evolution(request):
+    """
+    Évolution du taux de scolarisation par année (#12).
+
+    GET /api/dashboard/scolarisation/evolution/
+
+    Sources :
+    - années archivées : `ProducteurSnapshot` (un enregistrement par producteur/an)
+    - année courante   : calcul live (cascade `_children_schooling_stats`)
+
+    Paramètres : village, commune, fokontany (multi-valeurs)
+    """
+    villages = [v for v in request.query_params.getlist('village') if v]
+    communes = [c for c in request.query_params.getlist('commune') if c]
+    fokontanys = [f for f in request.query_params.getlist('fokontany') if f]
+
+    annee_courante = datetime.now().year
+    annees = []
+
+    try:
+        from history.models import ProducteurSnapshot
+    except ImportError:
+        ProducteurSnapshot = None
+
+    if ProducteurSnapshot is not None:
+        snapshots = ProducteurSnapshot.objects.all()
+        if villages:
+            snapshots = snapshots.filter(village__in=villages)
+        if communes:
+            snapshots = snapshots.filter(commune__in=communes)
+        if fokontanys:
+            snapshots = snapshots.filter(fokontany__in=fokontanys)
+
+        for row in (
+            snapshots
+            .values('annee')
+            .annotate(
+                total_enfants=Sum(F('nb_enfants_garcons') + F('nb_enfants_filles')),
+                scolarises=Sum('nb_enfants_scolarises'),
+                non_scolarises=Sum('nb_enfants_non_scolarises'),
+                producteurs=Count('id'),
+            )
+            .order_by('annee')
+        ):
+            if row['annee'] == annee_courante:
+                # L'année en cours est calculée en live (plus fiable que le snapshot)
+                continue
+            total = row['total_enfants'] or 0
+            scolarises = row['scolarises'] or 0
+            if total == 0 and scolarises == 0:
+                continue
+            annees.append({
+                'annee': row['annee'],
+                'source': 'snapshot',
+                'total_enfants': total,
+                'scolarises': scolarises,
+                'non_scolarises': row['non_scolarises'] or 0,
+                'taux_scolarisation': round((scolarises / total * 100) if total > 0 else 0, 2),
+                'producteurs': row['producteurs'],
+                'methode': 'snapshot_annuel',
+            })
+
+    # Année courante : calcul live
+    live_qs = _dashboard_base_queryset(request)
+    live = _children_schooling_stats(live_qs, annee_courante)
+    annees.append({
+        'annee': annee_courante,
+        'source': 'live',
+        'total_enfants': live['total_enfants'],
+        'scolarises': live['enfants_scolarises'],
+        'non_scolarises': live['enfants_non_scolarises'],
+        'taux_scolarisation': live['taux_scolarisation'],
+        'producteurs': live_qs.count(),
+        'methode': live['methode'],
+    })
+
+    annees.sort(key=lambda a: a['annee'])
+
+    total_cumule = sum(a['total_enfants'] for a in annees)
+    scolarises_cumule = sum(a['scolarises'] for a in annees)
+
+    return Response({
+        'annees': annees,
+        'nb_annees': len(annees),
+        'annee_courante': annee_courante,
+        'cumul': {
+            'total_enfants': total_cumule,
+            'scolarises': scolarises_cumule,
+            'taux_scolarisation': round(
+                (scolarises_cumule / total_cumule * 100) if total_cumule > 0 else 0, 2
+            ),
+        },
+        'filtres_appliques': bool(villages or communes or fokontanys),
+        'message_donnees': (
+            "Une seule année de données est disponible : l'évolution annuelle "
+            "s'affichera dès que d'autres années auront été archivées."
+            if len(annees) <= 1 else None
+        ),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def dashboard_production(request):
     """
     Estimations de production par culture avec filtres
