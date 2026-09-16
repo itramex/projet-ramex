@@ -157,11 +157,17 @@ class ExcelMultiSheetImporter:
             return None
     
     def _parse_boolean(self, value):
-        """Convertit une valeur Excel en booléen"""
-        if value is None:
+        """Convertit une valeur Excel en booléen.
+
+        Une cellule vide vaut False : comportement historique conservé, car les
+        champs cibles sont des BooleanField non nullables et `None` ferait
+        échouer l'import (IntegrityError). La reconnaissance des tokens est en
+        revanche élargie (vrai/eo/tsia/no/faux/0.0…).
+        """
+        if value is None or (isinstance(value, str) and not value.strip()):
             return False
         value_str = str(value).strip().lower()
-        return value_str in ['oui', 'eny', 'yes', '1', 'true']
+        return value_str in ['oui', 'eny', 'yes', '1', '1.0', 'true', 'vrai', 'eo']
 
     def _parse_int(self, value, default=0):
         """Convertit une valeur Excel en entier"""

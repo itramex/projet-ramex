@@ -31,28 +31,94 @@ def _dashboard_base_queryset(request):
     return qs
 
 
-def _children_school_age_and_schooled(queryset, ref_year):
-    """Règle métier unique: scolarisation sur enfants 3-18 ans.
+def _children_schooling_stats(queryset, ref_year):
+    """Statistiques de scolarisation robustes (cascade de sources).
 
-    Optimisé: utilise values_list pour ne charger que les champs nécessaires.
-    Réutilisé par dashboard_global et dashboard_enfants (les champs agrégés
-    nb_enfants_scolarises peuvent rester à 0 dans la base).
+    Contexte terrain (mesuré sur la base réelle) :
+      - les compteurs d'enfants déclarés sont fiables (nb_enfants_garcons/filles…)
+      - `nb_enfants_scolarises` n'est PAS rempli par l'import historique (souvent 0)
+      - `niveau_etude_enfant_N` est vide
+      - `annee_naissance_enfant_N` n'est rempli qu'à ~32 % et contient parfois des
+        années d'adultes (ex. 1980) : le calcul par slots ne retrouve que ~16 enfants
+        sur 466 déclarés.
+
+    On applique donc une cascade, du plus fiable au moins fiable :
+      1. `nb_enfants_scolarises` importé (> 0) → source directe
+      2. sinon : compteurs d'enfants déclarés moins ceux marqués non scolarisés
+      3. sinon : calcul par slots (année de naissance 3-18 ans + continue_ecole)
+
+    Retourne un dict (et non plus un tuple) pour exposer la méthode utilisée.
     """
     child_fields = [f'annee_naissance_enfant_{i}' for i in range(1, 11)]
     school_fields = [f'continue_ecole_enfant_{i}' for i in range(1, 11)]
-    total_school_age = 0
-    total_schooled = 0
-    for row in queryset.values_list(*child_fields, *school_fields):
+
+    slots_age = 0
+    slots_schooled = 0
+    declared_children = 0
+    declared_schooled = 0
+    declared_not_schooled = 0
+
+    rows = queryset.values_list(
+        *child_fields,
+        *school_fields,
+        'nb_enfants_garcons',
+        'nb_enfants_filles',
+        'nb_autres_garcons',
+        'nb_autres_filles',
+        'nb_enfants_scolarises',
+        'nb_enfants_non_scolarises',
+    )
+    for row in rows:
         for i in range(10):
             annee_naissance = row[i]
             if not annee_naissance:
                 continue
             age = ref_year - annee_naissance
             if 3 <= age <= 18:
-                total_school_age += 1
+                slots_age += 1
                 if row[10 + i]:
-                    total_schooled += 1
-    return total_school_age, total_schooled
+                    slots_schooled += 1
+
+        # Accumulation sur TOUTES les lignes (et non la dernière uniquement)
+        declared_children += (row[20] or 0) + (row[21] or 0) + (row[22] or 0) + (row[23] or 0)
+        declared_schooled += row[24] or 0
+        declared_not_schooled += row[25] or 0
+
+    # --- Cascade ---
+    if declared_schooled > 0:
+        methode = 'declare_agrege'
+        scolarises = declared_schooled
+        non_scolarises = declared_not_schooled
+    elif declared_children > 0:
+        # Aucun champ agrégé fiable : les enfants NON signalés comme non scolarisés
+        # sont considérés scolarisés (les signalements non scolarisés sont explicites).
+        methode = 'deduit_compteurs'
+        scolarises = max(0, declared_children - declared_not_schooled)
+        non_scolarises = declared_not_schooled
+    else:
+        methode = 'slots'
+        scolarises = slots_schooled
+        non_scolarises = max(0, slots_age - slots_schooled)
+
+    en_age_scolaire = declared_children if declared_children > 0 else slots_age
+
+    return {
+        'total_enfants': declared_children,
+        'enfants_en_age_scolaire': en_age_scolaire,
+        'enfants_scolarises': scolarises,
+        'enfants_non_scolarises': non_scolarises,
+        'taux_scolarisation': round((scolarises / en_age_scolaire * 100) if en_age_scolaire > 0 else 0, 2),
+        'methode': methode,
+        'slots_age': slots_age,
+        'slots_scolarises': slots_schooled,
+    }
+
+
+def _children_school_age_and_schooled(queryset, ref_year):
+    """Compatibilité : ancien tuple (age, scolarises) dérivé du helper robuste."""
+    stats = _children_schooling_stats(queryset, ref_year)
+    return stats['enfants_en_age_scolaire'], stats['enfants_scolarises']
+
 
 
 @api_view(['GET'])
@@ -263,20 +329,32 @@ def dashboard_global(request):
             print(f"Erreur lors de la récupération des données historiques: {e}")
             use_current_data = True
     
+    # Valeurs par défaut (cas « données historiques » sans reconstruction des slots)
+    scolarisation_methode = 'historique'
+    scolarisation_slots = {'age': 0, 'scolarises': 0}
+
     # Utiliser les données actuelles si pas d'historique disponible
     if use_current_data:
-        enfants_en_age_scolaire, enfants_scolarises = _children_school_age_and_schooled(
-            base_queryset,
-            reference_year
-        )
-        enfants_non_scolarises = max(0, enfants_en_age_scolaire - enfants_scolarises)
+        schooling = _children_schooling_stats(base_queryset, reference_year)
+        enfants_en_age_scolaire = schooling['enfants_en_age_scolaire']
+        enfants_scolarises = schooling['enfants_scolarises']
+        enfants_non_scolarises = schooling['enfants_non_scolarises']
+        scolarisation_methode = schooling['methode']
+        scolarisation_slots = {
+            'age': schooling['slots_age'],
+            'scolarises': schooling['slots_scolarises'],
+        }
 
     # Impact des kits scolaires et statistiques par tranche d'âge
     # Seulement pour les données actuelles (pas pour l'historique)
     if use_current_data:
-        # Initialiser le compteur d'enfants en âge scolaire
-        enfants_en_age_scolaire = 0
-        
+        # ⚠️ NE PAS réinitialiser enfants_en_age_scolaire ici : la valeur vient du
+        # helper robuste (cascade). Avant, elle était remise à 0 puis recalculée
+        # uniquement depuis les slots annee_naissance_enfant_N (~32 % remplis et
+        # parfois aberrants), d'où l'affichage « 0 enfant scolarisé » (#34).
+        # On garde donc un compteur SÉPARÉ pour les slots.
+        slots_en_age_scolaire = 0
+
         # children_school_age: nombre d'enfants 3-18 ans avec année de naissance connue
         # schooled_estimated: estimation des enfants scolarisés parmi les 3-18 ans (exclut sans année de naissance)
         impact_stats = {
@@ -288,13 +366,13 @@ def dashboard_global(request):
         age_groups = {
             '3-6': {'total': 0, 'scolarises': 0, 'producteurs': []},
             '7-10': {'total': 0, 'scolarises': 0, 'producteurs': []},
-            '10-14': {'total': 0, 'scolarises': 0, 'producteurs': []},
-            '14-18': {'total': 0, 'scolarises': 0, 'producteurs': []},
+            '11-14': {'total': 0, 'scolarises': 0, 'producteurs': []},
+            '15-18': {'total': 0, 'scolarises': 0, 'producteurs': []},
         }
         
         # Première passe: compter tous les enfants par tranche d'âge
         for producteur in base_queryset:
-            enfants_producteur_par_age = {'3-6': 0, '7-10': 0, '10-14': 0, '14-18': 0}
+            enfants_producteur_par_age = {'3-6': 0, '7-10': 0, '11-14': 0, '15-18': 0}
             
             # Vérifier si le producteur a reçu un kit scolaire
             has_kit = any(d.type_dotation == 'kit_scolaire' for d in producteur.dotations.all())
@@ -310,7 +388,7 @@ def dashboard_global(request):
                     known_total_any += 1
                     age = reference_year - annee_naissance
                     if 3 <= age <= 18:
-                        enfants_en_age_scolaire += 1
+                        slots_en_age_scolaire += 1
                         known_3_18 += 1
 
                         if has_kit:
@@ -326,11 +404,11 @@ def dashboard_global(request):
                             age_groups['7-10']['total'] += 1
                             enfants_producteur_par_age['7-10'] += 1
                         elif 11 <= age <= 14:
-                            age_groups['10-14']['total'] += 1
-                            enfants_producteur_par_age['10-14'] += 1
+                            age_groups['11-14']['total'] += 1
+                            enfants_producteur_par_age['11-14'] += 1
                         elif 15 <= age <= 18:
-                            age_groups['14-18']['total'] += 1
-                            enfants_producteur_par_age['14-18'] += 1
+                            age_groups['15-18']['total'] += 1
+                            enfants_producteur_par_age['15-18'] += 1
         
             # Estimer le nombre d'enfants scolarisés 3-18 ans pour l'impact (exclut sans année de naissance)
             if known_total_any > 0 and known_3_18 > 0 and nb_scolarises_producteur > 0:
@@ -606,13 +684,14 @@ def dashboard_global(request):
         },
         'enfants': {
             'total': total_enfants,
-            'scolarises': total_scolarises_estimes,
+            'scolarises': enfants_scolarises,
             'non_scolarises': enfants_non_scolarises,
             'en_age_scolaire': enfants_en_age_scolaire,
             'enfants_age_scolaire': enfants_en_age_scolaire,
-            'enfants_scolarises': total_scolarises_estimes,
-            'taux_scolarisation': round((total_scolarises_estimes / enfants_en_age_scolaire * 100) if enfants_en_age_scolaire > 0 else 0, 2),
-            'methode_calcul': 'enfants_3_18_ans',
+            'enfants_scolarises': enfants_scolarises,
+            'taux_scolarisation': round((enfants_scolarises / enfants_en_age_scolaire * 100) if enfants_en_age_scolaire > 0 else 0, 2),
+            'methode_calcul': scolarisation_methode,
+            'scolarisation_slots': scolarisation_slots,
             'comparaison_annee': comparaison_annee,
             'scolarisation_par_age': scolarisation_par_age,
         },
@@ -913,23 +992,26 @@ def dashboard_enfants(request):
     total_filles = agregats['total_filles'] or 0
     total_enfants = total_garcons + total_filles
 
-    # Scolarisation : calculer depuis les enfants détaillés (règle 3-18 ans).
-    # Les champs agrégés nb_enfants_scolarises peuvent rester à 0 dans la base.
+    # Scolarisation : cascade robuste (voir _children_schooling_stats).
+    # Les champs agrégés (nb_enfants_scolarises) et les slots
+    # annee_naissance_enfant_N sont lacunaires dans la base, d'où le recours
+    # aux compteurs d'enfants déclarés (source fiable).
     annee_actuelle = datetime.now().year
-    enfants_en_age_scolaire, enfants_scolarises = _children_school_age_and_schooled(
-        base_queryset,
-        annee_actuelle,
-    )
-    enfants_non_scolarises = max(0, enfants_en_age_scolaire - enfants_scolarises)
+    schooling = _children_schooling_stats(base_queryset, annee_actuelle)
 
     data = {
         'total_enfants': total_enfants,
-        'enfants_scolarises': enfants_scolarises,
-        'enfants_non_scolarises': enfants_non_scolarises,
-        'enfants_en_age_scolaire': enfants_en_age_scolaire,
+        'enfants_scolarises': schooling['enfants_scolarises'],
+        'enfants_non_scolarises': schooling['enfants_non_scolarises'],
+        'enfants_en_age_scolaire': schooling['enfants_en_age_scolaire'],
         'total_garcons': total_garcons,
         'total_filles': total_filles,
-        'taux_scolarisation': round((enfants_scolarises / enfants_en_age_scolaire * 100) if enfants_en_age_scolaire > 0 else 0, 2),
+        'taux_scolarisation': schooling['taux_scolarisation'],
+        'methode_calcul': schooling['methode'],
+        'slots': {
+            'age': schooling['slots_age'],
+            'scolarises': schooling['slots_scolarises'],
+        },
     }
 
     return Response(data)

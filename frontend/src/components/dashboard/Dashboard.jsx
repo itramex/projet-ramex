@@ -1558,6 +1558,28 @@ const EnfantsView = memo(({ data }) => {
         <StatCard title="Non scolarisés" value={data.enfants_non_scolarises} subtitle="À accompagner en priorité" iconName="ExclamationTriangleIcon" color="bg-red-500" />
       </div>
 
+      {/* Transparence sur la méthode de calcul — évite la confusion « 0 scolarisé »
+          et documente la source réellement utilisée (#34). */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-900">
+        <p className="font-semibold mb-1">Comment ce taux est calculé</p>
+        <p>
+          {data.methode_calcul === 'declare_agrege'
+            && "À partir du nombre d'enfants scolarisés déclaré directement dans la fiche du producteur."}
+          {data.methode_calcul === 'deduit_compteurs'
+            && "À partir des enfants déclarés au ménage, diminués de ceux explicitement signalés comme non scolarisés. Les années de naissance des enfants étant incomplètes et parfois erronées dans la base, elles ne peuvent pas servir de base fiable."}
+          {data.methode_calcul === 'slots'
+            && "À partir des années de naissance des enfants (3-18 ans) et de leur statut de scolarisation."}
+          {data.methode_calcul === 'historique'
+            && "À partir des données d'historique annuel enregistrées pour l'année sélectionnée."}
+        </p>
+        {data.slots && data.methode_calcul === 'deduit_compteurs' && (
+          <p className="mt-1 text-blue-700">
+            Détail technique : {data.slots.age} enfant(s) disposent d'une année de naissance
+            exploitable, dont {data.slots.scolarises} marqué(s) comme scolarisé(s).
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Scolarisation des enfants">
           <Doughnut
