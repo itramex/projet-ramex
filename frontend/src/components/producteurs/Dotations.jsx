@@ -52,7 +52,7 @@ function Dotations() {
       if (anneeFilter) params.annee = anneeFilter;
       const res = await dotationService.getAll(params);
       const rows = res.data.results || res.data || [];
-      // Regrouper par producteur (une ligne par bénéficiaire, quantités cumulées)
+      // Regrouper par producteur (une ligne par bénéficiaire, quantités cumulées + détail par année #27)
       const map = new Map();
       rows.forEach((d) => {
         const key = d.producteur;
@@ -62,9 +62,13 @@ function Dotations() {
           code: d.producteur_code || '',
           total: 0,
           annees: new Set(),
+          par_annee: {},
         };
         prev.total += d.quantite || 0;
-        if (d.annee) prev.annees.add(d.annee);
+        if (d.annee) {
+          prev.annees.add(d.annee);
+          prev.par_annee[d.annee] = (prev.par_annee[d.annee] || 0) + (d.quantite || 0);
+        }
         map.set(key, prev);
       });
       setBeneficiaires(
@@ -522,7 +526,7 @@ return (
                       <th className="py-2">Producteur</th>
                       <th className="py-2">Code</th>
                       <th className="py-2 text-right">Quantité totale</th>
-                      <th className="py-2 text-right">Années</th>
+                      <th className="py-2 text-right">Détail par année</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -534,7 +538,7 @@ return (
                           {b.total.toLocaleString('fr-FR')}
                         </td>
                         <td className="py-2 text-right text-gray-500">
-                          {[...b.annees].sort().join(', ')}
+                          {[...b.annees].sort((x, y) => x - y).map((a) => `${a} : ${b.par_annee[a]}`).join(' · ') || '—'}
                         </td>
                       </tr>
                     ))}
