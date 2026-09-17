@@ -232,7 +232,7 @@ class ProducteurHistoriqueMixin:
         ]
 
         # --- Dotations (réutilise les cumuls du ViewSet Dotations) ---
-        dotations = p.dotations.all().order_by('-date_dotation') if hasattr(p, 'dotations') else []
+        dotations = p.dotations.all().order_by('-annee', '-date_enregistrement') if hasattr(p, 'dotations') else []
         cumul_par_type = {}
         for d in dotations:
             cumul_par_type[d.type_dotation] = cumul_par_type.get(d.type_dotation, 0) + (d.quantite or 0)
