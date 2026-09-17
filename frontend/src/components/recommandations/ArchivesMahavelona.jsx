@@ -59,7 +59,6 @@ function ArchivesMahavelona() {
 
   useEffect(() => {
     loadArchives();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const genererSnapshot = async () => {
