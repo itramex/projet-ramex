@@ -47,8 +47,7 @@ function ArchivesMahavelona() {
     setLoading(true);
     setError('');
     try {
-      const params = anneeFilter ? { annee: anneeFilter } : {};
-      const res = await recommendationService.getMahavelonaArchives(params);
+      const res = await recommendationService.getMahavelonaArchives();
       setArchives(res.data.results || res.data || []);
     } catch (err) {
       console.error('Erreur chargement archives:', err);
@@ -61,7 +60,7 @@ function ArchivesMahavelona() {
   useEffect(() => {
     loadArchives();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anneeFilter]);
+  }, []);
 
   const genererSnapshot = async () => {
     setGenerating(true);
@@ -79,6 +78,12 @@ function ArchivesMahavelona() {
   };
 
   const aj = detail?.archive_json || {};
+
+  // Sélecteur d'années disponibles (#23) : dérivées des archives chargées
+  const anneesDisponibles = [...new Set(archives.map((a) => a.annee_reference))].sort((a, b) => b - a);
+  const archivesFiltrees = anneeFilter
+    ? archives.filter((a) => String(a.annee_reference) === String(anneeFilter))
+    : archives;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -120,13 +125,16 @@ function ArchivesMahavelona() {
       {/* Filtre */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-4 flex flex-wrap gap-3 items-center">
         <label className="text-sm text-gray-600">Filtrer par année :</label>
-        <input
-          type="number"
-          placeholder="Toutes"
+        <select
           value={anneeFilter}
           onChange={(e) => setAnneeFilter(e.target.value)}
-          className="w-28 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
-        />
+          className="w-40 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow bg-white"
+        >
+          <option value="">Toutes les années</option>
+          {anneesDisponibles.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
         {anneeFilter && (
           <button onClick={() => setAnneeFilter('')} className="text-sm text-gray-500 hover:text-gray-700 underline">
             Réinitialiser
@@ -154,15 +162,16 @@ function ArchivesMahavelona() {
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-yellow" />
                 </td>
               </tr>
-            ) : archives.length === 0 ? (
+            ) : archivesFiltrees.length === 0 ? (
               <tr>
                 <td colSpan="7" className="px-4 py-10 text-center text-gray-500">
-                  Aucune archive pour le moment. Cliquez sur <strong>« Générer l'archive »</strong> pour figer
-                  l'état actuel des membres Mahavelona.
+                  {anneeFilter
+                    ? `Aucune archive pour l'année ${anneeFilter}.`
+                    : 'Aucune archive pour le moment. Cliquez sur « Générer l\u2019archive » pour figer l\u2019état actuel des membres Mahavelona.'}
                 </td>
               </tr>
             ) : (
-              archives.map((a) => {
+              archivesFiltrees.map((a) => {
                 const aj = a.archive_json || {};
                 return (
                   <tr key={a.id} className="hover:bg-amber-50 transition-colors">
