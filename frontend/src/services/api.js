@@ -469,7 +469,7 @@ export const formationService = {
   createFormation: (data) => api.post('/formations/formations/', data),
   updateFormation: (id, data) => api.put(`/formations/formations/${id}/`, data),
   deleteFormation: (id) => api.delete(`/formations/formations/${id}/`),
-  getFormationsStats: () => api.get('/formations/formations/statistiques/'),
+  getFormationsStats: (params = {}) => api.get('/formations/formations/statistiques/', { params }),
   getFormationsByProducteur: (producteurId) => api.get(`/formations/formations/par_producteur/?producteur_id=${producteurId}`),
 
   // Types de certifications
@@ -485,7 +485,7 @@ export const formationService = {
   createCertification: (data) => api.post('/formations/certifications/', data),
   updateCertification: (id, data) => api.put(`/formations/certifications/${id}/`, data),
   deleteCertification: (id) => api.delete(`/formations/certifications/${id}/`),
-  getCertificationsStats: () => api.get('/formations/certifications/statistiques/'),
+  getCertificationsStats: (params = {}) => api.get('/formations/certifications/statistiques/', { params }),
   getCertificationsByProducteur: (producteurId) => api.get(`/formations/certifications/par_producteur/?producteur_id=${producteurId}`),
   getCertificationsExpirantBientot: () => api.get('/formations/certifications/expirant_bientot/'),
   getCertificationsHistorique: (params = {}) => api.get('/formations/certifications/historique/', { params }),

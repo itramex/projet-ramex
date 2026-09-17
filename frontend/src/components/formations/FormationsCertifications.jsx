@@ -90,8 +90,8 @@ function FormationsCertifications() {
       ] = await Promise.all([
         formationService.getAllFormations(apiFilters),
         formationService.getAllCertifications(apiFilters),
-        formationService.getFormationsStats(),
-        formationService.getCertificationsStats(),
+        formationService.getFormationsStats(apiFilters),
+        formationService.getCertificationsStats(apiFilters),
       ]);
 
       setFormations(formationsRes.data.results || formationsRes.data);

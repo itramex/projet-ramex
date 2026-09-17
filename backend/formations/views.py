@@ -164,14 +164,17 @@ class FormationViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def statistiques(self, request):
-        """Statistiques sur les formations"""
+        """Statistiques sur les formations — respecte les mêmes filtres que la liste (#18)"""
+        # On réutilise get_queryset() : les filtres producteur/type/année/organisme/
+        # lieu/certificat sont donc identiques à ceux de la liste.
+        queryset = self.get_queryset()
         stats = {
-            'total_formations': Formation.objects.count(),
-            'types_formations_count': Formation.objects.values('type_formation').distinct().count(),
-            'producteurs_formes': Formation.objects.values('producteur').distinct().count(),
-            'avec_certificat': Formation.objects.filter(certificat_obtenu=True).count(),
+            'total_formations': queryset.count(),
+            'types_formations_count': queryset.values('type_formation').distinct().count(),
+            'producteurs_formes': queryset.values('producteur').distinct().count(),
+            'avec_certificat': queryset.filter(certificat_obtenu=True).count(),
             'par_type': list(
-                Formation.objects.values('type_formation', 'type_formation__nom')
+                queryset.values('type_formation', 'type_formation__nom')
                 .annotate(count=Count('id'))
                 .order_by('-count')
             ),
@@ -333,14 +336,17 @@ class CertificationViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def statistiques(self, request):
-        """Statistiques sur les certifications"""
+        """Statistiques sur les certifications — respecte les mêmes filtres que la liste (#18)"""
+        # On réutilise get_queryset() : filtres producteur__in / cooperative / entite /
+        # seulement_valides / annee identiques à ceux de la liste.
+        queryset = self.get_queryset()
         stats = {
-            'total_certifications': Certification.objects.count(),
+            'total_certifications': queryset.count(),
             'types_certifications_count': TypeCertification.objects.filter(actif=True).count(),
-            'producteurs_certifies': Certification.objects.values('producteur').distinct().count(),
-            'valides': Certification.objects.filter(statut='valide').count(),
-            'expirees': Certification.objects.filter(statut='expire').count(),
-            'en_cours': Certification.objects.filter(statut='en_cours').count(),
+            'producteurs_certifies': queryset.values('producteur').distinct().count(),
+            'valides': queryset.filter(statut='valide').count(),
+            'expirees': queryset.filter(statut='expire').count(),
+            'en_cours': queryset.filter(statut='en_cours').count(),
             'par_type': list(
                 TypeCertification.objects.filter(actif=True)
                 .annotate(count=Count('certifications'))
@@ -348,7 +354,7 @@ class CertificationViewSet(viewsets.ModelViewSet):
                 .order_by('-count')
             ),
             'par_statut': list(
-                Certification.objects.values('statut')
+                queryset.values('statut')
                 .annotate(count=Count('id'))
             ),
         }
