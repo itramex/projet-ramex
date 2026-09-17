@@ -165,7 +165,7 @@ class ExcelMultiSheetImporter:
         revanche élargie (vrai/eo/tsia/no/faux/0.0…).
         """
         if value is None or (isinstance(value, str) and not value.strip()):
-            return False
+            return None
         value_str = str(value).strip().lower()
         return value_str in ['oui', 'eny', 'yes', '1', '1.0', 'true', 'vrai', 'eo']
 

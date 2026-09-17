@@ -693,6 +693,11 @@ class Producteur(models.Model):
         2. Denominator: Children aged 3-18 (inclusive) -> Sum of (scolarises + non_scolarises in range)
         3. Reference Year: self.annee_stat_scolarisation or current year
         """
+        # KEEP_DECLARED_VALUES: garder les valeurs declarees/importees
+        # si aucun slot de scolarisation n'est renseigne.
+        _slots = [getattr(self, 'continue_ecole_enfant_%d' % i, None) for i in range(1, 11)]
+        if all(v is None for v in _slots):
+            return
         from django.utils import timezone
         
         # Determine reference year
