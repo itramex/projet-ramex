@@ -36,7 +36,8 @@ function FormationsCertifications() {
     annee: '',
     organisme: '',
     lieu: '',
-    certificat_obtenu: ''
+    certificat_obtenu: '',
+    village: ''
   });
 
   useEffect(() => {
@@ -79,6 +80,9 @@ function FormationsCertifications() {
     }
     if (filters.certificat_obtenu) {
       apiFilters.certificat_obtenu = filters.certificat_obtenu;
+    }
+    if (filters.village) {
+      apiFilters.village = filters.village;
     }
 
     try {
@@ -139,7 +143,8 @@ function FormationsCertifications() {
       annee: '',
       organisme: '',
       lieu: '',
-      certificat_obtenu: ''
+      certificat_obtenu: '',
+      village: ''
     };
     setFilters(emptyFilters);
     loadData(emptyFilters);
@@ -284,7 +289,8 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
     filters.annee ||
     filters.organisme ||
     filters.lieu ||
-    filters.certificat_obtenu
+    filters.certificat_obtenu ||
+    filters.village
   );
   // Always show producer list in the certifications tab
   const showList = true;
@@ -305,6 +311,11 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
     value: t.type_formation,
     label: t.type_formation__nom || 'Autre'
   })) || [];
+
+  // Villages options (#19) : dérivés de la liste des producteurs chargée
+  const villagesOptions = [...new Set(
+    (allProducteurs || []).map(p => p.village).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
 
   return (
     <div>
@@ -391,6 +402,19 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
               <option value="">Tous les types</option>
               {typeOptions.map(t => (
                 <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="w-full md:w-1/5">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Village</label>
+            <select
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-chick-yellow"
+              value={filters.village || ''}
+              onChange={(e) => handleLocalFilterChange('village', e.target.value)}
+            >
+              <option value="">Tous les villages</option>
+              {villagesOptions.map(v => (
+                <option key={v} value={v}>{v}</option>
               ))}
             </select>
           </div>

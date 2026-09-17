@@ -75,6 +75,17 @@ class FormationViewSet(viewsets.ModelViewSet):
         if certificat_obtenu is not None and str(certificat_obtenu).lower() in ('true', 'false'):
             queryset = queryset.filter(certificat_obtenu=str(certificat_obtenu).lower() == 'true')
 
+        # #19 : filtre par village du producteur formé (recherche partielle)
+        village = params.get('village')
+        if village:
+            queryset = queryset.filter(producteur__village__icontains=village)
+
+        # #18 : filtre par producteur — géré par les paramètres DRF standards :
+        #   ?producteur=<id>          (exact, via filterset_fields)
+        #   ?producteur__in=1,2,3     (multi-sélection, traité ci-dessus)
+        #   ?search=Rakoto            (code / nom / prénom, via search_fields)
+        # Ne PAS déclarer ici un filtre nommé « producteur » : il entrerait en conflit
+        # avec filterset_fields['producteur'] (ValidationError « champ id attendu »).
         return queryset
     
     def create(self, request, *args, **kwargs):
@@ -256,6 +267,13 @@ class CertificationViewSet(viewsets.ModelViewSet):
         if annee and str(annee).isdigit():
             queryset = queryset.filter(date_obtention__year=int(annee))
 
+        # #19 : filtre par village (recherche partielle) — cohérent avec les formations.
+        # Le frontend envoie le même jeu de filtres aux endpoints formations ET
+        # certifications : sans ce bloc, le filtre Village était silencieusement ignoré ici.
+        village = params.get('village')
+        if village:
+            queryset = queryset.filter(producteur__village__icontains=village)
+
         return queryset
     
     def create(self, request, *args, **kwargs):
@@ -340,6 +358,27 @@ class CertificationViewSet(viewsets.ModelViewSet):
         # On réutilise get_queryset() : filtres producteur__in / cooperative / entite /
         # seulement_valides / annee identiques à ceux de la liste.
         queryset = self.get_queryset()
+
+        # #18/#19 : ventiler par type en respectant les filtres actifs.
+        # Avant, le décompte portait sur TOUTES les certifications (relation
+        # inverse `certifications`), donc ce graphique contredisait la liste
+        # filtrée. On agrège désormais sur le queryset filtré, tout en
+        # conservant la liste complète des types actifs (compteur à 0 si aucun).
+        counts_par_type = {
+            row['type_certification']: row['count']
+            for row in queryset.values('type_certification').annotate(count=Count('id'))
+        }
+        par_type = [
+            {
+                'id': t.id,
+                'nom': t.nom,
+                'code': t.code,
+                'count': counts_par_type.get(t.id, 0),
+            }
+            for t in TypeCertification.objects.filter(actif=True)
+        ]
+        par_type.sort(key=lambda t: (-t['count'], t['nom'] or ''))
+
         stats = {
             'total_certifications': queryset.count(),
             'types_certifications_count': TypeCertification.objects.filter(actif=True).count(),
@@ -347,12 +386,7 @@ class CertificationViewSet(viewsets.ModelViewSet):
             'valides': queryset.filter(statut='valide').count(),
             'expirees': queryset.filter(statut='expire').count(),
             'en_cours': queryset.filter(statut='en_cours').count(),
-            'par_type': list(
-                TypeCertification.objects.filter(actif=True)
-                .annotate(count=Count('certifications'))
-                .values('id', 'nom', 'code', 'count')
-                .order_by('-count')
-            ),
+            'par_type': par_type,
             'par_statut': list(
                 queryset.values('statut')
                 .annotate(count=Count('id'))
