@@ -270,7 +270,7 @@ class ProducteurHistoriqueMixin:
                 'nom': p.cooperative.nom if p.cooperative else None,
                 'code': p.cooperative.code if p.cooperative else None,
                 'responsabilite': p.get_responsabilite_cooperative_display(),
-                'date_adhesion': p.date_adhesion,
+                'date_adhesion': p.date_adhesion_cooperative,
             },
             'menage': {
                 'nb_adultes_plus_18': p.nb_adultes_plus_18,
