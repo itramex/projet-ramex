@@ -695,8 +695,9 @@ class Producteur(models.Model):
         """
         # KEEP_DECLARED_VALUES: garder les valeurs declarees/importees
         # si aucun slot de scolarisation n'est renseigne.
-        _slots = [getattr(self, 'continue_ecole_enfant_%d' % i, None) for i in range(1, 11)]
-        if all(v is None for v in _slots):
+        _has_birth_years = any(getattr(self, 'annee_naissance_enfant_%d' % i, None) for i in range(1, 11))
+        if not _has_birth_years:
+            # Aucun age connu -> recomptage impossible : garder les valeurs declarees/importees
             return
         from django.utils import timezone
         
