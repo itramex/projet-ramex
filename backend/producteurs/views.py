@@ -245,9 +245,10 @@ class ProducteurHistoriqueMixin:
         ]
 
         # --- AGR ---
-        agr_data = list(p.agr_activities.values(
-            'type_agr', 'revenu_annuel', 'annee',
-        )) if hasattr(p, 'agr_activities') else []
+        agr_data = [
+            {'type_agr': row['type_agr'], 'revenu_annuel': float(row['revenu_annuel_estime'] or 0)}
+            for row in p.agr_activities.values('type_agr', 'revenu_annuel_estime')
+        ] if hasattr(p, 'agr_activities') else []
 
         # --- Historique (snapshots annuels) ---
         annees_historique = []
