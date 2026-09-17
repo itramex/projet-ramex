@@ -265,7 +265,6 @@ class ProducteurHistoriqueMixin:
                 'statut_matrimonial': p.get_statut_matrimonial_display(),
                 'actif': p.actif, 'femme_leader': p.femme_leader,
                 'paysan_relais': p.paysan_relais,
-                'date_enregistrement': p.date_enregistrement,
             },
             'cooperative': {
                 'nom': p.cooperative.nom if p.cooperative else None,
