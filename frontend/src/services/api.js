@@ -165,6 +165,7 @@ export const producteurService = {
     return { data: results };
   },
   getById: (id) => api.get(`/producteurs/${id}/`),
+  getFiche: (id) => api.get(`/producteurs/${id}/fiche/`),
   create: (data) => { invalidateByPrefix('/producteurs/'); return api.post('/producteurs/', data); },
   update: (id, data) => { invalidateByPrefix('/producteurs/'); return api.put(`/producteurs/${id}/`, data); },
   delete: (id, data) => { invalidateByPrefix('/producteurs/'); return api.delete(`/producteurs/${id}/`, { data }); },

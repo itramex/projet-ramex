@@ -188,6 +188,113 @@ class ProducteurHistoriqueMixin:
             "historique": results
         }, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['get'], url_path='fiche')
+    def fiche(self, request, pk=None):
+        """Fiche récapitulative d'un producteur (#9) : toutes les données BDD
+        le concernant en une seule réponse (identité, coopérative, ménage,
+        parcelles, formations, certifications, dotations, AGR, historique)."""
+        p = self.get_object()
+
+        # --- Parcelles & productions ---
+        parcelles = p.parcelles.all().order_by('code_parcelle')
+        parcelles_data = [
+            {
+                'id': pa.id, 'code': pa.code_parcelle, 'type_vanille': pa.type_vanille,
+                'superficie': float(pa.dimension_ha or 0),
+                'nb_pieds': pa.nombre_pieds or 0,
+                'estimation': float(pa.estimation_production_kg or 0),
+                'certifiee': pa.certifiee if hasattr(pa, 'certifiee') else None,
+                'cultures': pa.cultures_pratiquees if hasattr(pa, 'cultures_pratiquees') else None,
+            }
+            for pa in parcelles
+        ]
+
+        # --- Formations ---
+        formations = p.formations.select_related('type_formation').order_by('-date_formation')
+        formations_data = [
+            {
+                'type': f.type_formation.nom if f.type_formation else '',
+                'date': f.date_formation, 'organisme': f.organisme,
+                'lieu': f.lieu, 'certificat': f.certificat_obtenu,
+            }
+            for f in formations
+        ]
+
+        # --- Certifications ---
+        certifications = p.certifications.select_related('type_certification').order_by('-date_obtention')
+        certifications_data = [
+            {
+                'type': c.type_certification.nom if c.type_certification else '',
+                'numero': c.numero_certificat, 'statut': c.statut,
+                'date_obtention': c.date_obtention, 'date_expiration': c.date_expiration,
+            }
+            for c in certifications
+        ]
+
+        # --- Dotations (réutilise les cumuls du ViewSet Dotations) ---
+        dotations = p.dotations.all().order_by('-date_dotation') if hasattr(p, 'dotations') else []
+        cumul_par_type = {}
+        for d in dotations:
+            cumul_par_type[d.type_dotation] = cumul_par_type.get(d.type_dotation, 0) + (d.quantite or 0)
+        dotations_data = [
+            {
+                'type': d.get_type_dotation_display() if hasattr(d, 'get_type_dotation_display') else d.type_dotation,
+                'annee': d.annee, 'quantite': d.quantite, 'details': d.details,
+            }
+            for d in dotations
+        ]
+
+        # --- AGR ---
+        agr_data = list(p.agr_activities.values(
+            'type_agr', 'revenu_annuel', 'annee',
+        )) if hasattr(p, 'agr_activities') else []
+
+        # --- Historique (snapshots annuels) ---
+        annees_historique = []
+        if hasattr(p, 'snapshots'):
+            annees_historique = sorted(p.snapshots.values_list('annee', flat=True).distinct())
+
+        fiche = {
+            'identite': {
+                'code': p.code, 'nom': p.nom, 'prenom': p.prenom,
+                'nom_complet': p.nom_complet, 'sexe': p.get_sexe_display(),
+                'age': p.age, 'telephone': p.telephone,
+                'village': p.village, 'commune': p.commune, 'fokontany': p.fokontany,
+                'niveau_education': p.get_niveau_education_display(),
+                'statut_matrimonial': p.get_statut_matrimonial_display(),
+                'actif': p.actif, 'femme_leader': p.femme_leader,
+                'paysan_relais': p.paysan_relais,
+                'date_enregistrement': p.date_enregistrement,
+            },
+            'cooperative': {
+                'nom': p.cooperative.nom if p.cooperative else None,
+                'code': p.cooperative.code if p.cooperative else None,
+                'responsabilite': p.get_responsabilite_cooperative_display(),
+                'date_adhesion': p.date_adhesion,
+            },
+            'menage': {
+                'nb_adultes_plus_18': p.nb_adultes_plus_18,
+                'nb_enfants_scolarises': p.nb_enfants_scolarises,
+                'nb_enfants_non_scolarises': p.nb_enfants_non_scolarises,
+                'total_enfants': p.total_enfants,
+                'taux_scolarisation': p.taux_scolarisation,
+            },
+            'parcelles': {
+                'total': len(parcelles_data),
+                'superficie_totale': round(sum(x['superficie'] for x in parcelles_data), 2),
+                'estimation_totale': round(sum(x['estimation'] for x in parcelles_data), 2),
+                'nb_pieds_total': sum(x['nb_pieds'] for x in parcelles_data),
+                'liste': parcelles_data,
+            },
+            'formations': {'total': len(formations_data), 'avec_certificat': sum(1 for f in formations_data if f['certificat']), 'liste': formations_data},
+            'certifications': {'total': len(certifications_data), 'liste': certifications_data},
+            'dotations': {'total': len(dotations_data), 'cumul_total': sum(d.quantite or 0 for d in dotations), 'cumul_par_type': cumul_par_type, 'liste': dotations_data},
+            'agr': {'total': len(agr_data), 'revenu_total': float(sum(a.get('revenu_annuel') or 0 for a in agr_data)), 'liste': agr_data},
+            'annees_historique': annees_historique,
+        }
+        return Response(fiche, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='historique')
     @action(detail=True, methods=['get'], url_path='historique')
     def historique_detail(self, request, pk=None):
         """Retourne l'historique d'un producteur spécifique"""

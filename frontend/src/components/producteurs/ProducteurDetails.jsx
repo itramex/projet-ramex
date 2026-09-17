@@ -32,6 +32,7 @@ function ProducteurDetails({ producteurId, onClose, onEdit }) {
 
 
     const sections = [
+        { id: 'fiche', label: 'Fiche récap', icon: 'ClipboardDocumentListIcon' },
         { id: 'general', label: 'Général', icon: 'DocumentTextIcon' },
         { id: 'foyer', label: 'Ménages', icon: 'HomeIcon' },
         { id: 'cooperative', label: 'Coopérative', icon: 'UserGroupIcon' },
@@ -163,6 +164,7 @@ function ProducteurDetails({ producteurId, onClose, onEdit }) {
 
                 {/* Contenu scrollable */}
                 <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                    {activeSection === 'fiche' && <FicheRecapSection producteurId={producteurId} />}
                     {activeSection === 'general' && <GeneralSection producteur={producteur} />}
                     {activeSection === 'foyer' && <FoyerSection producteur={producteur} />}
                     {activeSection === 'cooperative' && <CooperativeSection producteur={producteur} />}
@@ -899,5 +901,145 @@ function AddDotationModal({ producteurId, onClose, onSuccess }) {
         </div>
     );
 }
+// ==================== FICHE RÉCAPITULATIVE (#9) ====================
+function FicheRecapSection({ producteurId }) {
+    const [fiche, setFiche] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const loadFiche = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await producteurService.getFiche(producteurId);
+            setFiche(response.data);
+        } catch (err) {
+            console.error('Erreur fiche:', err);
+            setError('Erreur lors du chargement de la fiche récapitulative');
+        } finally {
+            setLoading(false);
+        }
+    }, [producteurId]);
+
+    useEffect(() => { loadFiche(); }, [loadFiche]);
+
+    if (loading) return <p className="text-gray-500 text-center py-8">Chargement de la fiche...</p>;
+    if (error) return <p className="text-red-600 text-center py-8">{error}</p>;
+    if (!fiche) return null;
+
+    const idt = fiche.identite || {};
+    const coop = fiche.cooperative || {};
+    const men = fiche.menage || {};
+    const par = fiche.parcelles || {};
+    const Box = ({ title, children }) => (
+        <div className="bg-white rounded-lg shadow-md p-5">
+            <h4 className="font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-3">{title}</h4>
+            {children}
+        </div>
+    );
+    const Row = ({ label, value }) => (
+        <div className="flex justify-between text-sm py-1 border-b border-gray-50">
+            <span className="text-gray-500">{label}</span>
+            <span className="font-medium text-gray-800 text-right">{value ?? '—'}</span>
+        </div>
+    );
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-800">
+                    Fiche récapitulative — {idt.nom_complet} ({idt.code})
+                </h3>
+                <Button variant="secondary" icon="PrinterIcon" onClick={() => window.print()}>
+                    Imprimer
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Box title="Identité">
+                    <Row label="Code" value={idt.code} />
+                    <Row label="Sexe" value={idt.sexe} />
+                    <Row label="Âge" value={idt.age ? `${idt.age} ans` : '—'} />
+                    <Row label="Téléphone" value={idt.telephone} />
+                    <Row label="Éducation" value={idt.niveau_education} />
+                    <Row label="Statut matrimonial" value={idt.statut_matrimonial} />
+                    <Row label="Statut" value={idt.actif ? 'Actif' : 'Inactif'} />
+                </Box>
+                <Box title="Coopérative">
+                    <Row label="Coopérative" value={coop.nom} />
+                    <Row label="Code" value={coop.code} />
+                    <Row label="Responsabilité" value={coop.responsabilite} />
+                    <Row label="Adhésion" value={coop.date_adhesion ? new Date(coop.date_adhesion).toLocaleDateString('fr-FR') : '—'} />
+                </Box>
+                <Box title="Ménage">
+                    <Row label="Adultes (18+)" value={men.nb_adultes_plus_18 ?? '—'} />
+                    <Row label="Enfants scolarisés" value={men.nb_enfants_scolarises ?? '—'} />
+                    <Row label="Enfants non scolarisés" value={men.nb_enfants_non_scolarises ?? '—'} />
+                    <Row label="Total enfants" value={men.total_enfants ?? '—'} />
+                    <Row label="Taux scolarisation" value={men.taux_scolarisation != null ? `${Number(men.taux_scolarisation).toFixed(1)} %` : '—'} />
+                </Box>
+            </div>
+
+            <Box title={`Parcelles (${par.total || 0}) — ${par.superficie_totale || 0} ha · estimation ${par.estimation_totale || 0} kg · ${par.nb_pieds_total || 0} pieds`}>
+                {par.liste?.length ? (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead><tr className="text-left text-gray-500 border-b">
+                                <th className="py-2 pr-4">Code</th><th className="py-2 pr-4">Type vanille</th>
+                                <th className="py-2 pr-4">Superficie (ha)</th><th className="py-2 pr-4">Pieds</th>
+                                <th className="py-2 pr-4">Estimation (kg)</th><th className="py-2">Cultures</th>
+                            </tr></thead>
+                            <tbody>
+                                {par.liste.map((pa) => (
+                                    <tr key={pa.id} className="border-b border-gray-50">
+                                        <td className="py-2 pr-4 font-medium">{pa.code}</td>
+                                        <td className="py-2 pr-4">{pa.type_vanille || '—'}</td>
+                                        <td className="py-2 pr-4">{pa.superficie} ha</td>
+                                        <td className="py-2 pr-4">{pa.nb_pieds}</td>
+                                        <td className="py-2 pr-4">{pa.estimation}</td>
+                                        <td className="py-2">{Array.isArray(pa.cultures) ? pa.cultures.join(', ') : '—'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : <p className="text-gray-400 text-sm">Aucune parcelle enregistrée.</p>}
+            </Box>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Box title={`Formations (${fiche.formations?.total ?? 0}) — dont ${fiche.formations?.avec_certificat ?? 0} avec certificat`}>
+                    {fiche.formations?.liste?.length ? fiche.formations.liste.map((f, i) => (
+                        <Row key={i} label={`${f.type} (${f.date ? new Date(f.date).toLocaleDateString('fr-FR') : '—'})${f.certificat ? ' certificat' : ''}`}
+                            value={f.organisme || '—'} />
+                    )) : <p className="text-gray-400 text-sm">Aucune formation.</p>}
+                </Box>
+                <Box title={`Certifications (${fiche.certifications?.total ?? 0})`}>
+                    {fiche.certifications?.liste?.length ? fiche.certifications.liste.map((c, i) => (
+                        <Row key={i} label={`${c.type} (${c.statut})`}
+                            value={`${c.numero || '—'} — obtention ${c.date_obtention ? new Date(c.date_obtention).toLocaleDateString('fr-FR') : '—'}`} />
+                    )) : <p className="text-gray-400 text-sm">Aucune certification.</p>}
+                </Box>
+                <Box title={`Dotations (${fiche.dotations?.total ?? 0}) — cumul ${fiche.dotations?.cumul_total ?? 0}`}>
+                    {Object.entries(fiche.dotations?.cumul_par_type || {}).map(([type, qty]) => (
+                        <Row key={type} label={type} value={qty} />
+                    ))}
+                    {!fiche.dotations?.liste?.length && <p className="text-gray-400 text-sm">Aucune dotation.</p>}
+                </Box>
+                <Box title={`AGR (${fiche.agr?.total ?? 0}) — revenu total ${fiche.agr?.revenu_total ?? 0} Ar`}>
+                    {fiche.agr?.liste?.length ? fiche.agr.liste.map((a, i) => (
+                        <Row key={i} label={a.type_agr || '—'} value={`${a.revenu_annuel ?? 0} Ar${a.annee ? ` (${a.annee})` : ''}`} />
+                    )) : <p className="text-gray-400 text-sm">Aucune activité AGR.</p>}
+                </Box>
+            </div>
+
+            {fiche.annees_historique?.length > 0 && (
+                <Box title="Années archivées">
+                    <p className="text-sm text-gray-600">{fiche.annees_historique.join(' · ')}</p>
+                </Box>
+            )}
+        </div>
+    );
+}
+
 
 export default ProducteurDetails;
