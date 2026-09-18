@@ -18,6 +18,7 @@ import pandas as pd
 import logging
 from datetime import datetime, date
 from .models import Producteur, Dotation, AGR
+from .cumuls import ProducteurCumulsMixin
 from parcelles.models import Parcelle
 from cooperatives.models import Cooperative
 from formations.models import TypeFormation, Formation, TypeCertification, Certification
@@ -295,7 +296,6 @@ class ProducteurHistoriqueMixin:
         return Response(fiche, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get'], url_path='historique')
-    @action(detail=True, methods=['get'], url_path='historique')
     def historique_detail(self, request, pk=None):
         """Retourne l'historique d'un producteur spécifique"""
         try:
@@ -327,7 +327,7 @@ class ProducteurHistoriqueMixin:
         except Producteur.DoesNotExist:
             return Response({'error': 'Producteur non trouvé'}, status=404)
 
-class ProducteurViewSet(ProducteurHistoriqueMixin, viewsets.ModelViewSet):
+class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewsets.ModelViewSet):
     """ViewSet complet pour la gestion des producteurs"""
     queryset = Producteur.objects.all()
     permission_classes = [IsAdminOrReadOnly]

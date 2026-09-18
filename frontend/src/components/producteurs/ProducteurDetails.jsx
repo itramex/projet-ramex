@@ -33,6 +33,7 @@ function ProducteurDetails({ producteurId, onClose, onEdit }) {
 
     const sections = [
         { id: 'fiche', label: 'Fiche récap', icon: 'ClipboardDocumentListIcon' },
+        { id: 'cumuls', label: 'Cumulés', icon: 'ChartBarIcon' },
         { id: 'general', label: 'Général', icon: 'DocumentTextIcon' },
         { id: 'foyer', label: 'Ménages', icon: 'HomeIcon' },
         { id: 'cooperative', label: 'Coopérative', icon: 'UserGroupIcon' },
@@ -165,6 +166,7 @@ function ProducteurDetails({ producteurId, onClose, onEdit }) {
                 {/* Contenu scrollable */}
                 <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
                     {activeSection === 'fiche' && <FicheRecapSection producteurId={producteurId} />}
+                    {activeSection === 'cumuls' && <CumulsSection producteurId={producteurId} />}
                     {activeSection === 'general' && <GeneralSection producteur={producteur} />}
                     {activeSection === 'foyer' && <FoyerSection producteur={producteur} />}
                     {activeSection === 'cooperative' && <CooperativeSection producteur={producteur} />}
@@ -1036,6 +1038,128 @@ function FicheRecapSection({ producteurId }) {
                 <Box title="Années archivées">
                     <p className="text-sm text-gray-600">{fiche.annees_historique.join(' · ')}</p>
                 </Box>
+            )}
+        </div>
+    );
+}
+
+
+// ==================== CUMULÉS MULTI-ANNÉES (#8) ====================
+function CumulsSection({ producteurId }) {
+    const [cumuls, setCumuls] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const loadCumuls = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await producteurService.getCumuls(producteurId);
+            setCumuls(response.data);
+        } catch (err) {
+            console.error('Erreur cumuls:', err);
+            setError('Erreur lors du chargement des cumuls');
+        } finally {
+            setLoading(false);
+        }
+    }, [producteurId]);
+
+    useEffect(() => { loadCumuls(); }, [loadCumuls]);
+
+    if (loading) return <p className="text-gray-500 text-center py-8">Chargement des cumuls...</p>;
+    if (error) return <p className="text-red-600 text-center py-8">{error}</p>;
+    if (!cumuls) return null;
+
+    const { producteur: prod, annees, estimations, dotations, agr, realisations, social_par_annee } = cumuls;
+    const fmt = (n) => (n ?? 0).toLocaleString('fr-FR');
+    const byYear = (obj, annee) => (obj?.[annee] ?? null);
+
+    const rows = (annees || []).map((annee) => {
+        const est = byYear(estimations?.par_annee, annee);
+        const dot = byYear(dotations?.par_annee, annee);
+        const agrY = byYear(agr?.par_annee, annee);
+        const real = byYear(realisations?.par_annee, annee);
+        const social = byYear(social_par_annee, annee);
+        return (
+            <tr key={annee} className="border-b border-gray-50 hover:bg-gray-50">
+                <td className="py-2 pr-4 font-semibold">{annee}</td>
+                <td className="py-2 pr-4">{est ? fmt(est.quantite_kg) : '—'}</td>
+                <td className="py-2 pr-4">{est ? `${fmt(est.revenu)} Ar` : '—'}</td>
+                <td className="py-2 pr-4">{dot ? fmt(dot.total) : '—'}</td>
+                <td className="py-2 pr-4">{agrY ? `${fmt(agrY.revenu)} Ar` : '—'}</td>
+                <td className="py-2 pr-4">{real ? fmt(real.poids_kg) : '—'}</td>
+                <td className="py-2 pr-4">{real ? `${fmt(real.montant)} Ar` : '—'}</td>
+                <td className="py-2">{social ? `${social.enfants_scolarises} enfant(s)` : '—'}</td>
+            </tr>
+        );
+    });
+
+    const Card = ({ title, value, sub }) => (
+        <div className="bg-white rounded-lg shadow-md p-4">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase">{title}</h4>
+            <p className="text-lg font-bold text-gray-800 mt-1">{value}</p>
+            {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+        </div>
+    );
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-800">
+                    Cumulés multi-années — {prod?.nom_complet} ({prod?.code})
+                </h3>
+                <Button variant="secondary" icon="ArrowPathIcon" onClick={loadCumuls}>
+                    Actualiser
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Card title="Estimations" value={`${fmt(estimations?.total_kg)} kg`} sub={`Revenu estimé : ${fmt(estimations?.total_revenu)} Ar`} />
+                <Card title="Dotations" value={fmt(dotations?.total)} sub={Object.keys(dotations?.par_type || {}).length ? Object.entries(dotations.par_type).map(([t, q]) => `${t}: ${q}`).join(' · ') : 'Aucune'} />
+                <Card title="AGR" value={`${fmt(agr?.revenu_total)} Ar`} sub={Object.keys(agr?.par_type || {}).length ? Object.entries(agr.par_type).map(([t, v]) => `${t}: ${fmt(v)}`).join(' · ') : 'Aucune activité'} />
+                <Card title="Réalisations" value={`${fmt(realisations?.total_kg)} kg`} sub={`${realisations?.nb_bons ?? 0} bon(s) · ${fmt(realisations?.total_montant)} Ar`} />
+            </div>
+
+            {(annees || []).length === 0 ? (
+                <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                    <p className="text-gray-500">Aucune donnée historique pour ce producteur.</p>
+                </div>
+            ) : (
+                <div className="bg-white rounded-lg shadow-md p-5 overflow-x-auto">
+                    <h4 className="font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-3">Ventilation par année</h4>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="text-left text-xs text-gray-500 uppercase border-b border-gray-200">
+                                <th className="py-2 pr-4">Année</th>
+                                <th className="py-2 pr-4">Estimation (kg)</th>
+                                <th className="py-2 pr-4">Revenu estimé</th>
+                                <th className="py-2 pr-4">Dotations</th>
+                                <th className="py-2 pr-4">AGR</th>
+                                <th className="py-2 pr-4">Collecté (kg)</th>
+                                <th className="py-2 pr-4">Montant collecte</th>
+                                <th className="py-2">Scolarisation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows}
+                            <tr className="border-t-2 border-gray-300 font-bold bg-gray-50">
+                                <td className="py-2 pr-4">TOTAL</td>
+                                <td className="py-2 pr-4">{fmt(estimations?.total_kg)}</td>
+                                <td className="py-2 pr-4">{fmt(estimations?.total_revenu)} Ar</td>
+                                <td className="py-2 pr-4">{fmt(dotations?.total)}</td>
+                                <td className="py-2 pr-4">{fmt(agr?.revenu_total)} Ar</td>
+                                <td className="py-2 pr-4">{fmt(realisations?.total_kg)}</td>
+                                <td className="py-2 pr-4">{fmt(realisations?.total_montant)} Ar</td>
+                                <td className="py-2">{Object.values(social_par_annee || {}).reduce((s, v) => s + (v.enfants_scolarises || 0), 0)} enfant(s)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    {Object.keys(estimations?.par_culture || {}).length > 0 && (
+                        <p className="text-xs text-gray-500 mt-3">
+                            Estimations par culture : {Object.entries(estimations.par_culture).map(([c, v]) => `${c} ${fmt(v.quantite_kg)} kg`).join(' · ')}
+                        </p>
+                    )}
+                </div>
             )}
         </div>
     );
