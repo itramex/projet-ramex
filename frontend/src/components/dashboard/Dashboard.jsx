@@ -44,8 +44,8 @@ function Dashboard() {
     villages: [],
     communes: [],
     fokontanys: [],
-    culture: 'vanille',
-    certification: '',
+    culture: [],
+    certification: [],
     dateFrom: '',
     dateTo: ''
   });
@@ -53,6 +53,8 @@ function Dashboard() {
   const [showVillageDropdown, setShowVillageDropdown] = useState(false);
   const [showCommuneDropdown, setShowCommuneDropdown] = useState(false);
   const [showFokontanyDropdown, setShowFokontanyDropdown] = useState(false);
+  const [showCultureDropdown, setShowCultureDropdown] = useState(false);
+  const [showCertificationDropdown, setShowCertificationDropdown] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -98,10 +100,10 @@ function Dashboard() {
         params.append('commune', commune);
       });
 
-      // Ajouter la culture si sélectionnée
-      if (filters.culture) {
-        params.append('culture', filters.culture);
-      }
+      // Ajouter les cultures sélectionnées (#16 multi)
+      filters.culture.forEach(culture => {
+        params.append('culture', culture);
+      });
 
       const response = await dashboardService.getProduction(params);
       setProductionData(response.data);
@@ -120,9 +122,7 @@ function Dashboard() {
       const params = new URLSearchParams();
       filters.villages.forEach(village => params.append('village', village));
       filters.communes.forEach(commune => params.append('commune', commune));
-      if (filters.certification) {
-        params.append('certification', filters.certification);
-      }
+      filters.certification.forEach(certification => params.append('certification', certification));
       if (filters.dateFrom) {
         params.append('date_from', filters.dateFrom);
       }
@@ -144,6 +144,7 @@ function Dashboard() {
       const params = new URLSearchParams();
       filters.villages.forEach(village => params.append('village', village));
       filters.communes.forEach(commune => params.append('commune', commune));
+      filters.culture.forEach(culture => params.append('culture', culture));
       const response = await dashboardService.getProductionParCulture(params);
       setCultureDetail(response.data);
     } catch (error) {
@@ -229,13 +230,32 @@ function Dashboard() {
     }));
   }, []);
 
+  // #16 : multi-sélection culture / certification
+  const toggleCulture = useCallback((culture) => {
+    setFilters(prev => ({
+      ...prev,
+      culture: prev.culture.includes(culture)
+        ? prev.culture.filter(c => c !== culture)
+        : [...prev.culture, culture]
+    }));
+  }, []);
+
+  const toggleCertification = useCallback((certification) => {
+    setFilters(prev => ({
+      ...prev,
+      certification: prev.certification.includes(certification)
+        ? prev.certification.filter(c => c !== certification)
+        : [...prev.certification, certification]
+    }));
+  }, []);
+
   const resetFilters = useCallback(() => {
     setFilters({
       villages: [],
       communes: [],
       fokontanys: [],
-      culture: 'vanille',
-      certification: '',
+      culture: [],
+      certification: [],
       dateFrom: '',
       dateTo: ''
     });
@@ -375,7 +395,6 @@ function Dashboard() {
           cultureData={cultureDetail}
           filters={filters}
           villagesCommunes={villagesCommunes}
-          onFilterChange={handleFilterChange}
           toggleVillage={toggleVillage}
           toggleCommune={toggleCommune}
           onResetFilters={resetFilters}
@@ -383,6 +402,10 @@ function Dashboard() {
           setShowVillageDropdown={setShowVillageDropdown}
           showCommuneDropdown={showCommuneDropdown}
           setShowCommuneDropdown={setShowCommuneDropdown}
+          toggleCulture={toggleCulture}
+          showCultureDropdown={showCultureDropdown}
+          setShowCultureDropdown={setShowCultureDropdown}
+          toggleCertification={toggleCertification}
         />
       ) : activeTab === 'agr' ? (
         <AGRStats filters={filters} />
@@ -399,6 +422,9 @@ function Dashboard() {
           onFilterChange={handleFilterChange}
           onApplyFilters={loadDecisionData}
           onResetFilters={resetFilters}
+          toggleCertification={toggleCertification}
+          showCertificationDropdown={showCertificationDropdown}
+          setShowCertificationDropdown={setShowCertificationDropdown}
         />
       ) : null}
     </div>
@@ -701,7 +727,7 @@ const OverviewTab = memo(({ data, filters, villagesCommunes, showVillageDropdown
 OverviewTab.displayName = 'OverviewTab';
 
 // ========== Onglet Production ==========
-const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, onFilterChange, toggleVillage, toggleCommune, onResetFilters, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown }) => {
+const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, toggleVillage, toggleCommune, onResetFilters, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown, toggleCulture, showCultureDropdown, setShowCultureDropdown, toggleCertification }) => {
   if (!data) {
     return (
       <div className="text-center py-12">
@@ -782,19 +808,36 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, onFi
             )}
           </div>
 
-          {/* Select Culture (reste simple) */}
+          {/* Multi-select Culture (#16) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Culture</label>
-            <select
-              value={filters.culture}
-              onChange={(e) => onFilterChange('culture', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chick-yellow"
+            <label className="block text-sm font-medium text-gray-700 mb-2">Culture(s)</label>
+            <button
+              type="button"
+              onClick={() => setShowCultureDropdown(!showCultureDropdown)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-left flex justify-between items-center"
             >
-              <option value="vanille">Vanille</option>
-              <option value="cafe">Café</option>
-              <option value="girofle">Girofle</option>
-              <option value="autre">Autre</option>
-            </select>
+              <span className={filters.culture.length === 0 ? 'text-gray-400' : 'text-dark'}>
+                {filters.culture.length === 0
+                  ? 'Toutes les cultures'
+                  : `${filters.culture.length} culture(s)`}
+              </span>
+              <span className="text-gray-400">▾</span>
+            </button>
+            {showCultureDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {[['vanille', 'Vanille'], ['cafe', 'Café'], ['girofle', 'Girofle'], ['cacao', 'Cacao'], ['poivre', 'Poivre'], ['autre', 'Autre']].map(([value, label], index) => (
+                  <label key={`culture-${index}`} className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.culture.includes(value)}
+                      onChange={() => toggleCulture(value)}
+                      className="mr-3 h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm">{label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Bouton Réinitialiser */}
@@ -809,7 +852,7 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, onFi
         </div>
 
         {/* Affichage des filtres actifs */}
-        {(filters.villages.length > 0 || filters.communes.length > 0) && (
+        {(filters.villages.length > 0 || filters.communes.length > 0 || filters.culture.length > 0 || filters.certification.length > 0) && (
           <div className="mt-4 text-sm text-gray-600">
             <span className="font-medium">Filtres actifs:</span>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -823,6 +866,18 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, onFi
                 <span key={`village-${index}`} className="bg-gray-100 text-gray-800 border border-gray-300 px-3 py-1 rounded-full flex items-center gap-2">
                   <span>{village}</span>
                   <button onClick={() => toggleVillage(village)} className="hover:text-gray-900">×</button>
+                </span>
+              ))}
+              {filters.culture.map((culture, index) => (
+                <span key={`culture-${index}`} className="bg-yellow-50 text-gray-800 border border-yellow-300 px-3 py-1 rounded-full flex items-center gap-2">
+                  <span className="capitalize">{culture}</span>
+                  <button onClick={() => toggleCulture(culture)} className="hover:text-gray-900">×</button>
+                </span>
+              ))}
+              {filters.certification.map((cert, index) => (
+                <span key={`cert-${index}`} className="bg-blue-50 text-gray-800 border border-blue-300 px-3 py-1 rounded-full flex items-center gap-2">
+                  <span className="uppercase">{cert}</span>
+                  <button onClick={() => toggleCertification(cert)} className="hover:text-gray-900">×</button>
                 </span>
               ))}
             </div>
@@ -1207,14 +1262,14 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, onFi
 
 ProductionTab.displayName = 'ProductionTab';
 
-const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onResetFilters }) => {
+const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onResetFilters, toggleCertification, showCertificationDropdown, setShowCertificationDropdown }) => {
   const [exporting, setExporting] = useState('');
 
   const downloadExport = async (format) => {
     setExporting(format);
     try {
       const params = {};
-      if (filters.certification) params.certification = filters.certification;
+      if (filters.certification?.length) params.certification = filters.certification;
       if (filters.dateFrom) params.date_from = filters.dateFrom;
       if (filters.dateTo) params.date_to = filters.dateTo;
       if (filters.villages?.length) params.village = filters.villages;
@@ -1277,19 +1332,34 @@ const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onRes
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Certification</label>
-            <select
-              value={filters.certification || ''}
-              onChange={(e) => onFilterChange('certification', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            <label className="block text-sm font-medium text-gray-700 mb-2">Certification(s)</label>
+            <button
+              type="button"
+              onClick={() => setShowCertificationDropdown(!showCertificationDropdown)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-left flex justify-between items-center"
             >
-              <option value="">Toutes</option>
-              <option value="bio">BIO</option>
-              <option value="ra">RA</option>
-              <option value="rauebt">RA-UEBT</option>
-              <option value="ffl">FFL</option>
-              <option value="g4g">G4G</option>
-            </select>
+              <span className={filters.certification.length === 0 ? 'text-gray-400' : 'text-dark'}>
+                {filters.certification.length === 0
+                  ? 'Toutes les certifications'
+                  : `${filters.certification.length} certification(s)`}
+              </span>
+              <span className="text-gray-400">▾</span>
+            </button>
+            {showCertificationDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {['bio', 'ra', 'rauebt', 'ffl', 'g4g'].map((cert, index) => (
+                  <label key={`cert-${index}`} className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.certification.includes(cert)}
+                      onChange={() => toggleCertification(cert)}
+                      className="mr-3 h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm uppercase">{cert}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex items-end gap-2">
             <button

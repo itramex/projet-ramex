@@ -1135,7 +1135,11 @@ def dashboard_production(request):
     # Récupérer les paramètres de filtrage (support multi-sélection)
     villages = request.query_params.getlist('village', None)
     communes = request.query_params.getlist('commune', None)
-    culture = request.query_params.get('culture', None)
+    culture = request.query_params.getlist('culture', None)
+    if culture:
+        culture = [c for c in culture if c]
+    if not culture:
+        culture = None
     
     # Construire le queryset de base avec les parcelles actives
     base_queryset = Parcelle.objects.filter(active=True).select_related('producteur')
@@ -1151,45 +1155,58 @@ def dashboard_production(request):
         if communes:
             base_queryset = base_queryset.filter(producteur__commune__in=communes)
     
-    # Filtrage par culture : utiliser productions_par_culture JSONField
+    # Filtrage par culture : utiliser productions_par_culture JSONField (#16 : multi)
     if culture:
-        # Filtrer les parcelles qui ont cette culture dans productions_par_culture
-        base_queryset = base_queryset.filter(productions_par_culture__has_key=culture)
+        culture_q = Q()
+        for c in culture:
+            culture_q |= Q(productions_par_culture__has_key=c)
+        base_queryset = base_queryset.filter(culture_q)
     
-    # Calculer les statistiques selon la culture sélectionnée
+    # Calculer les statistiques selon la/les culture(s) sélectionnée(s)
     if culture:
-        # Agréger uniquement la production de la culture sélectionnée
+        # Agréger uniquement la production des cultures sélectionnées
         from django.db.models import F, Value
         from django.db.models.functions import Cast
         from django.db.models import FloatField
-        
-        # Extraire la production de la culture spécifique depuis le JSON
+
+        # Extraire la production des cultures spécifiques depuis le JSON
         total_parcelles = base_queryset.count()
         total_superficie = base_queryset.aggregate(total=Sum('dimension_ha'))['total'] or 0
-        
-        # Calculer la production totale pour cette culture
+
+        # Calculer la production totale pour ces cultures (somme sur les cultures demandées)
         total_production = 0
         for parcelle in base_queryset:
-            if parcelle.productions_par_culture and culture in parcelle.productions_par_culture:
-                try:
-                    total_production += float(parcelle.productions_par_culture[culture])
-                except (ValueError, TypeError):
-                    pass
-        
+            if parcelle.productions_par_culture and isinstance(parcelle.productions_par_culture, dict):
+                for c in culture:
+                    if c in parcelle.productions_par_culture:
+                        try:
+                            total_production += float(parcelle.productions_par_culture[c])
+                        except (ValueError, TypeError):
+                            pass
+
         agregats_production = {
             'total_parcelles': total_parcelles,
             'total_superficie': total_superficie,
             'total_production_estimee': total_production,
-            'total_pieds_vanille': base_queryset.aggregate(total=Sum('nombre_pieds'))['total'] or 0 if culture == 'vanille' else 0,
+            'total_pieds_vanille': base_queryset.aggregate(total=Sum('nombre_pieds'))['total'] or 0 if 'vanille' in culture else 0,
         }
-        
-        # Production par culture (une seule culture dans ce cas)
-        par_culture = [{
-            'culture_principale': culture,
-            'nb_parcelles': total_parcelles,
-            'superficie_totale': total_superficie,
-            'production_estimee': total_production
-        }]
+
+        # Production par culture (une entrée par culture demandée)
+        par_culture = []
+        for c in culture:
+            prod_c = 0
+            for parcelle in base_queryset:
+                if parcelle.productions_par_culture and c in parcelle.productions_par_culture:
+                    try:
+                        prod_c += float(parcelle.productions_par_culture[c])
+                    except (ValueError, TypeError):
+                        pass
+            par_culture.append({
+                'culture_principale': c,
+                'nb_parcelles': base_queryset.filter(productions_par_culture__has_key=c).count(),
+                'superficie_totale': total_superficie,
+                'production_estimee': prod_c
+            })
     else:
         # Sans filtre culture : statistiques globales normales
         agregats_production = base_queryset.aggregate(
@@ -1238,11 +1255,19 @@ def dashboard_production(request):
         producteurs_dict = {}
         
         for parcelle in base_queryset:
-            if parcelle.productions_par_culture and culture in parcelle.productions_par_culture:
-                try:
-                    prod = float(parcelle.productions_par_culture[culture])
-                except (ValueError, TypeError):
-                    continue
+            if not (parcelle.productions_par_culture and isinstance(parcelle.productions_par_culture, dict)):
+                continue
+            prod = 0.0
+            found = False
+            for c in culture:
+                if c in parcelle.productions_par_culture:
+                    try:
+                        prod += float(parcelle.productions_par_culture[c])
+                        found = True
+                    except (ValueError, TypeError):
+                        pass
+            if not found:
+                continue
                 
                 # Par village
                 village = parcelle.producteur.village
@@ -1288,9 +1313,9 @@ def dashboard_production(request):
         top_producteurs.sort(key=lambda x: x['production_estimee'], reverse=True)
         top_producteurs = top_producteurs[:10]
         
-        # Par type de vanille (seulement si culture = vanille)
+        # Par type de vanille (seulement si vanille fait partie des cultures #16)
         par_type_vanille = []
-        if culture == 'vanille':
+        if 'vanille' in culture:
             type_vanille_dict = {}
             for parcelle in base_queryset:
                 if parcelle.type_vanille and parcelle.productions_par_culture and 'vanille' in parcelle.productions_par_culture:
@@ -1313,11 +1338,19 @@ def dashboard_production(request):
         # Par certification (pour la culture sélectionnée)
         certification_dict = {}
         for parcelle in base_queryset.filter(certifiee=True):
-            if parcelle.productions_par_culture and culture in parcelle.productions_par_culture:
-                try:
-                    prod = float(parcelle.productions_par_culture[culture])
-                except (ValueError, TypeError):
-                    continue
+            if not (parcelle.productions_par_culture and isinstance(parcelle.productions_par_culture, dict)):
+                continue
+            prod = 0.0
+            found = False
+            for c in culture:
+                if c in parcelle.productions_par_culture:
+                    try:
+                        prod += float(parcelle.productions_par_culture[c])
+                        found = True
+                    except (ValueError, TypeError):
+                        pass
+            if not found:
+                continue
                 
                 cert = parcelle.type_certification
                 if cert not in certification_dict:
@@ -1467,9 +1500,8 @@ def dashboard_production(request):
         }
     }
     
-    # N'inclure par_culture que si aucun filtre culture n'est actif
-    if not culture:
-        data['par_culture'] = par_culture
+    # par_culture : détail complet sans filtre, limité aux cultures choisies sinon (#16)
+    data['par_culture'] = par_culture
     
     return Response(data)
 
