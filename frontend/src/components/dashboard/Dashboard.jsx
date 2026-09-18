@@ -978,6 +978,88 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, onFi
         </div>
       )}
 
+      {/* #36 — Réalisations réelles par année (non cumulé) */}
+      {data.realisations?.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-bold text-dark">
+              Réalisations réelles par année
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                (production enregistrée — chaque année affichée séparément, total non cumulé)
+              </span>
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Année</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Culture</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Production réelle</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenu (Ar)</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {data.realisations.map((item, index) => {
+                  const cultureLabels = { vanille: 'Vanille', cafe: 'Café', girofle: 'Girofle', cacao: 'Cacao', poivre: 'Poivre', autre: 'Autre' };
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{item.annee}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 capitalize">{cultureLabels[item.culture] || item.culture}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.produite_kg || 0).toLocaleString('fr-FR')} kg</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.revenu_ar || 0).toLocaleString('fr-FR')}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* #36 — Résilience autres produits (AGR) : vendu vs consommé */}
+      {data.resilience_agr?.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-bold text-dark">
+              Autres produits (AGR) — Vendu vs Consommé
+              <span className="ml-2 text-sm font-normal text-gray-500">(par année, non cumulé)</span>
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Année</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Vendu</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% vendu</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Consommé</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% consommé</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {data.resilience_agr.map((item, index) => {
+                  const typeLabels = { pisciculture: 'Pisciculture', aviculture: 'Aviculture', autre: 'Autre' };
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{item.annee}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700">{typeLabels[item.type_agr] || item.type_agr}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.produite || 0).toLocaleString('fr-FR')}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.vendue || 0).toLocaleString('fr-FR')}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{item.pct_vendu !== null ? `${item.pct_vendu} %` : '—'}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.consommee || 0).toLocaleString('fr-FR')}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{item.pct_consomme !== null ? `${item.pct_consomme} %` : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Détail par culture - Cards enrichies */}
       {data.par_culture?.length > 0 && (
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">

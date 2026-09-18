@@ -1386,6 +1386,60 @@ def dashboard_production(request):
             .order_by('-production_estimee')[:10]
         )
     
+    # ===== #36 — Réalisations réelles + résilience (vendu / consommé) =====
+    from history.models import AGRHistory, ProductionHistory
+
+    # Réalisations réelles par année × culture (ProductionHistory) —
+    # volontairement NON cumulé : une ligne par année, aucune somme inter-années.
+    geo_parcelles = Parcelle.objects.filter(active=True)
+    if villages and any(villages):
+        geo_parcelles = geo_parcelles.filter(producteur__village__in=[v for v in villages if v])
+    if communes and any(communes):
+        geo_parcelles = geo_parcelles.filter(producteur__commune__in=[c for c in communes if c])
+    realisations_qs = ProductionHistory.objects.filter(parcelle__in=geo_parcelles)
+    if culture:
+        realisations_qs = realisations_qs.filter(culture=culture)
+    realisations = [
+        {
+            'annee': r['annee'],
+            'culture': r['culture'],
+            'produite_kg': float(r['produite'] or 0),
+            'revenu_ar': float(r['revenu'] or 0),
+        }
+        for r in realisations_qs.values('annee', 'culture')
+        .annotate(produite=Sum('quantite_kg'), revenu=Sum('revenu_total'))
+        .order_by('-annee', 'culture')
+    ]
+
+    # Résilience « autres produits » (AGR) : quelle part est vendue / consommée ?
+    # Ventilé par année et par type — non cumulé, pourcentages calculés par ligne.
+    resilience_qs = AGRHistory.objects.all()
+    if villages and any(villages):
+        resilience_qs = resilience_qs.filter(producteur__village__in=[v for v in villages if v])
+    if communes and any(communes):
+        resilience_qs = resilience_qs.filter(producteur__commune__in=[c for c in communes if c])
+    resilience_agr = []
+    for r in resilience_qs.values('annee', 'type_agr').annotate(
+            produite=Sum('quantite_produite'),
+            vendue=Sum('quantite_vendue'),
+            consommee=Sum('quantite_consommee'),
+    ).order_by('-annee', 'type_agr'):
+        produite = float(r['produite'] or 0)
+        vendue = float(r['vendue'] or 0)
+        consommee = float(r['consommee'] or 0)
+        # Dénominateur : production si saisie, sinon ventes + consommation
+        # (la production n'est pas toujours renseignée dans les imports).
+        denom = produite if produite > 0 else (vendue + consommee)
+        resilience_agr.append({
+            'annee': r['annee'],
+            'type_agr': r['type_agr'],
+            'produite': produite,
+            'vendue': vendue,
+            'consommee': consommee,
+            'pct_vendu': round(vendue / denom * 100, 1) if denom > 0 else None,
+            'pct_consomme': round(consommee / denom * 100, 1) if denom > 0 else None,
+        })
+
     # Calculer les rendements moyens
     total_superficie = float(agregats_production['total_superficie'] or 0)
     total_production = float(agregats_production['total_production_estimee'] or 0)
@@ -1404,6 +1458,8 @@ def dashboard_production(request):
         'par_type_vanille': par_type_vanille,
         'par_certification': par_certification,
         'top_producteurs': top_producteurs,
+        'realisations': realisations,
+        'resilience_agr': resilience_agr,
         'filtres_actifs': {
             'villages': villages if villages and any(villages) else [],
             'communes': communes if communes and any(communes) else [],
