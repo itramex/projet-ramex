@@ -167,6 +167,7 @@ export const producteurService = {
   getById: (id) => api.get(`/producteurs/${id}/`),
   getFiche: (id) => api.get(`/producteurs/${id}/fiche/`),
   getCumuls: (id) => api.get(`/producteurs/${id}/cumuls/`),
+  getVillageCumuls: (village, params = {}) => api.get('/producteurs/cumuls-village/', { params: { village, ...params } }),
   create: (data) => { invalidateByPrefix('/producteurs/'); return api.post('/producteurs/', data); },
   update: (id, data) => { invalidateByPrefix('/producteurs/'); return api.put(`/producteurs/${id}/`, data); },
   delete: (id, data) => { invalidateByPrefix('/producteurs/'); return api.delete(`/producteurs/${id}/`, { data }); },

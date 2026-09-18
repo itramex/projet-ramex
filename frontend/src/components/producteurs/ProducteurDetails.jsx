@@ -1066,6 +1066,27 @@ function CumulsSection({ producteurId }) {
 
     useEffect(() => { loadCumuls(); }, [loadCumuls]);
 
+    const village = cumuls?.producteur?.village || null;
+    const [villageData, setVillageData] = useState(null);
+    const [villageLoading, setVillageLoading] = useState(false);
+    const [villageError, setVillageError] = useState(null);
+
+    const loadVillage = useCallback(async () => {
+        if (villageData) { setVillageData(null); return; }
+        if (!village) return;
+        setVillageLoading(true);
+        setVillageError(null);
+        try {
+            const response = await producteurService.getVillageCumuls(village);
+            setVillageData(response.data);
+        } catch (err) {
+            console.error('Erreur cumuls village:', err);
+            setVillageError('Erreur lors du chargement des cumuls du village');
+        } finally {
+            setVillageLoading(false);
+        }
+    }, [village, villageData]);
+
     if (loading) return <p className="text-gray-500 text-center py-8">Chargement des cumuls...</p>;
     if (error) return <p className="text-red-600 text-center py-8">{error}</p>;
     if (!cumuls) return null;
@@ -1108,9 +1129,16 @@ function CumulsSection({ producteurId }) {
                 <h3 className="text-lg font-semibold text-gray-800">
                     Cumulés multi-années — {prod?.nom_complet} ({prod?.code})
                 </h3>
-                <Button variant="secondary" icon="ArrowPathIcon" onClick={loadCumuls}>
-                    Actualiser
-                </Button>
+                <div className="flex gap-2">
+                    {village && (
+                        <Button variant="secondary" onClick={loadVillage}>
+                            {villageData ? 'Masquer le cumul village' : `Cumul du village (${village})`}
+                        </Button>
+                    )}
+                    <Button variant="secondary" icon="ArrowPathIcon" onClick={loadCumuls}>
+                        Actualiser
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1159,6 +1187,50 @@ function CumulsSection({ producteurId }) {
                             Estimations par culture : {Object.entries(estimations.par_culture).map(([c, v]) => `${c} ${fmt(v.quantite_kg)} kg`).join(' · ')}
                         </p>
                     )}
+                </div>
+            )}
+
+            {villageError && <p className="text-red-600 text-sm">{villageError}</p>}
+            {villageLoading && <p className="text-gray-500 text-sm">Chargement des cumuls du village...</p>}
+            {villageData && (
+                <div className="bg-white rounded-lg shadow-md p-5 overflow-x-auto">
+                    <h4 className="font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-3">
+                        Cumul du village — {villageData.filtres?.village} ({villageData.nb_producteurs} producteur(s), comparaison par producteur)
+                    </h4>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="text-left text-xs text-gray-500 uppercase border-b border-gray-200">
+                                <th className="py-2 pr-4">Code</th>
+                                <th className="py-2 pr-4">Producteur</th>
+                                <th className="py-2 pr-4">Estimation (kg)</th>
+                                <th className="py-2 pr-4">Dotations</th>
+                                <th className="py-2 pr-4">AGR</th>
+                                <th className="py-2 pr-4">Collecté (kg)</th>
+                                <th className="py-2">Montant collecte</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {villageData.producteurs.map((pc) => (
+                                <tr key={pc.producteur.id} className="border-b border-gray-50 hover:bg-gray-50">
+                                    <td className="py-2 pr-4 font-medium">{pc.producteur.code}</td>
+                                    <td className="py-2 pr-4">{pc.producteur.nom_complet}</td>
+                                    <td className="py-2 pr-4">{fmt(pc.estimations?.total_kg)}</td>
+                                    <td className="py-2 pr-4">{fmt(pc.dotations?.total)}</td>
+                                    <td className="py-2 pr-4">{fmt(pc.agr?.revenu_total)} Ar</td>
+                                    <td className="py-2 pr-4">{fmt(pc.realisations?.total_kg)}</td>
+                                    <td className="py-2">{fmt(pc.realisations?.total_montant)} Ar</td>
+                                </tr>
+                            ))}
+                            <tr className="border-t-2 border-gray-300 font-bold bg-gray-50">
+                                <td className="py-2 pr-4" colSpan={2}>TOTAL VILLAGE</td>
+                                <td className="py-2 pr-4">{fmt(villageData.totaux?.estimations_kg)}</td>
+                                <td className="py-2 pr-4">{fmt(villageData.totaux?.dotations)}</td>
+                                <td className="py-2 pr-4">{fmt(villageData.totaux?.agr_revenu)} Ar</td>
+                                <td className="py-2 pr-4">{fmt(villageData.totaux?.realisations_kg)}</td>
+                                <td className="py-2">{fmt(villageData.totaux?.realisations_montant)} Ar</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             )}
         </div>
