@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 from users.permissions import CanManageCertificationDD
 from users.models import ActivityLog
 from django_filters.rest_framework import DjangoFilterBackend
@@ -16,6 +17,37 @@ from .serializers import (
     TypeCertificationSerializer, CertificationSerializer, CertificationListSerializer,
     AuditCertificationSerializer, NonConformiteSerializer, ActiviteCertificationSerializer,
 )
+
+from django.core.exceptions import ValidationError
+
+# ==================== Pièces jointes (#20) ====================
+# Certificat de certification, rapport d'audit, preuve de non-conformité.
+PIECE_JOINTE_EXTENSIONS = ('.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx', '.xls', '.xlsx')
+PIECE_JOINTE_TAILLE_MAX = 10 * 1024 * 1024  # 10 Mo
+
+
+def _valider_piece_jointe(fichier):
+    """Valide un fichier uploadé (pièce jointe #20) ; lève ValidationError si invalide."""
+    import os
+    if fichier is None:
+        raise ValidationError("Aucun fichier reçu (champ attendu : 'fichier').")
+    if fichier.size > PIECE_JOINTE_TAILLE_MAX:
+        raise ValidationError("Fichier trop volumineux (maximum 10 Mo).")
+    ext = os.path.splitext(fichier.name or '')[1].lower()
+    if ext not in PIECE_JOINTE_EXTENSIONS:
+        raise ValidationError(
+            "Type de fichier non autorisé. Formats acceptés : PDF, images, Word, Excel."
+        )
+
+
+def _abs_file_url(request, field):
+    """URL absolue d'une pièce jointe (ou None). Helper partagé (#20)."""
+    if not field:
+        return None
+    url = field.url
+    if request:
+        return request.build_absolute_uri(url)
+    return url
 
 
 class TypeFormationViewSet(viewsets.ModelViewSet):
@@ -560,6 +592,25 @@ class CertificationViewSet(viewsets.ModelViewSet):
             })
         return Response({'results': results, 'count': len(results)})
 
+    @action(detail=True, methods=['post'], url_path='piece_jointe',
+            parser_classes=[MultiPartParser, FormParser])
+    def piece_jointe(self, request, pk=None):
+        """Upload/remplacement du fichier certificat d'une certification (#20).
+
+        POST multipart/form-data avec champ 'fichier' (PDF, image, Word, Excel ; ≤ 10 Mo).
+        """
+        try:
+            _valider_piece_jointe(request.FILES.get('fichier'))
+        except ValidationError as exc:
+            return Response({'detail': exc.messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+        cert = self.get_object()
+        cert.fichier_certificat = request.FILES['fichier']
+        cert.save(update_fields=['fichier_certificat', 'date_modification'])
+        return Response({
+            'id': cert.id,
+            'fichier_certificat_url': _abs_file_url(request, cert.fichier_certificat),
+        }, status=status.HTTP_200_OK)
+
 
 class AuditCertificationViewSet(viewsets.ModelViewSet):
     queryset = AuditCertification.objects.select_related('type_certification').annotate(nb_nonconformites=Count('nonconformites'))
@@ -590,6 +641,25 @@ class AuditCertificationViewSet(viewsets.ModelViewSet):
         ncs = audit.nonconformites.select_related('producteur')
         return Response(NonConformiteSerializer(ncs, many=True).data)
 
+    @action(detail=True, methods=['post'], url_path='rapport',
+            parser_classes=[MultiPartParser, FormParser])
+    def rapport(self, request, pk=None):
+        """Upload/remplacement du rapport d'audit joint (#20).
+
+        POST multipart/form-data avec champ 'fichier' (PDF, image, Word, Excel ; ≤ 10 Mo).
+        """
+        try:
+            _valider_piece_jointe(request.FILES.get('fichier'))
+        except ValidationError as exc:
+            return Response({'detail': exc.messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+        audit = self.get_object()
+        audit.rapport_fichier = request.FILES['fichier']
+        audit.save(update_fields=['rapport_fichier'])
+        return Response({
+            'id': audit.id,
+            'rapport_fichier_url': _abs_file_url(request, audit.rapport_fichier),
+        }, status=status.HTTP_200_OK)
+
 
 class NonConformiteViewSet(viewsets.ModelViewSet):
     queryset = NonConformite.objects.select_related('audit', 'producteur')
@@ -610,6 +680,25 @@ class NonConformiteViewSet(viewsets.ModelViewSet):
             nc.date_resolution = timezone.now().date()
         nc.save()
         return Response(self.get_serializer(nc).data)
+
+    @action(detail=True, methods=['post'], url_path='preuve',
+            parser_classes=[MultiPartParser, FormParser])
+    def preuve(self, request, pk=None):
+        """Upload/remplacement de la preuve d'une non-conformité (#20).
+
+        POST multipart/form-data avec champ 'fichier' (PDF, image, Word, Excel ; ≤ 10 Mo).
+        """
+        try:
+            _valider_piece_jointe(request.FILES.get('fichier'))
+        except ValidationError as exc:
+            return Response({'detail': exc.messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+        nc = self.get_object()
+        nc.fichier_preuve = request.FILES['fichier']
+        nc.save(update_fields=['fichier_preuve'])
+        return Response({
+            'id': nc.id,
+            'fichier_preuve_url': _abs_file_url(request, nc.fichier_preuve),
+        }, status=status.HTTP_200_OK)
 
 
 class ActiviteCertificationViewSet(viewsets.ModelViewSet):

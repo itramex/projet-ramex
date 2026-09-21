@@ -1002,6 +1002,68 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
   const [auditNCs, setAuditNCs] = useState([]);
   const [auditNCsLoading, setAuditNCsLoading] = useState(false);
 
+  // Upload de pièces jointes (#20) : certificat, rapport d'audit, preuve de NC
+  const [uploadingKey, setUploadingKey] = useState(null);
+
+  const uploadPiece = async (kind, id, file) => {
+    if (!file) return;
+    const key = `${kind}-${id}`;
+    setUploadingKey(key);
+    try {
+      const fd = new FormData();
+      fd.append('fichier', file);
+      if (kind === 'cert') await formationService.uploadCertificationPiece(id, fd);
+      else if (kind === 'audit') await formationService.uploadAuditRapport(id, fd);
+      else await formationService.uploadNonConformitePreuve(id, fd);
+      await Promise.all([loadHistory(), loadAudits()]);
+    } catch (e) {
+      console.error('Erreur upload pièce jointe:', e);
+      alert(e.response?.data?.detail || "Erreur lors de l'upload de la pièce jointe.");
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
+  const ACCEPT_JOINTES = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx';
+
+  // Cellule pièce jointe : lien de téléchargement + action Joindre/Remplacer (#20)
+  const renderJointe = (kind, id, url, label, icon) => {
+    const busy = uploadingKey === `${kind}-${id}`;
+    return (
+      <span className="flex items-center gap-2">
+        {url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
+            <Icon name={icon} size="sm" />
+            {label}
+          </a>
+        ) : (
+          <span className="text-gray-400">—</span>
+        )}
+        <label
+          className={`inline-flex items-center cursor-pointer text-gray-400 hover:text-blue-600 whitespace-nowrap ${busy ? 'opacity-50 pointer-events-none' : ''}`}
+          title={url ? 'Remplacer la pièce jointe' : `Joindre ${label.toLowerCase()}`}
+        >
+          {busy ? (
+            <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500" />
+          ) : (
+            <Icon name="ArrowUpTrayIcon" size="sm" />
+          )}
+          {!url && ' Joindre'}
+          <input
+            type="file"
+            className="hidden"
+            accept={ACCEPT_JOINTES}
+            onChange={(e) => {
+              const f = e.target.files && e.target.files[0];
+              if (f) uploadPiece(kind, id, f);
+              e.target.value = '';
+            }}
+          />
+        </label>
+      </span>
+    );
+  };
+
   const loadAudits = async () => {
     setAuditsLoading(true);
     try {
@@ -1036,6 +1098,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
     try {
       await formationService.resolveNonConformite(ncId);
       if (selectedAudit) loadAuditNCs(selectedAudit.id);
+      loadHistory();
     } catch (e) {
       console.error('Erreur rÃ©solution NC:', e);
     }
@@ -1455,14 +1518,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                             <td className="px-3 py-2 text-gray-600">{cert.date_obtention}</td>
                             <td className="px-3 py-2">{getStatutBadge(cert.statut)}</td>
                             <td className="px-3 py-2">
-                              {cert.fichier_certificat_url ? (
-                                <a href={cert.fichier_certificat_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
-                                  <Icon name="ArrowDownTrayIcon" size="sm" />
-                                  Certificat
-                                </a>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
+                              {renderJointe('cert', cert.id, cert.fichier_certificat_url, 'Certificat', 'ArrowDownTrayIcon')}
                             </td>
                           </tr>
                         ))}
@@ -1493,14 +1549,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                             <td className="px-3 py-2 text-gray-600">{audit.resultat_display}</td>
                             <td className="px-3 py-2 text-gray-600">{audit.nb_nonconformites}</td>
                             <td className="px-3 py-2">
-                              {audit.rapport_fichier_url ? (
-                                <a href={audit.rapport_fichier_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
-                                  <Icon name="DocumentTextIcon" size="sm" />
-                                  Rapport
-                                </a>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
+                              {renderJointe('audit', audit.id, audit.rapport_fichier_url, 'Rapport', 'DocumentTextIcon')}
                             </td>
                           </tr>
                         ))}
@@ -1533,14 +1582,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                             <td className="px-3 py-2 text-gray-600 max-w-xs truncate">{nc.description}</td>
                             <td className="px-3 py-2 text-gray-600">{nc.statut_display}</td>
                             <td className="px-3 py-2">
-                              {nc.fichier_preuve_url ? (
-                                <a href={nc.fichier_preuve_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
-                                  <Icon name="PaperClipIcon" size="sm" />
-                                  Preuve
-                                </a>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
+                              {renderJointe('nc', nc.id, nc.fichier_preuve_url, 'Preuve', 'PaperClipIcon')}
                             </td>
                           </tr>
                         ))}
@@ -1603,11 +1645,11 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                         <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{a.resultat_display || a.resultat}</span>
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold">{a.nb_nonconformites || 0}</td>
-                      <td className="px-4 py-3 text-sm flex gap-3">
-                        {a.rapport_fichier && (
-                          <a href={a.rapport_fichier} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">Rapport</a>
-                        )}
-                        <button className="text-green-600 hover:text-green-800" onClick={() => { setSelectedAudit(a); loadAuditNCs(a.id); }}>Voir NC</button>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex items-center gap-3">
+                          {renderJointe('audit', a.id, a.rapport_fichier_url || a.rapport_fichier, 'Rapport', 'DocumentTextIcon')}
+                          <button className="text-green-600 hover:text-green-800" onClick={() => { setSelectedAudit(a); loadAuditNCs(a.id); }}>Voir NC</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1630,6 +1672,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date limite</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Preuve</th>
                           <th className="px-4 py-2"></th>
                         </tr>
                       </thead>
@@ -1640,6 +1683,9 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                             <td className="px-4 py-2 text-sm">{nc.type_display}</td>
                             <td className="px-4 py-2 text-sm">{nc.statut_display}</td>
                             <td className="px-4 py-2 text-sm">{nc.date_limite ? new Date(nc.date_limite).toLocaleDateString('fr-FR') : '-'}</td>
+                            <td className="px-4 py-2 text-sm">
+                              {renderJointe('nc', nc.id, nc.fichier_preuve_url, 'Preuve', 'PaperClipIcon')}
+                            </td>
                             <td className="px-4 py-2 text-sm">
                               {nc.statut !== 'resolue' && (
                                 <button onClick={() => resolveNC(nc.id)} className="text-green-600 hover:text-green-800">Marquer rÃ©solue</button>

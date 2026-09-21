@@ -13,6 +13,7 @@ env/
 .env
 *.log
 logs/
+backend/media/
 
 # Node / Vite
 node_modules/

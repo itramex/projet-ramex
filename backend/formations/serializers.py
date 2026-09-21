@@ -63,7 +63,7 @@ class CertificationSerializer(serializers.ModelSerializer):
             'type_certification', 'type_certification_nom', 'type_certification_code',
             'numero_certificat', 'date_obtention', 'date_expiration',
             'statut', 'statut_display', 'est_valide', 'niveau_certification_display',
-            'entite_label', 'fichier_certificat_url',
+            'entite_label', 'fichier_certificat', 'fichier_certificat_url',
         )
         read_only_fields = ('date_enregistrement', 'enregistre_par', 'date_modification', 'modifie_par')
 

@@ -502,6 +502,16 @@ export const formationService = {
 
   // Non-conformités
   resolveNonConformite: (id) => api.post(`/formations/nonconformites/${id}/resoudre/`),
+  // Uploads de pièces jointes (#20 : certificat, rapport d'audit, preuve de NC)
+  uploadCertificationPiece: (id, formData) =>
+    api.post(`/formations/certifications/${id}/piece_jointe/`, formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadAuditRapport: (id, formData) =>
+    api.post(`/formations/audits/${id}/rapport/`, formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadNonConformitePreuve: (id, formData) =>
+    api.post(`/formations/nonconformites/${id}/preuve/`, formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }),
 
   // Activités de certification (Phase 4)
   getAllActivitesCertification: (params = {}) => api.get('/formations/activites-certifications/', { params }),
