@@ -9,6 +9,13 @@ const TYPE_DOTATIONS = [
   { value: 'autre', label: 'Autre', color: 'bg-gray-100 text-gray-800' },
 ];
 
+// Méthodes de calcul du taux de scolarisation (cascade backend, cf. dashboard)
+const METHODES_SCOLARISATION = {
+  declare_agrege: 'compteurs déclarés (agrégés)',
+  deduit_compteurs: 'déduite des compteurs d\u2019enfants déclarés',
+  slots: 'années de naissance des enfants (3-18 ans)',
+};
+
 const DEFAULT_FORM = { producteur: '', type_dotation: 'kit_scolaire', annee: new Date().getFullYear(), quantite: 1, details: '' };
 
 /**
@@ -43,6 +50,10 @@ function Dotations() {
   const [beneficiairesModal, setBeneficiairesModal] = useState(null); // { type, label }
   const [beneficiaires, setBeneficiaires] = useState([]);
   const [beneficiairesLoading, setBeneficiairesLoading] = useState(false);
+
+  // Impact des dotations (#28) — kits → scolarisation, volaille/poisson → revenus AGR
+  const [impact, setImpact] = useState(null);
+  const [impactLoading, setImpactLoading] = useState(false);
 
   const openBeneficiaires = async (type, label) => {
     setBeneficiairesModal({ type, label });
@@ -125,6 +136,21 @@ function Dotations() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, typeFilter, anneeFilter]);
+
+  // Impact (#28) : recalculé quand l'année sélectionnée change
+  useEffect(() => {
+    let cancelled = false;
+    setImpactLoading(true);
+    dotationService
+      .getImpact(anneeFilter ? { annee: anneeFilter } : {})
+      .then((res) => { if (!cancelled) setImpact(res.data); })
+      .catch((err) => {
+        console.error('Erreur chargement impact dotations:', err);
+        if (!cancelled) setImpact(null);
+      })
+      .finally(() => { if (!cancelled) setImpactLoading(false); });
+    return () => { cancelled = true; };
+  }, [anneeFilter]);
 
   const openCreate = () => {
     setEditing(null);
@@ -209,6 +235,19 @@ function Dotations() {
     const set = new Set(dotations.map((d) => d.annee));
     return [...set].sort((a, b) => b - a);
   }, [dotations]);
+
+  // Impact (#28) — données préparées pour l'affichage
+  const kitImpact = impact?.kit_scolaire_vs_scolarisation;
+  const agrImpact = impact?.elevage_vs_agr;
+  const kitTauxB = kitImpact?.beneficiaires?.taux_scolarisation;
+  const kitTauxN = kitImpact?.non_beneficiaires?.taux_scolarisation;
+  const kitDelta = kitTauxB != null && kitTauxN != null
+    ? Number((kitTauxB - kitTauxN).toFixed(2))
+    : null;
+  const agrB = agrImpact?.beneficiaires;
+  const agrN = agrImpact?.non_beneficiaires;
+  const fmtAr = (v) => `${Number(v ?? 0).toLocaleString('fr-FR')} Ar`;
+
 return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -270,6 +309,136 @@ return (
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Impact des dotations (#28) : kits → scolarisation, volaille/poisson → revenus AGR */}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-bold text-dark uppercase tracking-wide flex items-center gap-2">
+            <Icon name="dashboard" size="sm" className="text-primary-yellow" />
+            Impact des dotations
+            {impact?.annee ? ` — année ${impact.annee}` : ' — toutes années'}
+          </h2>
+          {impactLoading && (
+            <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary-yellow" />
+          )}
+        </div>
+
+        {!impact && !impactLoading && (
+          <p className="text-sm text-gray-400 italic">Données d&rsquo;impact indisponibles.</p>
+        )}
+
+        {impact && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Axe 1 : kits scolaires → scolarisation */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                Kits scolaires → Scolarisation des enfants
+              </h3>
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 uppercase">
+                    <th className="py-1.5 font-medium">Indicateur</th>
+                    <th className="py-1.5 text-right font-medium">Bénéficiaires</th>
+                    <th className="py-1.5 text-right font-medium">Non-bénéf.</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  <tr>
+                    <td className="py-1.5 text-gray-600">Producteurs</td>
+                    <td className="py-1.5 text-right">{kitImpact?.beneficiaires?.nb_producteurs ?? '—'}</td>
+                    <td className="py-1.5 text-right">{kitImpact?.non_beneficiaires?.nb_producteurs ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 text-gray-600">Enfants en âge scolaire (3-18 ans)</td>
+                    <td className="py-1.5 text-right">{kitImpact?.beneficiaires?.enfants_en_age_scolaire ?? '—'}</td>
+                    <td className="py-1.5 text-right">{kitImpact?.non_beneficiaires?.enfants_en_age_scolaire ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 text-gray-600">Enfants scolarisés</td>
+                    <td className="py-1.5 text-right font-medium text-green-700">
+                      {kitImpact?.beneficiaires?.enfants_scolarises ?? '—'}
+                    </td>
+                    <td className="py-1.5 text-right">{kitImpact?.non_beneficiaires?.enfants_scolarises ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 text-gray-600">Enfants non scolarisés</td>
+                    <td className="py-1.5 text-right font-medium text-red-600">
+                      {kitImpact?.beneficiaires?.enfants_non_scolarises ?? '—'}
+                    </td>
+                    <td className="py-1.5 text-right">{kitImpact?.non_beneficiaires?.enfants_non_scolarises ?? '—'}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 font-semibold text-dark">Taux de scolarisation</td>
+                    <td className="py-1.5 text-right font-bold text-blue-600">
+                      {kitTauxB != null ? `${kitTauxB.toLocaleString('fr-FR')} %` : '—'}
+                    </td>
+                    <td className="py-1.5 text-right">
+                      {kitTauxN != null ? `${kitTauxN.toLocaleString('fr-FR')} %` : '—'}
+                      {kitDelta != null && (
+                        <span
+                          className={`ml-1 text-[11px] font-semibold ${
+                            kitDelta > 0 ? 'text-green-700' : kitDelta < 0 ? 'text-red-600' : 'text-gray-400'
+                          }`}
+                        >
+                          ({kitDelta > 0 ? '+' : ''}{kitDelta.toLocaleString('fr-FR')} pts)
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              {kitImpact?.beneficiaires?.methode && (
+                <p className="text-[11px] text-gray-400 mt-2">
+                  Méthode de calcul :{' '}
+                  {METHODES_SCOLARISATION[kitImpact.beneficiaires.methode] || kitImpact.beneficiaires.methode}
+                </p>
+              )}
+            </div>
+
+            {/* Axe 2 : volaille/poisson → revenus AGR */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                Volaille / Poisson → Revenus AGR
+              </h3>
+              {agrB && agrB.nb_producteurs === 0 ? (
+                <p className="text-sm text-gray-500 italic">
+                  Aucune dotation volaille ou poisson enregistrée pour cette période —
+                  comparaison indisponible.
+                </p>
+              ) : (
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500 uppercase">
+                      <th className="py-1.5 font-medium">Indicateur</th>
+                      <th className="py-1.5 text-right font-medium">Bénéficiaires</th>
+                      <th className="py-1.5 text-right font-medium">Non-bénéf.</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    <tr>
+                      <td className="py-1.5 text-gray-600">Producteurs</td>
+                      <td className="py-1.5 text-right">{agrB?.nb_producteurs ?? '—'}</td>
+                      <td className="py-1.5 text-right">{agrN?.nb_producteurs ?? '—'}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 text-gray-600">Revenu AGR total</td>
+                      <td className="py-1.5 text-right">{fmtAr(agrB?.revenu_agr_total)}</td>
+                      <td className="py-1.5 text-right">{fmtAr(agrN?.revenu_agr_total)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 text-gray-600">Revenu moyen par producteur</td>
+                      <td className="py-1.5 text-right font-semibold text-blue-600">
+                        {fmtAr(agrB?.revenu_moyen)}
+                      </td>
+                      <td className="py-1.5 text-right">{fmtAr(agrN?.revenu_moyen)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filtres */}

@@ -302,6 +302,8 @@ export const dotationService = {
   create: (data) => { invalidateByPrefix('/dotations/'); return api.post('/dotations/', data); },
   update: (id, data) => { invalidateByPrefix('/dotations/'); return api.put(`/dotations/${id}/`, data); },
   delete: (id) => { invalidateByPrefix('/dotations/'); return api.delete(`/dotations/${id}/`); },
+  // #28 — Impact des dotations : kits → scolarisation, volaille/poisson → revenus AGR
+  getImpact: (params = {}) => api.get('/dotations/impact/', { params }),
 };
 
 // ========== SERVICE DASHBOARD ==========

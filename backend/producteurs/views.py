@@ -1243,6 +1243,89 @@ class DotationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(cree_par=self.request.user if self.request and self.request.user.is_authenticated else None)
 
+    @action(detail=False, methods=['get'], url_path='impact')
+    def impact(self, request):
+        """#28 — Impact des dotations sur le ménage et l'AGR.
+        - Kits scolaires → taux de scolarisation des enfants (bénéficiaires vs non).
+        - Volaille/poisson → revenus AGR (bénéficiaires vs non).
+        Paramètre optionnel : annee.
+        """
+        from django.db.models import Sum
+        from history.models import AGRHistory
+        annee = request.query_params.get('annee')
+        actifs = Producteur.objects.filter(actif=True)
+
+        def _taux(scol, non):
+            tot = (scol or 0) + (non or 0)
+            return round((scol or 0) / tot * 100, 2) if tot > 0 else None
+
+        # --- Axe 1 : kits scolaires → scolarisation (helper robuste du dashboard) ---
+        dotation_qs = Dotation.objects.filter(type_dotation='kit_scolaire')
+        if annee and str(annee).isdigit():
+            dotation_qs = dotation_qs.filter(annee=int(annee))
+        benef_kit_ids = set(dotation_qs.values_list('producteur_id', flat=True))
+        grp_kit = actifs.filter(id__in=benef_kit_ids)
+        grp_sans_kit = actifs.exclude(id__in=benef_kit_ids)
+        ref_year = int(annee) if annee and str(annee).isdigit() else datetime.now().year
+
+        def _axe1(grp):
+            try:
+                from dashboard.views import _children_schooling_stats
+                s = _children_schooling_stats(grp, ref_year)
+                return {
+                    'nb_producteurs': grp.count(),
+                    'enfants_en_age_scolaire': s['enfants_en_age_scolaire'],
+                    'enfants_scolarises': s['enfants_scolarises'],
+                    'enfants_non_scolarises': s['enfants_non_scolarises'],
+                    'taux_scolarisation': s['taux_scolarisation'] if s['enfants_en_age_scolaire'] > 0 else None,
+                    'methode': s['methode'],
+                }
+            except Exception:
+                agg = grp.aggregate(scol=Sum('nb_enfants_scolarises'),
+                                    non=Sum('nb_enfants_non_scolarises'))
+                return {
+                    'nb_producteurs': grp.count(),
+                    'enfants_en_age_scolaire': (agg['scol'] or 0) + (agg['non'] or 0),
+                    'enfants_scolarises': int(agg['scol'] or 0),
+                    'enfants_non_scolarises': int(agg['non'] or 0),
+                    'taux_scolarisation': _taux(agg['scol'], agg['non']),
+                    'methode': 'declare',
+                }
+
+        # --- Axe 2 : volaille/poisson → revenus AGR (AGRHistory) ---
+        dotation_elp = Dotation.objects.filter(type_dotation__in=['volaille', 'poisson'])
+        if annee and str(annee).isdigit():
+            dotation_elp = dotation_elp.filter(annee=int(annee))
+        benef_elp_ids = set(dotation_elp.values_list('producteur_id', flat=True))
+        agr_qs = AGRHistory.objects.filter(producteur__actif=True)
+        if annee and str(annee).isdigit():
+            agr_qs = agr_qs.filter(annee=int(annee))
+        nb_benef_elp = actifs.filter(id__in=benef_elp_ids).count()
+        nb_sans_elp = actifs.exclude(id__in=benef_elp_ids).count()
+        rev_benef = agr_qs.filter(producteur_id__in=benef_elp_ids).aggregate(t=Sum('revenu_annuel'))['t'] or 0
+        rev_sans = agr_qs.exclude(producteur_id__in=benef_elp_ids).aggregate(t=Sum('revenu_annuel'))['t'] or 0
+
+        return Response({
+            'annee': int(annee) if annee and str(annee).isdigit() else None,
+            'kit_scolaire_vs_scolarisation': {
+                'beneficiaires': _axe1(grp_kit),
+                'non_beneficiaires': _axe1(grp_sans_kit),
+            },
+            'elevage_vs_agr': {
+                'types': ['volaille', 'poisson'],
+                'beneficiaires': {
+                    'nb_producteurs': nb_benef_elp,
+                    'revenu_agr_total': round(float(rev_benef), 2),
+                    'revenu_moyen': round(float(rev_benef) / nb_benef_elp, 2) if nb_benef_elp else 0,
+                },
+                'non_beneficiaires': {
+                    'nb_producteurs': nb_sans_elp,
+                    'revenu_agr_total': round(float(rev_sans), 2),
+                    'revenu_moyen': round(float(rev_sans) / nb_sans_elp, 2) if nb_sans_elp else 0,
+                },
+            },
+        }, status=status.HTTP_200_OK)
+
 
 class AGRViewSet(viewsets.ModelViewSet):
     """ViewSet for AGR (Activités Génératrices de Revenus) management"""
