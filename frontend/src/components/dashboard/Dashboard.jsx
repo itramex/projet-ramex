@@ -999,6 +999,7 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, togg
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Culture</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Production totale</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Parcelles</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Superficie (Ha)</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Moyenne / parcelle</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Part</th>
                 </tr>
@@ -1015,6 +1016,7 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, togg
                       <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">{cultureName}</td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.production_totale_kg || 0).toLocaleString('fr-FR')} kg</td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{item.nb_parcelles}</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.superficie_totale_ha || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} Ha</td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{Number(item.production_moyenne_kg || 0).toLocaleString('fr-FR')} kg</td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 text-right">{share} %</td>
                     </tr>
@@ -1025,7 +1027,7 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, togg
                 <tr>
                   <td className="px-6 py-3 text-sm font-bold text-gray-900">Total</td>
                   <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">{Number(cultureData.total_production_kg || 0).toLocaleString('fr-FR')} kg</td>
-                  <td colSpan={3} />
+                  <td colSpan={4} />
                 </tr>
               </tfoot>
             </table>

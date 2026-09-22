@@ -290,7 +290,42 @@ class ParcelleViewSet(viewsets.ModelViewSet):
             .annotate(count=Count('id'))
             .order_by('-count')
         )
-        
+
+        # #15 — Ventilation par culture : pour chaque culture pratiquée
+        # (clé de `productions_par_culture` ou `culture_principale`), on agrège
+        # le nombre de parcelles, la superficie des parcelles concernées et la
+        # production estimée. Cela donne aux autres produits (café, girofle…)
+        # leurs données parcellaires, au même titre que la vanille.
+        par_culture_dict = {}
+        for parcelle in queryset:
+            cultures_parcelle = set()
+            productions = parcelle.productions_par_culture if isinstance(
+                parcelle.productions_par_culture, dict) else {}
+            cultures_parcelle.update(k for k in productions.keys() if k)
+            if parcelle.culture_principale:
+                cultures_parcelle.add(parcelle.culture_principale)
+            superficie = float(parcelle.dimension_ha or 0)
+            for culture in cultures_parcelle:
+                entry = par_culture_dict.setdefault(culture, {
+                    'culture': culture,
+                    'nb_parcelles': 0,
+                    'superficie_totale': 0.0,
+                    'production_estimee': 0.0,
+                })
+                entry['nb_parcelles'] += 1
+                entry['superficie_totale'] += superficie
+                prod = productions.get(culture)
+                if prod:
+                    try:
+                        entry['production_estimee'] += float(prod)
+                    except (ValueError, TypeError):
+                        pass
+        par_culture = sorted(
+            par_culture_dict.values(),
+            key=lambda x: x['production_estimee'],
+            reverse=True
+        )
+
         stats = {
             'total': total,
             'total_superficie_ha': float(total_superficie),
@@ -302,6 +337,7 @@ class ParcelleViewSet(viewsets.ModelViewSet):
             'non_certifiees': total - certifiees,
             'par_type_vanille': par_type_vanille,
             'par_certification': par_certification,
+            'par_culture': par_culture,
         }
         
         return Response(stats)

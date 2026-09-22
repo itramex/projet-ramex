@@ -1207,20 +1207,33 @@ def dashboard_production(request):
             'total_pieds_vanille': base_queryset.aggregate(total=Sum('nombre_pieds'))['total'] or 0 if 'vanille' in culture else 0,
         }
 
-        # Production par culture (une entrée par culture demandée)
+        # Production par culture (une entrée par culture demandée).
+        # #15 — La superficie est celle des parcelles où la culture est
+        # réellement pratiquée (et non la superficie globale répétée), et
+        # `nb_parcelles` inclut aussi les parcelles dont c'est la culture
+        # principale même sans production renseignée.
+        from django.db.models import Q as _Q
         par_culture = []
         for c in culture:
             prod_c = 0
+            superficie_c = 0.0
             for parcelle in base_queryset:
-                if parcelle.productions_par_culture and c in parcelle.productions_par_culture:
+                productions = parcelle.productions_par_culture if isinstance(
+                    parcelle.productions_par_culture, dict) else {}
+                concerne = parcelle.culture_principale == c or c in productions
+                if not concerne:
+                    continue
+                superficie_c += float(parcelle.dimension_ha or 0)
+                if c in productions:
                     try:
-                        prod_c += float(parcelle.productions_par_culture[c])
+                        prod_c += float(productions[c])
                     except (ValueError, TypeError):
                         pass
+            q_c = _Q(productions_par_culture__has_key=c) | _Q(culture_principale=c)
             par_culture.append({
                 'culture_principale': c,
-                'nb_parcelles': base_queryset.filter(productions_par_culture__has_key=c).count(),
-                'superficie_totale': total_superficie,
+                'nb_parcelles': base_queryset.filter(q_c).count(),
+                'superficie_totale': round(superficie_c, 4),
                 'production_estimee': prod_c
             })
     else:
@@ -1557,19 +1570,24 @@ def dashboard_production_par_culture(request):
     # Agréger les productions par culture
     productions_aggregees = {}
     nb_parcelles_par_culture = {}
-    
+    superficie_par_culture = {}
+
     for parcelle in base_queryset:
         if parcelle.productions_par_culture and isinstance(parcelle.productions_par_culture, dict):
+            # #15 — la superficie de la parcelle compte pour chacune de ses cultures
+            superficie_parcelle = float(parcelle.dimension_ha or 0)
             for culture, production in parcelle.productions_par_culture.items():
                 if production and culture:
                     culture_key = str(culture).strip().lower()
                     if culture_key not in productions_aggregees:
                         productions_aggregees[culture_key] = 0
                         nb_parcelles_par_culture[culture_key] = 0
-                    
+                        superficie_par_culture[culture_key] = 0.0
+
                     try:
                         productions_aggregees[culture_key] += float(production)
                         nb_parcelles_par_culture[culture_key] += 1
+                        superficie_par_culture[culture_key] += superficie_parcelle
                     except (ValueError, TypeError):
                         pass
     
@@ -1579,6 +1597,7 @@ def dashboard_production_par_culture(request):
             'culture': culture,
             'production_totale_kg': round(production, 2),
             'nb_parcelles': nb_parcelles_par_culture.get(culture, 0),
+            'superficie_totale_ha': round(superficie_par_culture.get(culture, 0.0), 4),
             'production_moyenne_kg': round(production / nb_parcelles_par_culture.get(culture, 1), 2) if nb_parcelles_par_culture.get(culture, 0) > 0 else 0
         }
         for culture, production in productions_aggregees.items()
