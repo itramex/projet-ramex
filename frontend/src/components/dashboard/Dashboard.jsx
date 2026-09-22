@@ -1403,6 +1403,28 @@ const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onRes
         <StatCard title="Kits couverts" value={`${data.impact?.couverture_kits_pct || 0}%`} iconName={iconMap.activite} color="bg-gray-600" />
       </div>
 
+      {/* #35 — Tendance annuelle de collecte */}
+      {data.tendances && data.tendances.evolution_pct !== null && data.tendances.evolution_pct !== undefined && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card title={`Collecte ${data.tendances.annee_courante}`} padding="md">
+            <p className="text-2xl font-bold text-green-700">
+              {Number(data.tendances.collecte_annee_courante_kg || 0).toLocaleString()} kg
+            </p>
+          </Card>
+          <Card title={`Collecte ${data.tendances.annee_courante - 1}`} padding="md">
+            <p className="text-2xl font-bold text-gray-700">
+              {Number(data.tendances.collecte_annee_precedente_kg || 0).toLocaleString()} kg
+            </p>
+          </Card>
+          <Card title="Évolution" padding="md">
+            <p className={`text-2xl font-bold ${data.tendances.evolution_pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {data.tendances.evolution_pct >= 0 ? '▲ +' : '▼ '}
+              {data.tendances.evolution_pct}%
+            </p>
+          </Card>
+        </div>
+      )}
+
       {comparatif.length > 0 && (
         <ChartCard title="Comparatif mensuel: objectif vs collecte">
           <Line
@@ -1432,6 +1454,15 @@ const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onRes
             }}
           />
         </ChartCard>
+      )}
+
+      {/* #35 — Recommandations automatiques */}
+      {data.recommandations?.length > 0 && (
+        <Card title="Recommandations automatiques" padding="md" className="mb-8">
+          <ul className="list-decimal pl-6 space-y-1 text-sm text-gray-700">
+            {data.recommandations.map((rec, idx) => <li key={idx}>{rec}</li>)}
+          </ul>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 my-8">
@@ -1510,15 +1541,28 @@ const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onRes
         )}
       </Card>
 
-      <Card title="Alertes" padding="md">
-        {data.alerts?.length > 0 ? (
-          <ul className="list-disc pl-6 space-y-1 text-sm text-red-700">
-            {data.alerts.map((alert, idx) => <li key={idx}>{alert}</li>)}
-          </ul>
-        ) : (
-          <p className="text-sm text-green-700">Aucune alerte critique.</p>
-        )}
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card title="Alertes" padding="md">
+          {data.alerts?.length > 0 ? (
+            <ul className="list-disc pl-6 space-y-1 text-sm text-red-700">
+              {data.alerts.map((alert, idx) => <li key={idx}>{alert}</li>)}
+            </ul>
+          ) : (
+            <p className="text-sm text-green-700">Aucune alerte critique.</p>
+          )}
+        </Card>
+
+        {/* #35 — Recommandations automatiques */}
+        <Card title="Recommandations" padding="md">
+          {data.recommandations?.length > 0 ? (
+            <ul className="list-disc pl-6 space-y-1 text-sm text-blue-800">
+              {data.recommandations.map((rec, idx) => <li key={idx}>{rec}</li>)}
+            </ul>
+          ) : (
+            <p className="text-sm text-green-700">Aucune recommandation particulière.</p>
+          )}
+        </Card>
+      </div>
     </>
   );
 });

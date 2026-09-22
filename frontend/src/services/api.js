@@ -311,7 +311,8 @@ export const dashboardService = {
   getGlobal: (params = {}) => api.get('/dashboard/', { params }),
   getDecisionnel: (params = {}) => api.get('/dashboard/decisionnel/', { params }),
   exportDecisionnel: (format = 'excel', params = {}) => api.get('/dashboard/decisionnel/export/', {
-    params: { ...params, format },
+    // `type` et non `format` : `format` est réservé par DRF (négociation de contenu -> 404)
+    params: { ...params, type: format },
     responseType: 'blob'
   }),
   getVillagesAndCommunes: () => api.get('/dashboard/villages-communes/'),

@@ -1,8 +1,9 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Count, Sum, F, Q, Case, When, Value, CharField
+from django.db.models import Count, Sum, F, Q, Case, When, Value, CharField, ExpressionWrapper, FloatField
 from django.db.models.functions import TruncMonth
+from django.utils import timezone as dj_timezone
 from django.http import HttpResponse
 from datetime import datetime, timedelta
 from .models import VillageReference
@@ -1661,19 +1662,13 @@ def get_village_references(request):
     return Response(serializer.data)
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def dashboard_decisionnel(request):
+def _compute_decisionnel(request):
     """
-    Dashboard décisionnel multi-vues (commercial, impact, traçabilité, finance)
-    GET /api/dashboard/decisionnel/
-
-    Filtres:
-    - village (multiple)
-    - commune (multiple)
-    - certification (multiple)
-    - date_from (YYYY-MM-DD)
-    - date_to (YYYY-MM-DD)
+    #35 — Calcul du dashboard décisionnel (fonction interne pure).
+    Retourne le dictionnaire de données. Lève ValueError si les dates
+    sont invalides. Appelée par dashboard_decisionnel() et
+    dashboard_decisionnel_export() — permet de mutualiser le calcul sans
+    ré-invoquer une vue @api_view (impossible avec un DRF Request wrappé).
     """
     villages = [v for v in request.query_params.getlist('village', []) if v]
     communes = [c for c in request.query_params.getlist('commune', []) if c]
@@ -1683,16 +1678,10 @@ def dashboard_decisionnel(request):
 
     start_date = None
     end_date = None
-    try:
-        if date_from:
-            start_date = datetime.strptime(date_from, '%Y-%m-%d').date()
-        if date_to:
-            end_date = datetime.strptime(date_to, '%Y-%m-%d').date()
-    except ValueError:
-        return Response(
-            {'detail': "Format de date invalide. Utiliser YYYY-MM-DD."},
-            status=400
-        )
+    if date_from:
+        start_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+    if date_to:
+        end_date = datetime.strptime(date_to, '%Y-%m-%d').date()
 
     producteurs_qs = Producteur.objects.filter(actif=True)
     parcelles_qs = Parcelle.objects.filter(active=True, producteur__actif=True)
@@ -1874,7 +1863,117 @@ def dashboard_decisionnel(request):
     if traceability_completion < 85:
         alerts.append("Complétude de traçabilité < 85%.")
 
-    return Response({
+    # ===== #35 — Enrichissement décisionnel : tendances, alertes ciblées,
+    # recommandations automatiques =====
+
+    # --- Tendance de collecte : année en cours vs année précédente ---
+    annee_courante = dj_timezone.now().year
+    collecte_annee_courante = float(
+        bons_qs.filter(date_marche__year=annee_courante)
+        .aggregate(t=Sum('poids_accepte'))['t'] or 0
+    )
+    collecte_annee_precedente = float(
+        bons_qs.filter(date_marche__year=annee_courante - 1)
+        .aggregate(t=Sum('poids_accepte'))['t'] or 0
+    )
+    if collecte_annee_precedente > 0:
+        tendance_collecte_pct = round(
+            (collecte_annee_courante - collecte_annee_precedente)
+            / collecte_annee_precedente * 100, 2
+        )
+    else:
+        tendance_collecte_pct = None
+
+    tendances = {
+        'annee_courante': annee_courante,
+        'collecte_annee_courante_kg': round(collecte_annee_courante, 2),
+        'collecte_annee_precedente_kg': round(collecte_annee_precedente, 2),
+        'evolution_pct': tendance_collecte_pct,
+    }
+
+    # --- Alertes ciblées supplémentaires ---
+    # 1) Objectifs mensuels non atteints
+    mois_sous_objectif = [
+        item for item in comparatif_mensuel
+        if item['collecte_kg'] < item['objectif_kg'] * 0.8
+    ]
+    if mois_sous_objectif:
+        premiers = ", ".join(item['mois'] for item in mois_sous_objectif[:3])
+        alerts.append(
+            f"{len(mois_sous_objectif)} mois sous 80% de l'objectif de collecte ({premiers}...)."
+        )
+
+    # 2) Producteurs actifs sans aucune collecte sur la période
+    producteurs_sans_collecte = producteurs_qs.exclude(
+        id__in=bons_qs.values_list('producteur_id', flat=True)
+    ).count()
+    if producteurs_actifs > 0 and producteurs_sans_collecte / producteurs_actifs > 0.3:
+        alerts.append(
+            f"{producteurs_sans_collecte} producteurs actifs sur "
+            f"{producteurs_actifs} sans aucune collecte enregistrée (> 30%)."
+        )
+
+    # 3) Parcelles certifiables (vanille) non certifiées
+    parcelles_non_certifiees = parcelles_qs.filter(
+        culture_principale='vanille', certifiee=False
+    ).count()
+    total_vanille = parcelles_qs.filter(culture_principale='vanille').count()
+    if total_vanille > 0 and parcelles_non_certifiees / total_vanille > 0.2:
+        alerts.append(
+            f"{parcelles_non_certifiees} parcelles de vanille non certifiées "
+            f"sur {total_vanille} (> 20%)."
+        )
+
+    # 4) Prix d'achat anormalement bas vs moyenne de la période
+    if prix_moyen > 0:
+        bons_prix_bas = bons_qs.filter(
+            poids_accepte__gt=0
+        ).annotate(
+            prix=ExpressionWrapper(
+                F('montant_total_achat') * 1.0 / F('poids_accepte'),
+                output_field=FloatField()
+            )
+        ).filter(prix__lt=prix_moyen * 0.5).count()
+        if bons_prix_bas > 0:
+            alerts.append(
+                f"{bons_prix_bas} collecte(s) avec un prix d'achat "
+                f"< 50% du prix moyen ({prix_moyen} Ar/kg)."
+            )
+
+    # --- Recommandations automatiques (règles simples, orientées décision) ---
+    recommandations = []
+    if couverture_collecte < 60:
+        recommandations.append(
+            "Prioriser les campagnes de collecte dans les villages sous-performants "
+            "pour remonter la couverture au-dessus de 60%."
+        )
+    if producteurs_sans_collecte > 0:
+        recommandations.append(
+            f"Relancer {producteurs_sans_collecte} producteur(s) actif(s) sans collecte "
+            "(visite animateur ou rappel téléphonique)."
+        )
+    if parcelles_non_certifiees > 0:
+        recommandations.append(
+            f"Évaluer {parcelles_non_certifiees} parcelle(s) de vanille non certifiée(s) "
+            "pour un accompagnement vers la certification."
+        )
+    if traceability_completion < 100 and total_chains > 0:
+        recommandations.append(
+            f"Compléter {total_chains - complete_chains} chaîne(s) de traçabilité "
+            "incomplète(s) avant les prochains exports."
+        )
+    if tendance_collecte_pct is not None and tendance_collecte_pct < 0:
+        recommandations.append(
+            f"Collecte en baisse de {abs(tendance_collecte_pct)}% vs {annee_courante - 1} : "
+            "analyser les causes (climat, prix, concurrence) avec l'équipe terrain."
+        )
+    if not recommandations:
+        recommandations.append(
+            "Indicateurs satisfaisants : maintenir le rythme actuel de collecte "
+            "et de suivi qualité."
+        )
+
+    return {
         'commercial': {
             'estimation_production_kg': round(total_estimation_kg, 2),
             'collecte_reelle_kg': round(total_collecte_kg, 2),
@@ -1916,6 +2015,8 @@ def dashboard_decisionnel(request):
             'recettes_exports_usd': round(total_export_usd, 2),
             'par_mode_paiement': by_paiement,
         },
+        'tendances': tendances,
+        'recommandations': recommandations,
         'alerts': alerts,
         'filtres_actifs': {
             'villages': villages,
@@ -1924,7 +2025,31 @@ def dashboard_decisionnel(request):
             'date_from': date_from,
             'date_to': date_to,
         }
-    })
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_decisionnel(request):
+    """
+    Dashboard décisionnel multi-vues (commercial, impact, traçabilité, finance)
+    GET /api/dashboard/decisionnel/
+
+    Filtres:
+    - village (multiple)
+    - commune (multiple)
+    - certification (multiple)
+    - date_from (YYYY-MM-DD)
+    - date_to (YYYY-MM-DD)
+    """
+    try:
+        data = _compute_decisionnel(request)
+    except ValueError:
+        return Response(
+            {'detail': "Format de date invalide. Utiliser YYYY-MM-DD."},
+            status=400
+        )
+    return Response(data)
 
 
 @api_view(['GET'])
@@ -1932,13 +2057,19 @@ def dashboard_decisionnel(request):
 def dashboard_decisionnel_export(request):
     """
     Export du dashboard décisionnel.
-    GET /api/dashboard/decisionnel/export/?format=excel|pdf
+    GET /api/dashboard/decisionnel/export/?type=excel|pdf
+    NB: le paramètre est nommé `type` (et non `format`) car `format` est
+    réservé par DRF pour la négociation de contenu (-> Http404 sinon).
     """
-    export_format = (request.query_params.get('format') or 'excel').lower()
-    decision_response = dashboard_decisionnel(request)
-    if decision_response.status_code != 200:
-        return decision_response
-    data = decision_response.data
+    export_format = (request.query_params.get('type') or
+                     request.query_params.get('format') or 'excel').lower()
+    try:
+        data = _compute_decisionnel(request)
+    except ValueError:
+        return Response(
+            {'detail': "Format de date invalide. Utiliser YYYY-MM-DD."},
+            status=400
+        )
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -1972,6 +2103,9 @@ def dashboard_decisionnel_export(request):
             ("Finance", "Dépenses achats (Ar)", data['finance']['depenses_achats_ar']),
             ("Finance", "Premium (Ar)", data['finance']['montant_premium_ar']),
             ("Finance", "Recettes export (USD)", data['finance']['recettes_exports_usd']),
+            ("Tendance", "Collecte année courante (kg)", data.get('tendances', {}).get('collecte_annee_courante_kg', 0)),
+            ("Tendance", "Collecte année précédente (kg)", data.get('tendances', {}).get('collecte_annee_precedente_kg', 0)),
+            ("Tendance", "Évolution (%)", data.get('tendances', {}).get('evolution_pct') if data.get('tendances', {}).get('evolution_pct') is not None else 'N/A'),
         ]
         for ridx, row in enumerate(rows, start=1):
             for cidx, value in enumerate(row, start=1):
@@ -2004,6 +2138,14 @@ def dashboard_decisionnel_export(request):
                 item.get('taux_perte_pct'),
             ])
         for cell in ws_anom[1]:
+            cell.font = Font(bold=True)
+
+        # #35 — Recommandations automatiques
+        ws_rec = wb.create_sheet("Recommandations")
+        ws_rec.append(["#", "Recommandation"])
+        for ridx, rec in enumerate(data.get('recommandations', []), start=1):
+            ws_rec.append([ridx, rec])
+        for cell in ws_rec[1]:
             cell.font = Font(bold=True)
 
         response = HttpResponse(
