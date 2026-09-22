@@ -42,9 +42,16 @@ class RecommendationViewSet(viewsets.ModelViewSet):
     ordering = ['-date_generation', '-score_pertinence']
     
     def get_queryset(self):
-        """Filtre par producteur si spécifié"""
+        """Filtre par producteur si spécifié (#29 scoping agence inclus)"""
         queryset = super().get_queryset()
-        
+
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les recommandations des producteurs de leur agence.
+        from users.permissions import scope_par_agence
+        queryset, _ = scope_par_agence(
+            self.request.user, queryset,
+            lookup='producteur__cooperative__agence')
+
         producteur_id = self.request.query_params.get('producteur')
         if producteur_id:
             queryset = queryset.filter(producteur_id=producteur_id)
@@ -475,9 +482,16 @@ class ActiviteViewSet(viewsets.ModelViewSet):
     ordering = ['-date']
     
     def get_queryset(self):
-        """Filtre par producteur si spécifié"""
+        """Filtre par producteur si spécifié (#29 scoping agence inclus)"""
         queryset = super().get_queryset()
-        
+
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les activités des producteurs de leur agence.
+        from users.permissions import scope_par_agence
+        queryset, _ = scope_par_agence(
+            self.request.user, queryset,
+            lookup='producteur__cooperative__agence')
+
         producteur_id = self.request.query_params.get('producteur')
         if producteur_id:
             queryset = queryset.filter(producteur_id=producteur_id)

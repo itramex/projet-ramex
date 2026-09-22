@@ -47,5 +47,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             data['user']['role_display'] = user.profile.get_role_display()
         else:
             data['user']['role_display'] = 'Visualiseur'
-        
+
+        # #29 — Indicateur de confidentialité par agence (bandeau frontend)
+        from users.permissions import can_see_all_data
+        data['user']['see_all_data'] = can_see_all_data(user)
+
         return data

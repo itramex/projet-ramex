@@ -23,3 +23,14 @@ class ActiviteDDViewSet(viewsets.ModelViewSet):
     filterset_fields = ['type_activite', 'cooperative', 'producteur', 'partenaire', 'objectif_client']
     search_fields = ['description', 'resultat', 'notes']
     ordering_fields = ['date', 'date_creation']
+
+    def get_queryset(self):
+        # #29 — Confidentialité par agence : activités liées à un producteur
+        # (via sa coopérative) OU directement à une coopérative.
+        from users.permissions import scope_entite_agence
+        queryset, _ = scope_entite_agence(
+            self.request.user,
+            super().get_queryset(),
+            lookup_producteur='producteur__cooperative__agence',
+            lookup_cooperative='cooperative__agence')
+        return queryset

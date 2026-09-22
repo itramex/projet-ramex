@@ -17,7 +17,10 @@ from decimal import Decimal
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 
-from users.permissions import IsAdminOrManagerOrReadOnly
+from users.permissions import (
+    IsAdminOrManagerOrReadOnly,
+    scope_par_agence,
+)
 
 from .models import (
     ProductionHistory,
@@ -121,6 +124,14 @@ class ProductionHistoryViewSet(viewsets.ModelViewSet):
     filterset_fields = ['annee', 'parcelle', 'culture', 'parcelle__producteur']
     ordering_fields = ['annee', 'quantite_kg', 'date_enregistrement']
     ordering = ['-annee']
+
+    def get_queryset(self):
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # l'historique des parcelles des producteurs de leur agence.
+        queryset, _ = scope_par_agence(
+            self.request.user, super().get_queryset(),
+            lookup='parcelle__producteur__cooperative__agence')
+        return queryset
 
     @extend_schema(
         summary="Productions par parcelle",
@@ -361,6 +372,13 @@ class AGRHistoryViewSet(viewsets.ModelViewSet):
         """Filtres étendus (#24/#25) : multi-valeurs (virgules) + village/commune."""
         queryset = super().get_queryset()
         params = self.request.query_params
+
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # l'historique AGR des producteurs de leur agence (via la coopérative).
+        from users.permissions import scope_par_agence
+        queryset, _ = scope_par_agence(
+            self.request.user, queryset,
+            lookup='producteur__cooperative__agence')
 
         def _parse_int_list(raw):
             ids = []
@@ -616,6 +634,14 @@ class SocialIndicatorHistoryViewSet(viewsets.ModelViewSet):
     filterset_fields = ['annee', 'producteur', 'type_indicateur']
     ordering_fields = ['annee', 'type_indicateur', 'date_enregistrement']
     ordering = ['-annee']
+
+    def get_queryset(self):
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les indicateurs sociaux des producteurs de leur agence.
+        queryset = scope_par_agence(
+            self.request.user, super().get_queryset(),
+            lookup='producteur__cooperative__agence')[0]
+        return queryset
     
     @action(detail=False, methods=['get'])
     def by_producteur(self, request):

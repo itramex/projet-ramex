@@ -43,6 +43,12 @@ class ParcelleViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = super().get_queryset().select_related('producteur')
+
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les parcelles des producteurs de leur agence (via la coopérative).
+        from users.permissions import scope_par_agence
+        queryset, _ = scope_par_agence(self.request.user, queryset,
+                                       lookup='producteur__cooperative__agence')
         
         # Filtre par producteur
         producteur = self.request.query_params.get('producteur', None)

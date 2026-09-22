@@ -118,8 +118,14 @@ class FormationViewSet(viewsets.ModelViewSet):
         #   ?search=Rakoto            (code / nom / prénom, via search_fields)
         # Ne PAS déclarer ici un filtre nommé « producteur » : il entrerait en conflit
         # avec filterset_fields['producteur'] (ValidationError « champ id attendu »).
+        # #29 — Confidentialité par agence (après les filtres métier) : les
+        # non-responsables ne voient que les formations de leur agence.
+        from users.permissions import scope_par_agence
+        queryset, _ = scope_par_agence(
+            self.request.user, queryset,
+            lookup='producteur__cooperative__agence')
         return queryset
-    
+
     def create(self, request, *args, **kwargs):
         """Création de formation(s), supporte la création en masse"""
         from django.db import transaction
@@ -305,6 +311,15 @@ class CertificationViewSet(viewsets.ModelViewSet):
         village = params.get('village')
         if village:
             queryset = queryset.filter(producteur__village__icontains=village)
+
+        # #29 — Confidentialité par agence : certifications liées à un producteur
+        # (via sa coopérative) OU directement à une coopérative. Les lignes sans
+        # aucun rattachement restent visibles.
+        from users.permissions import scope_entite_agence
+        queryset, _ = scope_entite_agence(
+            self.request.user, queryset,
+            lookup_producteur='producteur__cooperative__agence',
+            lookup_cooperative='cooperative__agence')
 
         return queryset
     
@@ -622,6 +637,10 @@ class AuditCertificationViewSet(viewsets.ModelViewSet):
     ordering_fields = ['date_audit', 'date_enregistrement']
     ordering = ['-date_audit']
 
+    # #29 — Les audits ne portent ni producteur ni coopérative : aucune donnée
+    # personnelle. Pas de restriction par agence (contrairement aux
+    # certifications / non-conformités / formations).
+
     @action(detail=False, methods=['get'])
     def statistiques(self, request):
         data = {
@@ -671,6 +690,22 @@ class NonConformiteViewSet(viewsets.ModelViewSet):
     ordering_fields = ['date_enregistrement', 'date_limite']
     ordering = ['-date_enregistrement']
 
+    def get_queryset(self):
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les non-conformités rattachées aux producteurs de leur agence.
+        # (Les NC sans producteur restent visibles.)
+        from django.db.models import Q
+        from users.permissions import can_see_all_data, get_user_agence
+        queryset = super().get_queryset()
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(
+                    Q(producteur__cooperative__agence_id=agence.id)
+                    | Q(producteur__isnull=True)
+                )
+        return queryset
+
     @action(detail=True, methods=['post'])
     def resoudre(self, request, pk=None):
         from django.utils import timezone
@@ -719,6 +754,17 @@ class ActiviteCertificationViewSet(viewsets.ModelViewSet):
     ]
     ordering_fields = ['date', 'date_creation', 'nombre_participants']
     ordering = ['-date', '-date_creation']
+
+    def get_queryset(self):
+        # #29 — Confidentialité par agence : activités liées à un producteur
+        # (via sa coopérative) OU directement à une coopérative.
+        from users.permissions import scope_entite_agence
+        queryset, _ = scope_entite_agence(
+            self.request.user,
+            super().get_queryset(),
+            lookup_producteur='producteur__cooperative__agence',
+            lookup_cooperative='cooperative__agence')
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(cree_par=self.request.user, responsable=self.request.user)

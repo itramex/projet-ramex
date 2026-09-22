@@ -138,3 +138,64 @@ class IsAdminOrManagerOrReadOnly(permissions.BasePermission):
             return True
         return get_profile_role(request.user) == ROLE_SUPERVISEUR
 
+
+# ---------------------------------------------------------------------------
+# Confidentialité par agence (#29)
+# ---------------------------------------------------------------------------
+#   admin / superviseur (les « responsables ») : voient TOUTES les données
+#   animateur / agent de collecte (les « BL ») : voient uniquement les données
+#     de leur agence (via la coopérative du producteur) — sauf si aucune
+#     agence n'est assignée à leur profil (comptes historiques : aucune
+#     restriction, pour ne pas bloquer l'existant).
+# ---------------------------------------------------------------------------
+
+def get_user_agence(user):
+    """Agence RAMEX du profil utilisateur (ou None)."""
+    if hasattr(user, 'profile'):
+        return user.profile.agence
+    return None
+
+
+def can_see_all_data(user):
+    """Les responsables (admin, superviseur) accèdent à toutes les données (#29)."""
+    if not user or not user.is_authenticated:
+        return False
+    return is_admin(user) or get_profile_role(user) == ROLE_SUPERVISEUR
+
+
+def scope_par_agence(user, qs, lookup='cooperative__agence'):
+    """Restreint un queryset de Producteurs (ou lié) à l'agence du profil (#29).
+
+    Retourne (queryset, agence|None) :
+    - admin/superviseur ou profil sans agence → queryset inchangé, None ;
+    - sinon → filtre `<lookup>_id` = agence du profil.
+    """
+    if can_see_all_data(user):
+        return qs, None
+    agence = get_user_agence(user)
+    if not agence:
+        return qs, None
+    return qs.filter(**{f'{lookup}_id': agence.id}), agence
+
+
+def scope_entite_agence(user, qs, lookup_producteur, lookup_cooperative):
+    """Restreint un queryset rattaché à un producteur ET/OU une coopérative (#29).
+
+    Cas des certifications : soit liées à un producteur (via sa coopérative),
+    soit directement à une coopérative. Les lignes sans aucun rattachement
+    restent visibles. Retourne (queryset, agence|None), mêmes règles que
+    scope_par_agence (admin/superviseur ou profil sans agence → inchangé).
+    """
+    from django.db.models import Q
+    if can_see_all_data(user):
+        return qs, None
+    agence = get_user_agence(user)
+    if not agence:
+        return qs, None
+    return qs.filter(
+        Q(**{f'{lookup_producteur}_id': agence.id})
+        | Q(**{f'{lookup_cooperative}_id': agence.id})
+        | Q(**{f'{lookup_producteur}__isnull': True},
+            **{f'{lookup_cooperative}__isnull': True})
+    ), agence
+

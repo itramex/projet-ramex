@@ -81,7 +81,19 @@ class BonCollecteViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = super().get_queryset()
-        
+
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les bons des producteurs / coopératives de leur agence.
+        # (Le bon porte à la fois un producteur et une coopérative directe.)
+        from users.permissions import can_see_all_data, get_user_agence
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(
+                    Q(producteur__cooperative__agence_id=agence.id)
+                    | Q(cooperative__agence_id=agence.id)
+                )
+
         # Filtres
         campagne_id = self.request.query_params.get('campagne')
         if campagne_id:
@@ -208,7 +220,19 @@ class FicheCollecteViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = super().get_queryset()
-        
+
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les fiches liées à leur agence (coopérative directe ou bons rattachés).
+        from users.permissions import can_see_all_data, get_user_agence
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(
+                    Q(cooperative__agence_id=agence.id)
+                    | Q(bons_collecte__producteur__cooperative__agence_id=agence.id)
+                    | Q(bons_collecte__cooperative__agence_id=agence.id)
+                ).distinct()
+
         campagne_id = self.request.query_params.get('campagne')
         if campagne_id:
             queryset = queryset.filter(campagne_id=campagne_id)

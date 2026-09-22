@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getCurrentUser, getRoleDisplayName, isAdmin } from '../../utils/permissions';
+import { tokenStorage } from '../../services/tokenStorage';
 import VillagesModal from '../settings/VillagesModal';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
@@ -12,7 +13,9 @@ function Header({ sidebarOpen, setSidebarOpen, menuItems }) {
   const settingsRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  // Les données utilisateur du login sont persistées par tokenStorage
+  // (clé « user_data ») ; getCurrentUser() n'est qu'un repli historique.
+  const currentUser = tokenStorage.getUserData() || getCurrentUser();
 
   const handleLogout = async () => {
     try {
@@ -140,6 +143,18 @@ function Header({ sidebarOpen, setSidebarOpen, menuItems }) {
         </div>
       </header>
       
+      {/* #29 — Bandeau confidentialité par agence : les comptes non-responsables
+          (animateur, agent de collecte) avec une agence assignée ne voient que
+          les données de leur agence (voir backend users/permissions.py). */}
+      {currentUser?.agence && currentUser?.see_all_data === false && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs sm:text-sm px-3 sm:px-6 py-1.5 flex items-center gap-2">
+          <Icon name="InformationCircleIcon" size="sm" />
+          <span>
+            Données limitées à votre agence : <strong>{currentUser.agence.nom}</strong>
+          </span>
+        </div>
+      )}
+
       <VillagesModal open={villagesModalOpen} onClose={() => setVillagesModalOpen(false)} />
     </>
   );

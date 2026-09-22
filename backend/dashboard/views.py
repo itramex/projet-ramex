@@ -28,6 +28,11 @@ def _dashboard_base_queryset(request):
     fokontanys = [f for f in request.query_params.getlist('fokontany') if f]
     if fokontanys:
         qs = qs.filter(fokontany__in=fokontanys)
+
+    # #29 — Confidentialité par agence : les non-responsables ne voient que
+    # les producteurs de leur agence (via la coopérative).
+    from users.permissions import scope_par_agence
+    qs, _ = scope_par_agence(request.user, qs)
     return qs
 
 
@@ -167,11 +172,22 @@ def dashboard_global(request):
             base_queryset = base_queryset.filter(fokontany__in=fokontanys)
             base_queryset_all = base_queryset_all.filter(fokontany__in=fokontanys)
 
+    # #29 — Confidentialité par agence : les non-responsables (animateur,
+    # agent de collecte) ne voient que les producteurs de leur agence
+    # (via la coopérative). Admin/superviseur → tout.
+    from users.permissions import scope_par_agence
+    base_queryset, _ = scope_par_agence(request.user, base_queryset)
+    base_queryset_all, _ = scope_par_agence(request.user, base_queryset_all)
+
     # Statistiques globales (sans filtres pour le total)
-    # TOTAL = TOUS LES PRODUCTEURS (actifs + inactifs)
-    total = Producteur.objects.count()  # Tous les producteurs
-    actifs_sans_filtres = Producteur.objects.filter(actif=True).count()  # Actifs sans filtres
-    inactifs = Producteur.objects.filter(actif=False).count()  # Inactifs
+    # TOTAL = TOUS LES PRODUCTEURS (actifs + inactifs) — #29 : restreint aux
+    # producteurs visibles par l'utilisateur (scopés à son agence).
+    _scoped_all = scope_par_agence(request.user, Producteur.objects.all())[0]
+    total = _scoped_all.count()  # Tous les producteurs visibles
+    actifs_sans_filtres = scope_par_agence(
+        request.user, Producteur.objects.filter(actif=True))[0].count()
+    inactifs = scope_par_agence(
+        request.user, Producteur.objects.filter(actif=False))[0].count()
     
     # Actifs avec filtres appliqués (pour statistiques détaillées)
     actifs = base_queryset.count()

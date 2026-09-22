@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.pagination import PageNumberPagination
-from users.permissions import IsAdminOrReadOnly
+from users.permissions import IsAdminOrReadOnly, scope_par_agence
 from users.models import ActivityLog
 from simple_history.utils import update_change_reason
 from django.db import models, transaction
@@ -83,7 +83,10 @@ class ProducteurHistoriqueMixin:
             years_to_query = list(range(current_year - 4, current_year + 1))
 
         # Récupérer tous les producteurs actifs
+        # #29 — Confidentialité par agence : on ne liste que les producteurs
+        # visibles par l'utilisateur (scopés à son agence si non-responsable).
         producteurs = Producteur.objects.filter(actif=True).select_related('cooperative')
+        producteurs, _ = scope_par_agence(request.user, producteurs)
 
         results = []
         
@@ -341,6 +344,11 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
         """Filtre avancé des producteurs"""
         queryset = super().get_queryset()
         
+        # #29 — Confidentialité par agence : les non-responsables (animateur,
+        # agent de collecte) ne voient que les producteurs de leur agence
+        # (via la coopérative). Admin/superviseur → tout.
+        queryset, _ = scope_par_agence(self.request.user, queryset)
+
         actif = self.request.query_params.get('actif', None)
         if actif is not None:
             queryset = queryset.filter(actif=actif.lower() == 'true')
@@ -627,63 +635,69 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
 
     @action(detail=False, methods=['get'])
     def statistiques(self, request):
-        """Retourne des statistiques complètes sur les producteurs"""
-        total = Producteur.objects.count()
-        actifs = Producteur.objects.actifs().count()
-        inactifs = Producteur.objects.inactifs().count()
-        verifies = Producteur.objects.filter(verifie=True).count()
-        
+        """Retourne des statistiques complètes sur les producteurs.
+
+        #29 — Confidentialité par agence : les compteurs sont calculés sur les
+        seuls producteurs visibles par l'utilisateur (scopés à son agence)."""
+        base = Producteur.objects.all()
+        base, _ = scope_par_agence(request.user, base)
+        base_actifs = base.filter(actif=True)
+        total = base.count()
+        actifs = base_actifs.count()
+        inactifs = base.filter(actif=False).count()
+        verifies = base.filter(verifie=True).count()
+
         par_sexe = list(
-            Producteur.objects.filter(actif=True)
+            base_actifs
             .values('sexe')
             .annotate(total=Count('id'))
             .order_by('-total')
         )
-        
+
         par_village = list(
-            Producteur.objects.filter(actif=True)
+            base_actifs
             .values('village')
             .annotate(total=Count('id'))
             .order_by('-total')[:10]
         )
-        
+
         par_commune = list(
-            Producteur.objects.filter(actif=True)
+            base_actifs
             .values('commune')
             .annotate(total=Count('id'))
             .order_by('-total')
         )
-        
+
         # Statistiques supplémentaires
         par_cooperative = list(
-            Producteur.objects.filter(actif=True)
+            base_actifs
             .values('cooperative__nom')
             .annotate(total=Count('id'))
             .order_by('-total')
         )
-        
+
         par_niveau_education = list(
-            Producteur.objects.filter(actif=True)
+            base_actifs
             .values('niveau_education')
             .annotate(total=Count('id'))
             .order_by('-total')
         )
-        
+
         # Statistiques enfants
-        total_enfants = Producteur.objects.filter(actif=True).aggregate(
+        total_enfants = base_actifs.aggregate(
             total=Sum('nb_enfants_garcons') + Sum('nb_enfants_filles')
         )['total'] or 0
-        
-        enfants_scolarises = Producteur.objects.filter(actif=True).aggregate(
+
+        enfants_scolarises = base_actifs.aggregate(
             total=Sum('nb_enfants_scolarises')
         )['total'] or 0
-        
+
         # Calculer le nombre d'enfants en âge scolaire (3-18 ans) à partir des années de naissance
         from datetime import datetime
         annee_actuelle = datetime.now().year
         enfants_en_age_scolaire = 0
-        
-        for producteur in Producteur.objects.filter(actif=True):
+
+        for producteur in base_actifs:
             for i in range(1, 11):  # annee_naissance_enfant_1 à annee_naissance_enfant_10
                 annee_naissance = getattr(producteur, f'annee_naissance_enfant_{i}', None)
                 if annee_naissance:
@@ -693,17 +707,17 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
         taux_scolarisation = round((enfants_scolarises / enfants_en_age_scolaire * 100) if enfants_en_age_scolaire > 0 else 0, 2)
         
         # Statistiques hygiène
-        avec_poubelles = Producteur.objects.filter(actif=True, a_poubelles_triees=True).count()
-        avec_wc = Producteur.objects.filter(actif=True, wc_maison=True).count()
-        eau_potable = Producteur.objects.filter(actif=True, source_eau='robinet').count()
-        
+        avec_poubelles = base_actifs.filter(a_poubelles_triees=True).count()
+        avec_wc = base_actifs.filter(wc_maison=True).count()
+        eau_potable = base_actifs.filter(source_eau='robinet').count()
+
         # Statistiques environnement
-        respecte_environnement = Producteur.objects.filter(actif=True, pratique_tavy=False).count()
-        pratique_tavy = Producteur.objects.filter(actif=True, pratique_tavy=True).count()
-        
+        respecte_environnement = base_actifs.filter(pratique_tavy=False).count()
+        pratique_tavy = base_actifs.filter(pratique_tavy=True).count()
+
         # Leadership
-        femmes_leaders = Producteur.objects.filter(actif=True, femme_leader=True).count()
-        paysans_relais = Producteur.objects.filter(actif=True, paysan_relais=True).count()
+        femmes_leaders = base_actifs.filter(femme_leader=True).count()
+        paysans_relais = base_actifs.filter(paysan_relais=True).count()
         
         stats = {
             'total': total,
@@ -1196,6 +1210,14 @@ class DotationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les dotations des producteurs de leur agence (via la coopérative).
+        from users.permissions import scope_par_agence
+        qs, _ = scope_par_agence(
+            self.request.user, qs,
+            lookup='producteur__cooperative__agence')
+
         producteur_id = self.request.query_params.get('producteur')
         type_dotation = self.request.query_params.get('type_dotation')
         annee = self.request.query_params.get('annee')
@@ -1254,6 +1276,10 @@ class DotationViewSet(viewsets.ModelViewSet):
         from history.models import AGRHistory
         annee = request.query_params.get('annee')
         actifs = Producteur.objects.filter(actif=True)
+
+        # #29 — Confidentialité par agence : l'impact compare uniquement les
+        # producteurs visibles par l'utilisateur (scopés à son agence).
+        actifs, _ = scope_par_agence(request.user, actifs)
 
         def _taux(scol, non):
             tot = (scol or 0) + (non or 0)
@@ -1343,6 +1369,13 @@ class AGRViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         queryset = queryset.select_related('producteur', 'enregistre_par')
         params = self.request.query_params
+
+        # #29 — Confidentialité par agence : les non-responsables ne voient que
+        # les AGR des producteurs de leur agence (via la coopérative).
+        from users.permissions import scope_par_agence
+        queryset, _ = scope_par_agence(
+            self.request.user, queryset,
+            lookup='producteur__cooperative__agence')
         village = params.get('village')
         if village:
             queryset = queryset.filter(producteur__village__icontains=village.strip())

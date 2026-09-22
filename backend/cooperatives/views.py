@@ -58,7 +58,13 @@ class CooperativeViewSet(viewsets.ModelViewSet):
                 output_field=DecimalField(max_digits=15, decimal_places=2),
             ),
         )
-        
+
+        # #29 — Confidentialité par agence : les non-responsables (animateur,
+        # agent de collecte) ne voient que les coopératives de leur agence.
+        from users.permissions import scope_par_agence
+        queryset, _ = scope_par_agence(
+            self.request.user, queryset, lookup='agence')
+
         # Filtre actif/inactif
         active = self.request.query_params.get('active', None)
         if active is not None:

@@ -126,6 +126,10 @@ class ProducteurCumulsMixin:
         commune = request.query_params.get('commune')
         cooperative = request.query_params.get('cooperative')
         qs = Producteur.objects.filter(actif=True)
+        # #29 — Confidentialité par agence : cumuls limités aux producteurs
+        # visibles par l'utilisateur (édition non-responsable → son agence).
+        from users.permissions import scope_par_agence
+        qs, _ = scope_par_agence(request.user, qs)
         if village:
             qs = qs.filter(village__iexact=village)
         if commune:
