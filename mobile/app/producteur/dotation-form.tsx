@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,13 +13,13 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { dotationService } from '../../src/services/api';
 import { colors, spacing } from '../../src/constants/theme';
-import { DOTATION_TYPES } from '../../src/types/api';
+import { DOTATION_TYPES, DotationType } from '../../src/types/api';
 
 export default function DotationForm() {
   const { producteur } = useLocalSearchParams<{ producteur?: string }>();
   const router = useRouter();
 
-  const [typeDotation, setTypeDotation] = useState(DOTATION_TYPES[0].value);
+  const [typeDotation, setTypeDotation] = useState<DotationType>(DOTATION_TYPES[0].value);
   const [annee, setAnnee] = useState(String(new Date().getFullYear()));
   const [quantite, setQuantite] = useState('1');
   const [details, setDetails] = useState('');
@@ -82,3 +82,153 @@ export default function DotationForm() {
       setSaving(false);
     }
   };
+
+  // Erreurs renvoyées par l'API sur d'autres champs que ceux affichés ci-dessous
+  const otherErrors = Object.entries(fieldErrors)
+    .filter(([key]) => !['type_dotation', 'annee', 'quantite', 'details'].includes(key))
+    .map(([, value]) => value)
+    .join(' ');
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'Nouvelle dotation',
+          headerStyle: { backgroundColor: colors.dark },
+          headerTintColor: colors.primary,
+        }}
+      />
+
+      <KeyboardAvoidingView
+        style={styles.keyboard}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Text style={styles.section}>Type de dotation *</Text>
+          <View style={styles.choiceRowWrap}>
+            {DOTATION_TYPES.map((option) => {
+              const active = option.value === typeDotation;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[styles.choiceButton, active && styles.choiceButtonActive]}
+                  onPress={() => setTypeDotation(option.value)}
+                >
+                  <Text style={active ? styles.choiceTextActive : styles.choiceText}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {fieldErrors.type_dotation ? (
+            <Text style={styles.fieldError}>{fieldErrors.type_dotation}</Text>
+          ) : null}
+
+          <Text style={styles.label}>Année *</Text>
+          <TextInput
+            style={styles.input}
+            value={annee}
+            onChangeText={setAnnee}
+            keyboardType="number-pad"
+            placeholder={String(currentYear)}
+            placeholderTextColor={colors.textSecondary}
+          />
+          {fieldErrors.annee ? <Text style={styles.fieldError}>{fieldErrors.annee}</Text> : null}
+
+          <Text style={styles.label}>Quantité *</Text>
+          <TextInput
+            style={styles.input}
+            value={quantite}
+            onChangeText={setQuantite}
+            keyboardType="number-pad"
+            placeholder="1"
+            placeholderTextColor={colors.textSecondary}
+          />
+          {fieldErrors.quantite ? (
+            <Text style={styles.fieldError}>{fieldErrors.quantite}</Text>
+          ) : null}
+
+          <Text style={styles.label}>Détails</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={details}
+            onChangeText={setDetails}
+            placeholder="Précisions (facultatif)"
+            placeholderTextColor={colors.textSecondary}
+            multiline
+          />
+          {fieldErrors.details ? <Text style={styles.fieldError}>{fieldErrors.details}</Text> : null}
+
+          {error || otherErrors ? (
+            <Text style={styles.errorText}>{error || otherErrors}</Text>
+          ) : null}
+
+          <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator color={colors.dark} />
+            ) : (
+              <Text style={styles.saveText}>Enregistrer</Text>
+            )}
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  keyboard: { flex: 1 },
+  content: { padding: spacing.lg },
+  section: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  label: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: spacing.xs },
+  input: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
+  fieldError: { color: colors.danger, fontSize: 12, marginBottom: spacing.xs },
+  errorText: { color: colors.danger, fontSize: 13, marginTop: spacing.md },
+  choiceRowWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  choiceButton: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+  },
+  choiceButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  choiceText: { color: colors.textSecondary, fontWeight: '600', fontSize: 13 },
+  choiceTextActive: { color: colors.dark, fontWeight: '800', fontSize: 13 },
+  saveButton: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  saveText: { color: colors.dark, fontWeight: '800', fontSize: 15 },
+});

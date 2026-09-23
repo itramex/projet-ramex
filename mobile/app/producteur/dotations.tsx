@@ -82,7 +82,6 @@ export default function ProducteurDotations() {
       ]
     );
   };
-};
 
   return (
     <View style={styles.container}>
