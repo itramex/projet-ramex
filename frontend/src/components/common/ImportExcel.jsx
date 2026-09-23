@@ -6,6 +6,9 @@ function ImportExcel({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  // #30 — Année de campagne des données importées (les archives créées
+  // portent cette année ; défaut = année courante).
+  const [annee, setAnnee] = useState(new Date().getFullYear());
   
   // ✅ États pour le déplacement de la fenêtre
   const [isDragging, setIsDragging] = useState(false);
@@ -65,6 +68,8 @@ function ImportExcel({ onClose, onSuccess }) {
 
       const formData = new FormData();
       formData.append('file', file);
+      // #30 — année de campagne transmise au backend (archives datées)
+      formData.append('annee', String(annee || new Date().getFullYear()));
 
       const response = await producteurService.importMultiSheet(formData);
       setResult(response.data);
@@ -199,7 +204,27 @@ function ImportExcel({ onClose, onSuccess }) {
                 </p>
               </>
             )}
-          </div>
+          
+          {/* #30 - Annee de campagne : les archives creees porteront cette annee */}
+          <div className="mt-4 mb-2 text-left">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Annee de campagne des donnees
+            </label>
+            <input
+              type="number"
+              min="2000"
+              max="2100"
+              value={annee}
+              onChange={(e) => setAnnee(e.target.value)}
+              className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Les archives (historiques + snapshots) creees par cet import porteront cette annee.
+              Reimporter la meme annee met a jour sans doublon.
+            </p>
+          
+</div>
+</div>
 
           {/* Résultat */}
           {result && (

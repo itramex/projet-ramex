@@ -1133,11 +1133,28 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
         except AttributeError:
             return ''
 
+    @staticmethod
+    def _annee_import(request):
+        """#30 — Année de campagne de l'import (param `annee`, défaut courant)."""
+        from datetime import datetime as _dt
+        raw = request.data.get('annee') or request.query_params.get('annee')
+        try:
+            annee = int(raw) if raw not in (None, '') else _dt.now().year
+        except (TypeError, ValueError):
+            raise ValueError("Parametre 'annee' invalide (entier attendu, ex: 2026).")
+        if annee < 2000 or annee > 2100:
+            raise ValueError("Parametre 'annee' hors plage (2000-2100).")
+        return annee
+
     @action(detail=False, methods=['post'], url_path='import-multi-sheet', permission_classes=[AllowAny])
     def import_multi_sheet(self, request):
         """
         Import format multi-onglets : Producteur, Parcelle, Formation séparés
         POST /api/producteurs/import-multi-sheet/
+
+        #30 — Paramètre optionnel `annee` (année de campagne des données,
+        défaut : année courante). Les archives créées portent cette année,
+        ce qui permet le réimport annuel sans écraser les années précédentes.
         """
         if 'file' not in request.FILES:
             return Response({
@@ -1165,8 +1182,11 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
                 # Utiliser l'importeur multi-onglets
                 from .import_multi_sheet import ExcelMultiSheetImporter
                 
-                importer = ExcelMultiSheetImporter(tmp_file_path, user=request.user)
+                importer = ExcelMultiSheetImporter(
+                    tmp_file_path, user=request.user,
+                    annee_archive=self._annee_import(request))
                 stats = importer.run()
+                stats['annee_archive'] = importer.annee_archive
                 
                 # Enregistrer l'activité d'import
                 if request.user and request.user.is_authenticated:
@@ -1189,6 +1209,9 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
                 if os.path.exists(tmp_file_path):
                     os.unlink(tmp_file_path)
 
+        except ValueError as ve:
+            # #30 — paramètre `annee` invalide : 400 explicite
+            return Response({'error': str(ve)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"❌ Erreur globale: {str(e)}")
             import traceback

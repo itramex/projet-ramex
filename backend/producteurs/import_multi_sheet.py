@@ -25,9 +25,14 @@ logger = logging.getLogger(__name__)
 class ExcelMultiSheetImporter:
     """Importeur pour fichiers Excel multi-onglets"""
     
-    def __init__(self, file_path, user=None):
+    def __init__(self, file_path, user=None, annee_archive=None):
         self.file_path = file_path
         self.user = user
+        # #30 — Annee de campagne explicite : les donnees importees portent
+        # leur annee de campagne (choisie a l'import) au lieu de l'annee
+        # courante forcee. Permet l'enquete annuelle + le reimport d'une
+        # annee passee sans ecraser les archives existantes.
+        self.annee_archive = annee_archive or datetime.now().year
         self.wb = openpyxl.load_workbook(file_path, data_only=True)
         self.stats = {
             'producteurs_created': 0,
@@ -1721,7 +1726,7 @@ class ExcelMultiSheetImporter:
         from history.models import ProductionHistory, AGRHistory, SocialIndicatorHistory
         
         # Déterminer l'année d'archivage (année courante)
-        annee_archivage = datetime.now().year
+        annee_archivage = self.annee_archive  # #30 : annee de campagne choisie a l'import
         
         logger.info(f"Début de l'archivage automatique pour l'année {annee_archivage}")
         
@@ -1896,7 +1901,7 @@ class ExcelMultiSheetImporter:
         from history.models import ProducteurSnapshot
         
         # Année d'archivage (année courante)
-        annee_archivage = datetime.now().year
+        annee_archivage = self.annee_archive  # #30 : annee de campagne choisie a l'import
         
         logger.info(f"Début archivage producteurs pour l'année {annee_archivage}")
         
