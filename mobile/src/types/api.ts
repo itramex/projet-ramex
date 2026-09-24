@@ -54,6 +54,42 @@ export interface ProducteurPayload {
   actif: boolean;
 }
 
+/** Coopérative (CooperativeListSerializer) — lecture seule sur mobile */
+export interface Cooperative {
+  id: number;
+  code: string;
+  nom: string;
+  sigle?: string;
+  /** Champs géographiques (texte libre historique) */
+  region?: string;
+  district?: string;
+  commune?: string;
+  village?: string;
+  /** Champs géographiques normalisés (lecture seule) */
+  region_ref_nom?: string | null;
+  district_ref_nom?: string | null;
+  commune_ref_nom?: string | null;
+  fokontany_ref_nom?: string | null;
+  village_ref_nom?: string | null;
+  agence_nom?: string | null;
+  telephone?: string;
+  email?: string;
+  active: boolean;
+  annee_creation?: number | null;
+  date_creation?: string | null;
+  /** Membres du bureau (détail via CooperativeDetailSerializer) */
+  president?: string | null;
+  secretaire?: string | null;
+  tresorier?: string | null;
+  /** Statistiques calculées (lecture seule) */
+  nombre_membres?: number;
+  nombre_hommes?: number;
+  nombre_femmes?: number;
+  nombre_producteurs?: number;
+  superficie_totale_ha?: number;
+  villages?: string[];
+}
+
 /** Parcelle (champs principaux du serializer DRF) */
 export interface Parcelle {
   id: number;

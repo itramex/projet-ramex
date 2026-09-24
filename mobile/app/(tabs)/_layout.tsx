@@ -34,6 +34,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="cooperatives"
+        options={{
+          title: 'Coopératives',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="business-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profil"
         options={{
           title: 'Profil',

@@ -5,6 +5,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { tokenStore } from './tokenStore';
 import {
+  Cooperative,
   Dotation,
   DotationPayload,
   DotationsResponse,
@@ -89,6 +90,22 @@ export const producteurService = {
   patch: (id: number | string, data: Partial<ProducteurPayload> | MenagePayload) =>
     api.patch<Producteur>(`/producteurs/${id}/`, data),
   delete: (id: number | string) => api.delete(`/producteurs/${id}/`),
+};
+
+/**
+ * Coopératives : liste/filtres + recherche serveur (lecture seule sur mobile).
+ * Pas de pagination côté API (tableau simple) — scoping agence appliqué côté serveur.
+ */
+export const cooperativeService = {
+  list: (params: {
+    search?: string;
+    active?: string;
+    region?: string;
+    commune?: string;
+    village?: string;
+    has_responsables?: string;
+  } = {}) => api.get<Cooperative[]>('/cooperatives/', { params }),
+  detail: (id: number | string) => api.get<Cooperative>(`/cooperatives/${id}/`),
 };
 
 /** Dotations : saisie terrain par producteur (kit scolaire, poisson, volaille…) */

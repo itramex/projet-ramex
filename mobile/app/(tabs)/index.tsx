@@ -94,6 +94,13 @@ export default function Accueil() {
         <Text style={styles.actionText}>Voir les producteurs</Text>
       </Pressable>
 
+      <Pressable
+        style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+        onPress={() => router.push('/(tabs)/cooperatives')}
+      >
+        <Text style={styles.actionText}>Voir les coopératives</Text>
+      </Pressable>
+
       <View style={styles.footerNote}>
         <Text style={styles.footerText}>
           Application connectée à l'API RAMEX. Les fonctionnalités hors-ligne (collecte
