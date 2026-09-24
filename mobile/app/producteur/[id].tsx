@@ -148,6 +148,15 @@ export default function ProducteurDetail() {
               <Text style={styles.menageText}>Ménage</Text>
             </Pressable>
             <Pressable
+              style={({ pressed }) => [styles.menageButton, pressed && styles.menagePressed]}
+              onPress={() => router.push({ pathname: '/producteur/agrs', params: { id: String(producteur.id) } })}
+            >
+              <Text style={styles.menageText}>AGR</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.actionsCard}>
+            <Pressable
               style={({ pressed }) => [styles.editButton, pressed && styles.editPressed]}
               onPress={goEdit}
             >

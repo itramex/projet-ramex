@@ -174,3 +174,64 @@ export interface Paginated<T> {
   previous: string | null;
   results: T[];
 }
+
+/** Types d'AGR — choices réelles du backend (AGR.TYPE_AGR_CHOICES).
+ *  Le web en affiche 7 mais le serializer n'accepte que ces 3. */
+export const AGR_TYPES = [
+  { value: 'pisciculture', label: 'Pisciculture' },
+  { value: 'aviculture', label: 'Aviculture' },
+  { value: 'autre', label: 'Autre' },
+] as const;
+
+export type AGRType = (typeof AGR_TYPES)[number]['value'];
+
+/** Utilisation de la production AGR (AGR.UTILISATION_CHOICES) */
+export const AGR_UTILISATIONS = [
+  { value: 'consommation', label: 'À consommer' },
+  { value: 'vente', label: 'À vendre' },
+  { value: 'les_deux', label: 'Les deux' },
+] as const;
+
+export type AGRUtilisation = (typeof AGR_UTILISATIONS)[number]['value'];
+
+/** Activité Génératrice de Revenus (GET /agr/) */
+export interface AGR {
+  id: number;
+  producteur: number;
+  producteur_code?: string;
+  producteur_nom?: string;
+  type_agr: AGRType;
+  type_agr_display?: string;
+  ordre: number;
+  intrants_recus: boolean;
+  quantite_intrants?: number | null;
+  utilisation: AGRUtilisation | '';
+  utilisation_display?: string;
+  quantite_consommee_annuelle?: string | number | null;
+  quantite_vendue_annuelle?: string | number | null;
+  unite_mesure: string;
+  prix_vente_unitaire?: string | number | null;
+  revenu_annuel_estime?: string | number | null;
+  nombre_bassins?: number | null;
+  nombre_volailles?: number | null;
+  active: boolean;
+  date_creation?: string;
+  date_modification?: string;
+}
+
+/** Payload de création / mise à jour d'une AGR (POST/PUT /agr/) */
+export interface AGRPayload {
+  producteur: number;
+  type_agr: AGRType;
+  ordre: number;
+  intrants_recus: boolean;
+  quantite_intrants?: number | null;
+  utilisation?: AGRUtilisation | '';
+  quantite_consommee_annuelle?: number | null;
+  quantite_vendue_annuelle?: number | null;
+  unite_mesure?: string;
+  prix_vente_unitaire?: number | null;
+  nombre_bassins?: number | null;
+  nombre_volailles?: number | null;
+  active: boolean;
+}

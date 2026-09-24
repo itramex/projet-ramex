@@ -5,6 +5,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { tokenStore } from './tokenStore';
 import {
+  AGR,
+  AGRPayload,
   Cooperative,
   Dotation,
   DotationPayload,
@@ -115,6 +117,19 @@ export const dotationService = {
     api.get<DotationsResponse>('/dotations/', { params: { producteur: producteurId } }),
   create: (data: DotationPayload) => api.post<Dotation>('/dotations/', data),
   remove: (id: number | string) => api.delete(`/dotations/${id}/`),
+};
+
+/** AGR : activités génératrices de revenus par producteur (pisciculture, aviculture…) */
+export const agrService = {
+  /** AGR actives d'un producteur (parité web : agrService.getByProducteur) */
+  listByProducteur: (producteurId: number | string) =>
+    api.get<Paginated<AGR> | AGR[]>('/agr/', {
+      params: { producteur: producteurId, active: true },
+    }),
+  detail: (id: number | string) => api.get<AGR>(`/agr/${id}/`),
+  create: (data: AGRPayload) => api.post<AGR>('/agr/', data),
+  update: (id: number | string, data: AGRPayload) => api.put<AGR>(`/agr/${id}/`, data),
+  remove: (id: number | string) => api.delete(`/agr/${id}/`),
 };
 
 export default api;
