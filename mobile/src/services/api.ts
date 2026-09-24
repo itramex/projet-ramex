@@ -7,10 +7,15 @@ import { tokenStore } from './tokenStore';
 import {
   AGR,
   AGRPayload,
+  BonCollecte,
+  BonCollectePayload,
+  Campagne,
   Cooperative,
   Dotation,
   DotationPayload,
   DotationsResponse,
+  FicheCollecte,
+  FicheCollectePayload,
   MenagePayload,
   Paginated,
   Producteur,
@@ -130,6 +135,43 @@ export const agrService = {
   create: (data: AGRPayload) => api.post<AGR>('/agr/', data),
   update: (id: number | string, data: AGRPayload) => api.put<AGR>(`/agr/${id}/`, data),
   remove: (id: number | string) => api.delete(`/agr/${id}/`),
+};
+
+/** Campagnes agricoles (référentiel des formulaires de traçabilité) */
+export const campagneService = {
+  list: () => api.get<Paginated<Campagne> | Campagne[]>('/tracabilite/campagnes/'),
+};
+
+/** Bons de collecte (FABC) — saisie terrain traçabilité */
+export const bonCollecteService = {
+  list: (params: {
+    campagne?: number | string;
+    producteur?: number | string;
+    cooperative?: number | string;
+    certification?: string;
+    village?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+  } = {}) =>
+    api.get<Paginated<BonCollecte> | BonCollecte[]>('/tracabilite/bons-collecte/', { params }),
+  detail: (id: number | string) => api.get<BonCollecte>(`/tracabilite/bons-collecte/${id}/`),
+  create: (data: BonCollectePayload) => api.post<BonCollecte>('/tracabilite/bons-collecte/', data),
+  update: (id: number | string, data: BonCollectePayload) =>
+    api.put<BonCollecte>(`/tracabilite/bons-collecte/${id}/`, data),
+  remove: (id: number | string) => api.delete(`/tracabilite/bons-collecte/${id}/`),
+};
+
+/** Fiches de collecte (FC) — regroupement de FABC par marché */
+export const ficheCollecteService = {
+  list: (params: { campagne?: number | string; cooperative?: number | string } = {}) =>
+    api.get<Paginated<FicheCollecte> | FicheCollecte[]>('/tracabilite/fiches-collecte/', { params }),
+  detail: (id: number | string) => api.get<FicheCollecte>(`/tracabilite/fiches-collecte/${id}/`),
+  create: (data: FicheCollectePayload) =>
+    api.post<FicheCollecte>('/tracabilite/fiches-collecte/', data),
+  update: (id: number | string, data: FicheCollectePayload) =>
+    api.put<FicheCollecte>(`/tracabilite/fiches-collecte/${id}/`, data),
+  remove: (id: number | string) => api.delete(`/tracabilite/fiches-collecte/${id}/`),
 };
 
 export default api;

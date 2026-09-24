@@ -235,3 +235,142 @@ export interface AGRPayload {
   nombre_volailles?: number | null;
   active: boolean;
 }
+
+/** Types de produit d'un bon de collecte (BonCollecte.TYPE_PRODUIT_CHOICES) */
+export const BON_COLLECTE_TYPES_PRODUIT = [
+  { value: 'vanille_verte', label: 'Vanille Verte' },
+  { value: 'vanille_vrac', label: 'Vanille Vrac' },
+  { value: 'cafe', label: 'Café' },
+  { value: 'girofle', label: 'Girofle' },
+] as const;
+
+export type BonCollecteTypeProduit = (typeof BON_COLLECTE_TYPES_PRODUIT)[number]['value'];
+
+/** Certifications historiques d'un FABC (TYPE_CERTIFICATION_CHOICES) */
+export const BON_COLLECTE_CERTIFICATIONS = [
+  { value: 'g4g', label: 'G4G (Good 4 Good)' },
+  { value: 'bio', label: 'BIO' },
+  { value: 'ra', label: 'RA (Rainforest Alliance)' },
+  { value: 'ffl', label: 'FFL (Fair for Life)' },
+  { value: 'rauebt', label: 'RAUEBT' },
+] as const;
+
+export type BonCollecteCertification = (typeof BON_COLLECTE_CERTIFICATIONS)[number]['value'];
+
+/** Modes de paiement (BonCollecte.MODE_PAIEMENT_CHOICES) */
+export const MODES_PAIEMENT = [
+  { value: 'especes', label: 'Espèces' },
+  { value: 'cheque', label: 'Chèque' },
+  { value: 'mobile', label: 'Mobile Banking' },
+] as const;
+
+export type ModePaiement = (typeof MODES_PAIEMENT)[number]['value'];
+
+/** Campagne agricole (GET /tracabilite/campagnes/) */
+export interface Campagne {
+  id: number;
+  code: string;
+  annee_debut: number;
+  annee_fin: number;
+  date_debut: string;
+  date_fin: string;
+  type: 'vanille_verte' | 'vanille_preparee';
+  statut: 'active' | 'cloturee';
+}
+
+/** Bon de collecte / FABC (BonCollecteListSerializer + champs détail) */
+export interface BonCollecte {
+  id: number;
+  numero_fabc: string;
+  campagne: number;
+  campagne_code?: string;
+  producteur: number;
+  producteur_nom?: string;
+  producteur_code?: string;
+  cooperative: number | null;
+  cooperative_nom?: string | null;
+  date_marche: string;
+  village_marche: string;
+  commune: string;
+  fokontany: string;
+  type_produit: BonCollecteTypeProduit;
+  type_produit_display?: string;
+  certification?: string | null;
+  certification_display?: string;
+  type_certification?: number | null;
+  type_certification_nom?: string | null;
+  poids_total_livre: string | number;
+  poids_accepte: string | number;
+  poids_retour: string | number;
+  prix_unitaire_marche: string | number;
+  montant_premium: string | number;
+  montant_total_achat: string | number;
+  mode_paiement: ModePaiement;
+  mode_paiement_display?: string;
+  montant_avances_anterieures?: string | number;
+  remboursement_par_vanille?: string | number;
+  remboursement_especes?: string | number;
+  solde_avances?: string | number;
+  est_vente_groupee?: boolean;
+  date_creation?: string;
+  date_modification?: string;
+  /** Présent dans GET /{id}/ uniquement (BonCollecteDetailSerializer) */
+  producteur_info?: { nom_complet?: string; code?: string; village?: string } | null;
+}
+
+/** Payload POST/PUT /tracabilite/bons-collecte/ (champs requis du modèle) */
+export interface BonCollectePayload {
+  numero_fabc: string;
+  campagne: number;
+  producteur: number;
+  cooperative?: number | null;
+  date_marche: string;
+  village_marche: string;
+  commune: string;
+  fokontany: string;
+  type_produit: BonCollecteTypeProduit;
+  certification?: string;
+  poids_total_livre: number;
+  poids_accepte: number;
+  poids_retour?: number;
+  prix_unitaire_marche: number;
+  montant_premium?: number;
+  mode_paiement: ModePaiement;
+}
+
+/** Fiche de collecte / FC (FicheCollecteListSerializer + détail) */
+export interface FicheCollecte {
+  id: number;
+  numero_fc: string;
+  campagne: number;
+  campagne_code?: string;
+  cooperative: number | null;
+  cooperative_nom?: string | null;
+  certification: string;
+  certification_display?: string;
+  date_marche: string;
+  fokontany: string;
+  nombre_producteurs: number;
+  poids_total_net: string | number;
+  montant_total: string | number;
+  agent_re: string;
+  date_creation?: string;
+  /** Présent dans GET /{id}/ uniquement (ids des FABC regroupés) */
+  bons_collecte?: number[];
+  bons_collecte_info?: BonCollecte[];
+}
+
+/** Payload POST/PUT /tracabilite/fiches-collecte/ */
+export interface FicheCollectePayload {
+  numero_fc: string;
+  campagne: number;
+  cooperative?: number | null;
+  certification: string;
+  date_marche: string;
+  fokontany: string;
+  nombre_producteurs: number;
+  poids_total_net: number;
+  montant_total: number;
+  agent_re: string;
+  bons_collecte?: number[];
+}
