@@ -112,8 +112,8 @@ function AGRStats({ filters }) {
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Summary Cards — revenus ventilés par type d'AGR (non cumulés) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
           title="Total AGR"
           value={data.total_agr || 0}
@@ -127,18 +127,16 @@ function AGRStats({ filters }) {
           iconName={iconMap.producteurs}
           color="bg-green-600"
         />
-        <StatCard
-          title="Revenu Total"
-          value={formatCurrency(data.total_revenue || 0)}
-          iconName={iconMap.production}
-          color="bg-chick-yellow"
-        />
-        <StatCard
-          title="Revenu Moyen"
-          value={formatCurrency(calculateAverageRevenue(data))}
-          iconName={iconMap.rendement}
-          color="bg-gray-600"
-        />
+        {['pisciculture', 'aviculture', 'autre'].map((type) => (
+          <StatCard
+            key={type}
+            title={`Revenu — ${formatAGRType(type)}`}
+            value={formatCurrency(data.total_revenue_by_type?.[type] || 0)}
+            subtitle={`${data.by_type?.[type] || 0} AGR · revenu moyen ${formatCurrency(data.average_revenue_by_type?.[type] || 0)}`}
+            iconName={iconMap.production}
+            color="bg-chick-yellow"
+          />
+        ))}
       </div>
 
       {/* Charts */}
@@ -401,6 +399,7 @@ function calculateAverageRevenue(data) {
   if (!data || !data.total_revenue || !data.total_agr) return 0;
   return data.total_revenue / data.total_agr;
 }
+void calculateAverageRevenue; // gardé pour réutilisation interne éventuelle
 
 // Pie chart label plugin
 const pieLabelPlugin = {

@@ -78,6 +78,12 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
       disabled: true,
     },
     {
+      title: 'AGR',
+      iconKey: 'production',
+      path: '/agr',
+      description: 'Statistiques & historique AGR',
+    },
+    {
       title: 'Historique',
       iconKey: 'calendar',
       path: '/historique',
