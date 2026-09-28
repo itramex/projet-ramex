@@ -30,6 +30,9 @@ export default function ProducteursList() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const requestId = useRef(0);
+  // Garde synchrone anti double-fetch : onEndReached peut se redéclencher
+  // dans le même tick (footer qui apparaît/disparaît) avant le re-render.
+  const inFlight = useRef(false);
 
   // Recherche avec anti-rebond (400 ms) pour limiter les requêtes
   useEffect(() => {
@@ -51,17 +54,30 @@ export default function ProducteursList() {
         });
         if (currentRequest !== requestId.current) return; // réponse périmée
         const data = response.data;
-        // Défensif : garantit un tableau même si le serveur renvoie un shape inattendu
-        const results = Array.isArray(data.results) ? data.results : [];
+        // Défensif : garantit un tableau d'objets même si le serveur
+        // renvoie un shape inattendu ou des lignes nulles.
+        const results = Array.isArray(data.results)
+          ? data.results.filter((r) => r && typeof r === 'object' && r.id != null)
+          : [];
         setCount(data.count ?? results.length);
         setPage(targetPage);
         setHasMore(Boolean(data.next));
-        setItems((prev) => (replace ? results : [...prev, ...results]));
+        // Append sans doublons : la pagination serveur peut répéter des
+        // lignes entre 2 pages (tri sur colonnes non uniques) et les clés
+        // dupliquées font planter le rendu de la liste.
+        setItems((prev) => {
+          if (replace) return results;
+          const seen = new Set(prev.map((it) => it.id));
+          return [...prev, ...results.filter((it) => !seen.has(it.id))];
+        });
       } catch {
         if (currentRequest === requestId.current) {
           setError('Impossible de charger les producteurs. Vérifiez votre connexion.');
         }
       } finally {
+        // Seul un loadMore pose le verrou : un replace (recherche/refresh)
+        // en cours ne doit pas le libérer prématurément.
+        if (!replace) inFlight.current = false;
         if (currentRequest === requestId.current) {
           setLoading(false);
           setLoadingMore(false);
@@ -78,7 +94,8 @@ export default function ProducteursList() {
   }, [fetchPage]);
 
   const handleLoadMore = () => {
-    if (!hasMore || loading || loadingMore || refreshing) return;
+    if (inFlight.current || !hasMore || loading || loadingMore || refreshing) return;
+    inFlight.current = true;
     fetchPage(page + 1, false);
   };
 
