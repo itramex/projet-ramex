@@ -137,7 +137,7 @@ export default function ParcelleDetail() {
             <InfoRow icon="home-outline" label="Localisation" value={parcelle.localisation} />
             <InfoRow icon="lock-closed-outline" label="Type de propriété" value={parcelle.type_propriete_display} />
             <InfoRow icon="map-outline" label="Profil de parcelle" value={parcelle.profil_parcelle_display} />
-            <InfoRow icon="clock-outline" label="Distance habitation" value={parcelle.distance_habitation_display} />
+            <InfoRow icon="time-outline" label="Distance habitation" value={parcelle.distance_habitation_display} />
             <InfoRow icon="location-outline" label="Latitude" value={parcelle.latitude} />
             <InfoRow icon="location-outline" label="Longitude" value={parcelle.longitude} />
           </View>
