@@ -8,7 +8,6 @@ import { sessionManager } from './services/sessionManager';
 
 // Lazy load components for code splitting
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
-const AGRPage = lazy(() => import('./components/activite/AGRPage'));
 const ProducteurList = lazy(() => import('./components/producteurs/ProducteurList'));
 const CooperativeList = lazy(() => import('./components/cooperatives/CooperativeList'));
 const ParcelleList = lazy(() => import('./components/parcelles/ParcelleList'));
@@ -154,9 +153,6 @@ function App() {
           {/* Historique */}
           <Route path="/historique" element={<ProtectedRoute><HistoryAnalysisPage /></ProtectedRoute>} />
           <Route path="/historique/analyse" element={<ProtectedRoute><HistoryAnalysisPage /></ProtectedRoute>} />
-
-          {/* Espace AGR consolidé : stats + historique + analyse */}
-          <Route path="/agr" element={<ProtectedRoute><AGRPage /></ProtectedRoute>} />
 
           {/* ==================== MODULE TRAÇABILITÉ ==================== */}
 

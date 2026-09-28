@@ -3,7 +3,7 @@ import { dashboardService } from '../../services/api';
 import Icon from '../common/Icon';
 import Card from '../common/Card';
 import { iconMap } from '../../styles/icons';
-import AGRStats from './AGRStats';
+import AGRDashboard from './AGRDashboard';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -37,6 +37,7 @@ function Dashboard() {
   const [decisionData, setDecisionData] = useState(null);
   const [socialData, setSocialData] = useState(null);
   const [socialSubTab, setSocialSubTab] = useState('hygiene');
+  const [agrSubTab, setAgrSubTab] = useState('stats');
   const [cultureDetail, setCultureDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -408,7 +409,11 @@ function Dashboard() {
           toggleCertification={toggleCertification}
         />
       ) : activeTab === 'agr' ? (
-        <AGRStats filters={filters} />
+        <AGRDashboard
+          filters={filters}
+          subTab={agrSubTab}
+          onSubTabChange={setAgrSubTab}
+        />
       ) : activeTab === 'social' ? (
         <SocialTab
           data={socialData}
