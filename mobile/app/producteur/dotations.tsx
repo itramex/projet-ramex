@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { dotationService, producteurService } from '../../src/services/api';
 import { colors, spacing } from '../../src/constants/theme';
 import { Dotation, DOTATION_TYPES } from '../../src/types/api';
+import { formatProducteurName } from '../../src/utils/format';
 
 /** Libellé lisible pour un type de dotation */
 function typeLabel(type: string): string {
@@ -42,7 +43,7 @@ export default function ProducteurDotations() {
       // Nom du producteur pour le titre (facultatif)
       try {
         const p = await producteurService.detail(id);
-        setProducteurNom(p.data.nom_complet || p.data.nom);
+        setProducteurNom(formatProducteurName(p.data));
       } catch {
         // nom facultatif
       }

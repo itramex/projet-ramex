@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { formatProducteurName } from '../../src/utils/format';
 import { bonCollecteService, campagneService, producteurService } from '../../src/services/api';
 import { colors, spacing } from '../../src/constants/theme';
 import {
@@ -141,7 +142,7 @@ export default function BonCollecteForm() {
     () =>
       producteurs.map((p) => ({
         id: p.id,
-        label: p.nom_complet || `${p.prenom} ${p.nom}`.trim() || p.nom,
+        label: formatProducteurName(p),
         sub: [p.code, p.village, p.commune].filter(Boolean).join(' · '),
       })),
     [producteurs]
@@ -178,7 +179,7 @@ export default function BonCollecteForm() {
   const campagneLabel = campagnes.find((c) => c.id === campagneId)?.code ?? 'Choisir…';
   const producteur = producteurs.find((p) => p.id === producteurId);
   const producteurLabel = producteur
-    ? `${producteur.nom_complet || producteur.nom} (${producteur.code})`
+    ? `${formatProducteurName(producteur)} (${producteur.code})`
     : 'Choisir…';
 
   // Aperçu du montant (calcul identique au backend : accepté × prix + premium)

@@ -27,7 +27,7 @@ export interface Producteur {
   id: number;
   code: string;
   nom: string;
-  prenom: string;
+  prenom: string | null;
   nom_complet?: string;
   village: string;
   commune: string;

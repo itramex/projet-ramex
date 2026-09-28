@@ -11,6 +11,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _nom_producteur(prod):
+    """Nom d'affichage d'un producteur issu d'un dict .values() (prenom peut être None)."""
+    return ' '.join(part for part in (prod.get('nom'), prod.get('prenom')) if part)
+
+
 class ChatbotView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -108,7 +114,7 @@ class ChatbotView(APIView):
                 return f"Aucun producteur trouvé pour le village '{village}'."
             lines = [f"Producteurs du village '{village}' ({len(producteurs)}):"]
             for prod in producteurs:
-                lines.append(f"- {prod['nom']} {prod['prenom']} ({prod['code']}) - {prod['village']}")
+                lines.append(f"- {_nom_producteur(prod)} ({prod['code']}) - {prod['village']}")
             return '\n'.join(lines)
         
         elif intent == 'list_producteurs':
@@ -117,7 +123,7 @@ class ChatbotView(APIView):
                 return "Aucun producteur enregistré."
             lines = [f"Voici les {len(producteurs)} premier(s) producteur(s):"]
             for prod in producteurs:
-                lines.append(f"- {prod['nom']} {prod['prenom']} ({prod['code']}) - {prod['village']}")
+                lines.append(f"- {_nom_producteur(prod)} ({prod['code']}) - {prod['village']}")
             return '\n'.join(lines)
         
         elif intent == 'greeting':
@@ -137,7 +143,7 @@ class ChatbotView(APIView):
                 if results:
                     response = f"J'ai trouvé {len(results)} producteur(s):\n"
                     for prod in results[:5]:  # Limite à 5 résultats
-                        response += f"- {prod['nom']} {prod['prenom']} ({prod['code']}) - {prod['village']}\n"
+                        response += f"- {_nom_producteur(prod)} ({prod['code']}) - {prod['village']}\n"
                     return response
                 return f"Aucun producteur trouvé avec le nom '{name}'."
             return "Veuillez préciser un nom à rechercher."

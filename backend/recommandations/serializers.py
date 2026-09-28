@@ -12,7 +12,8 @@ class ProducteurBasicSerializer(serializers.ModelSerializer):
         fields = ['id', 'code', 'nom', 'prenom', 'nom_complet']
     
     def get_nom_complet(self, obj):
-        return f"{obj.nom} {obj.prenom}"
+        # Délègue à la propriété du modèle pour éviter « None » si prenom est nul.
+        return obj.nom_complet
 
 
 class RecommendationSerializer(serializers.ModelSerializer):

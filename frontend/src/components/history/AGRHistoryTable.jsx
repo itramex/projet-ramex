@@ -195,7 +195,7 @@ function AGRHistoryTable() {
 
   const producteurOptions = producteurs.map(p => ({
     value: p.id,
-    label: `${p.code_producteur} - ${p.nom} ${p.prenom}`
+    label: `${p.code_producteur} - ${p.nom} ${p.prenom || ''}`
   }));
 
   const typeAGROptions = [...new Set(agrHistory.map(a => a.type_agr).filter(Boolean))]

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { producteurService } from '../../src/services/api';
 import { colors, spacing } from '../../src/constants/theme';
 import { Producteur } from '../../src/types/api';
+import { formatProducteurName } from '../../src/utils/format';
 
 function InfoRow({ icon, label, value }: { icon: string; label: string; value?: string | null }) {
   if (!value) return null;
@@ -56,7 +57,7 @@ export default function ProducteurDetail() {
     if (!producteur) return;
     Alert.alert(
       'Supprimer ce producteur ?',
-      `${producteur.nom} ${producteur.prenom ?? ''} sera définitivement supprimé.`,
+      `${formatProducteurName(producteur)} sera définitivement supprimé.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -80,9 +81,7 @@ export default function ProducteurDetail() {
     router.push(`/producteur/form?id=${producteur.id}`);
   };
 
-  const nomComplet = producteur
-    ? producteur.nom_complet || `${producteur.nom} ${producteur.prenom ?? ''}`.trim()
-    : '';
+  const nomComplet = producteur ? formatProducteurName(producteur) : '';
 
   return (
     <View style={styles.container}>

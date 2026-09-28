@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { formatProducteurName } from '../../src/utils/format';
 import { producteurService } from '../../src/services/api';
 import { colors, spacing } from '../../src/constants/theme';
 import { Producteur } from '../../src/types/api';
@@ -102,7 +103,7 @@ export default function ProducteursList() {
           </View>
           <View style={styles.cardMain}>
             <Text style={styles.cardName} numberOfLines={1}>
-              {item.nom_complet || `${item.nom} ${item.prenom ?? ''}`.trim()}
+              {formatProducteurName(item)}
             </Text>
             <Text style={styles.cardSub} numberOfLines={1}>
               {item.code} · {item.village || item.commune || 'Village non renseigné'}

@@ -385,7 +385,7 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
           <div className="w-full md:w-1/3">
             <label className="block text-sm font-medium text-gray-700 mb-1">Producteurs</label>
             <SearchableSelect
-              options={allProducteurs.map(p => ({ value: p.id, label: `${p.code} - ${p.nom} ${p.prenom}` }))}
+              options={allProducteurs.map(p => ({ value: p.id, label: `${p.code} - ${p.nom} ${p.prenom || ""}` }))}
               value={filters.producteurs}
               onChange={(val) => handleLocalFilterChange('producteurs', val)}
               multiple={true}
@@ -676,7 +676,7 @@ function FormationFormModal({ formation, mode, onClose, onSuccess }) {
   };
 
   const filteredProducteurs = producteurs.filter(p =>
-    `${p.code} ${p.nom} ${p.prenom}`.toLowerCase().includes(searchTerm.toLowerCase())
+    `${p.code} ${p.nom} ${p.prenom || ""}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const isReadOnly = mode === 'view';
@@ -1196,7 +1196,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
           <div className="w-full md:w-1/3">
             <label className="block text-sm font-medium text-gray-700 mb-1">Producteurs</label>
             <SearchableSelect
-              options={allProducteurs.map(p => ({ value: p.id, label: `${p.code} - ${p.nom} ${p.prenom}` }))}
+              options={allProducteurs.map(p => ({ value: p.id, label: `${p.code} - ${p.nom} ${p.prenom || ""}` }))}
               value={filters.producteurs}
               onChange={(val) => handleLocalFilterChange('producteurs', val)}
               multiple={true}

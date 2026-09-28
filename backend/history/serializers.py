@@ -60,7 +60,8 @@ class ProducteurNestedSerializer(serializers.ModelSerializer):
     
     def get_nom_complet(self, obj):
         """Retourne le nom complet du producteur"""
-        return f"{obj.nom} {obj.prenom}".strip()
+        # Délègue à la propriété du modèle pour éviter « None » si prenom est nul.
+        return obj.nom_complet
 
 
 class ProductionHistorySerializer(serializers.ModelSerializer):

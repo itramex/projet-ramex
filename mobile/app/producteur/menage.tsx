@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { producteurService } from '../../src/services/api';
+import { formatProducteurName } from '../../src/utils/format';
 import { colors, spacing } from '../../src/constants/theme';
 import { MenagePayload } from '../../src/types/api';
 
@@ -83,7 +84,11 @@ export default function MenageForm() {
       const response = await producteurService.detail(id);
       const p = response.data as unknown as Record<string, unknown>;
       setProducteurNom(
-        (p.nom_complet as string) || `${p.nom ?? ''} ${p.prenom ?? ''}`.trim(),
+        formatProducteurName({
+          nom: p.nom as string | null,
+          prenom: p.prenom as string | null,
+          nom_complet: p.nom_complet as string | null,
+        }),
       );
       const str = (k: string) =>
         p[k] === null || p[k] === undefined ? '' : String(p[k]);

@@ -218,7 +218,7 @@ function SocialIndicatorTable() {
 
   const producteurOptions = producteurs.map(p => ({
     value: p.id,
-    label: `${p.code_producteur} - ${p.nom} ${p.prenom}`
+    label: `${p.code_producteur} - ${p.nom} ${p.prenom || ''}`
   }));
 
   const typeIndicateurOptions = Object.entries(INDICATOR_TYPES).map(([key, label]) => ({
