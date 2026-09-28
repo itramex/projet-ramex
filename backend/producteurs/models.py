@@ -624,11 +624,15 @@ class Producteur(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.code} - {self.nom} {self.prenom}"
-    
+        return f"{self.code} - {self.nom_complet}"
+
     @property
     def nom_complet(self):
-        return f"{self.nom} {self.prenom}"
+        # Filtre les parties manquantes (nom ou prenom nuls) pour ne jamais
+        # afficher « None » dans les rendus / tris.
+        return ' '.join(
+            part for part in (self.nom, self.prenom) if part
+        )
     
     @property
     def age(self):
@@ -775,6 +779,7 @@ class Dotation(models.Model):
 
     # Traçabilité
     date_enregistrement = models.DateTimeField(auto_now_add=True)
+    date_modification = models.DateTimeField(auto_now=True)
     cree_par = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

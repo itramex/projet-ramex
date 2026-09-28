@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.pagination import PageNumberPagination
 from users.permissions import IsAdminOrReadOnly, scope_par_agence
 from users.models import ActivityLog
+from api.filters import filter_updated_since
 from simple_history.utils import update_change_reason
 from django.db import models, transaction
 from django.db.models import Count, Sum, Avg, Q, F
@@ -460,6 +461,9 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
             except ValueError:
                 pass
         
+        # M-23 — synchro incrémentale mobile : ?updated_since=ISO8601
+        queryset = filter_updated_since(queryset, self.request)
+
         queryset = queryset.select_related(
             'cooperative', 'cree_par', 'modifie_par',
             'desactive_par', 'verifie_par'
@@ -1256,6 +1260,9 @@ class DotationViewSet(viewsets.ModelViewSet):
             qs = qs.filter(annee__gte=int(from_year))
         if to_year and str(to_year).isdigit():
             qs = qs.filter(annee__lte=int(to_year))
+
+        # M-23 — synchro incrémentale mobile : ?updated_since=ISO8601
+        qs = filter_updated_since(qs, self.request)
         return qs
 
     def list(self, request, *args, **kwargs):
@@ -1405,7 +1412,9 @@ class AGRViewSet(viewsets.ModelViewSet):
         commune = params.get('commune')
         if commune:
             queryset = queryset.filter(producteur__commune__icontains=commune.strip())
-        return queryset
+
+        # M-23 — synchro incrémentale mobile : ?updated_since=ISO8601
+        return filter_updated_since(queryset, self.request)
     
     def perform_create(self, serializer):
         """Set enregistre_par to current user on creation"""

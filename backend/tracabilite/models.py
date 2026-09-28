@@ -275,6 +275,7 @@ class FicheCollecte(models.Model):
     
     # Métadonnées
     date_creation = models.DateTimeField(auto_now_add=True)
+    date_modification = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['-date_marche', '-numero_fc']

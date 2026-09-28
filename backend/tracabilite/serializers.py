@@ -293,7 +293,7 @@ class FicheCollecteListSerializer(serializers.ModelSerializer):
             'certification', 'certification_display',
             'date_marche', 'fokontany',
             'nombre_producteurs', 'poids_total_net', 'montant_total',
-            'agent_re', 'date_creation'
+            'agent_re', 'date_creation', 'date_modification'
         ]
 
 

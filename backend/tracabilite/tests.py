@@ -1,12 +1,14 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from tracabilite.models import (
     Campagne, BonCollecte, BonTransport, FicheStock, EstimationProduction,
+    FicheCollecte,
 )
 from producteurs.models import Producteur
 
@@ -329,3 +331,98 @@ class EstimationProductionApiTests(TracabiliteBaseTestCase):
             self._payload(quantite_estimee=-10),
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+class UpdatedSinceSyncApiTests(TracabiliteBaseTestCase):
+    """M-23 : filtre `?updated_since=` pour la synchro incrémentale mobile.
+
+    Couvre les Bons de collecte (FABC) et les Fiches de collecte (FC).
+    """
+
+    def _create_bon(self, numero, **overrides):
+        data = {
+            'numero_fabc': numero,
+            'campagne': self.campagne,
+            'producteur': self.producteur,
+            'date_marche': '2025-07-15',
+            'village_marche': 'Marovovonana',
+            'commune': 'Andapa',
+            'fokontany': 'Fokontany A',
+            'type_produit': 'vanille_verte',
+            'poids_total_livre': 100,
+            'poids_accepte': 95,
+            'poids_retour': 5,
+            'prix_unitaire_marche': 100000,
+            'mode_paiement': 'especes',
+        }
+        data.update(overrides)
+        return BonCollecte.objects.create(**data)
+
+    def setUp(self):
+        super().setUp()
+
+        self.old_bon = self._create_bon('FABC-S001')
+        self.new_bon = self._create_bon('FABC-S002')
+        BonCollecte.objects.filter(pk=self.old_bon.pk).update(
+            date_modification=timezone.now() - timedelta(days=10)
+        )
+
+        self.old_fc = FicheCollecte.objects.create(
+            numero_fc='FC-S001',
+            campagne=self.campagne,
+            certification='Conventionnel',
+            date_marche=date(2025, 7, 15),
+            fokontany='Fokontany A',
+            agent_re='Agent RE 1',
+        )
+        self.new_fc = FicheCollecte.objects.create(
+            numero_fc='FC-S002',
+            campagne=self.campagne,
+            certification='Conventionnel',
+            date_marche=date(2025, 7, 16),
+            fokontany='Fokontany B',
+            agent_re='Agent RE 2',
+        )
+        FicheCollecte.objects.filter(pk=self.old_fc.pk).update(
+            date_modification=timezone.now() - timedelta(days=10)
+        )
+
+    def _ids(self, data):
+        results = data['results'] if isinstance(data, dict) else data
+        return [row['id'] for row in results]
+
+    def test_bon_collecte_without_param_returns_all(self):
+        response = self.client.get('/api/tracabilite/bons-collecte/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            sorted(self._ids(response.data)),
+            sorted([self.old_bon.id, self.new_bon.id]),
+        )
+
+    def test_bon_collecte_updated_since_returns_only_recent(self):
+        response = self.client.get('/api/tracabilite/bons-collecte/', {
+            'updated_since': (timezone.now() - timedelta(days=1)).isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._ids(response.data), [self.new_bon.id])
+
+    def test_fiche_collecte_updated_since_returns_only_recent(self):
+        response = self.client.get('/api/tracabilite/fiches-collecte/', {
+            'updated_since': (timezone.now() - timedelta(days=1)).isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._ids(response.data), [self.new_fc.id])
+
+    def test_fiche_collecte_without_param_returns_all(self):
+        response = self.client.get('/api/tracabilite/fiches-collecte/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            sorted(self._ids(response.data)),
+            sorted([self.old_fc.id, self.new_fc.id]),
+        )
+
+    def test_invalid_updated_since_returns_400(self):
+        response = self.client.get('/api/tracabilite/bons-collecte/', {
+            'updated_since': 'pas-une-date',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+

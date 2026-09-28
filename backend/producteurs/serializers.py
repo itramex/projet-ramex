@@ -65,9 +65,9 @@ class DotationSerializer(serializers.ModelSerializer):
         model = Dotation
         fields = [
             'id', 'producteur', 'producteur_code', 'producteur_nom', 'type_dotation',
-            'annee', 'quantite', 'details', 'date_enregistrement'
+            'annee', 'quantite', 'details', 'date_enregistrement', 'date_modification'
         ]
-        read_only_fields = ['date_enregistrement']
+        read_only_fields = ['date_enregistrement', 'date_modification']
 
     def validate_annee(self, value):
         """Validation métier: année de dotation obligatoire et cohérente."""

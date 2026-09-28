@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from users.permissions import CanManageTracabilite
+from api.filters import filter_updated_since
 from django.db.models import Sum, Count, Q
 from django.shortcuts import get_object_or_404
 
@@ -136,6 +137,9 @@ class BonCollecteViewSet(viewsets.ModelViewSet):
                 Q(village_marche__icontains=village) | Q(producteur__village__icontains=village)
             )
         
+        # M-23 — synchro incrémentale mobile : ?updated_since=ISO8601
+        queryset = filter_updated_since(queryset, self.request)
+
         return queryset.select_related('campagne', 'producteur', 'cooperative', 'type_certification').prefetch_related('details_sacs')
     
     @action(detail=True, methods=['get'], url_path='trace')
@@ -241,6 +245,9 @@ class FicheCollecteViewSet(viewsets.ModelViewSet):
         if cooperative_id:
             queryset = queryset.filter(cooperative_id=cooperative_id)
         
+        # M-23 — synchro incrémentale mobile : ?updated_since=ISO8601
+        queryset = filter_updated_since(queryset, self.request)
+
         return queryset.select_related('campagne', 'cooperative').prefetch_related('bons_collecte')
 
 

@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from producteurs.models import Producteur, Dotation
+from producteurs.models import Producteur, Dotation, AGR
 
 
 class DotationApiTests(TestCase):
@@ -310,3 +313,162 @@ class ProducteurStatistiquesApiTests(TestCase):
         par_commune = {row['commune']: row['total'] for row in response.data['par_commune']}
         self.assertEqual(par_commune.get('Andapa'), 2)
         self.assertNotIn('Sambava', par_commune)
+
+class UpdatedSinceSyncApiTests(TestCase):
+    """M-23 : filtre `?updated_since=` pour la synchro incrémentale mobile."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='sync', password='pass')
+        self.client.force_authenticate(user=self.user)
+
+        self.old = Producteur.objects.create(
+            code='Y001', nom='Ancien', commune='Andapa', village='V1', sexe='F', actif=True
+        )
+        self.recent = Producteur.objects.create(
+            code='Y002', nom='Recent', commune='Andapa', village='V1', sexe='M', actif=True
+        )
+        # auto_now : on vieillit explicitement via update() pour contourner save()
+        Producteur.objects.filter(pk=self.old.pk).update(
+            date_modification=timezone.now() - timedelta(days=10)
+        )
+
+    def _codes(self, response):
+        return sorted(row['code'] for row in response.data['results'])
+
+    def test_without_param_returns_all(self):
+        response = self.client.get('/api/producteurs/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), ['Y001', 'Y002'])
+
+    def test_updated_since_returns_only_recent_changes(self):
+        response = self.client.get('/api/producteurs/', {
+            'updated_since': (timezone.now() - timedelta(days=1)).isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), ['Y002'])
+
+    def test_depuis_alias_returns_only_recent_changes(self):
+        response = self.client.get('/api/producteurs/', {
+            'depuis': (timezone.now() - timedelta(days=1)).isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), ['Y002'])
+
+    def test_invalid_updated_since_returns_400(self):
+        response = self.client.get('/api/producteurs/', {'updated_since': 'pas-une-date'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class DotationUpdatedSinceSyncApiTests(TestCase):
+    """M-23 : filtre `?updated_since=` sur les dotations."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='sync2', password='pass')
+        self.client.force_authenticate(user=self.user)
+
+        self.producteur = Producteur.objects.create(
+            code='Y010', nom='Sync', commune='Andapa', village='V1', sexe='M', actif=True
+        )
+        self.old = Dotation.objects.create(
+            producteur=self.producteur, type_dotation='poisson', annee=2023, quantite=1
+        )
+        self.recent = Dotation.objects.create(
+            producteur=self.producteur, type_dotation='volaille', annee=2024, quantite=2
+        )
+        Dotation.objects.filter(pk=self.old.pk).update(
+            date_modification=timezone.now() - timedelta(days=10)
+        )
+
+    def test_updated_since_returns_only_modified_dotations(self):
+        response = self.client.get('/api/dotations/', {
+            'producteur': self.producteur.id,
+            'updated_since': (timezone.now() - timedelta(days=1)).isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = [row['id'] for row in response.data['results']]
+        self.assertEqual(ids, [self.recent.id])
+
+    def test_without_param_returns_all(self):
+        response = self.client.get('/api/dotations/', {
+            'producteur': self.producteur.id,
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = sorted(row['id'] for row in response.data['results'])
+        self.assertEqual(ids, sorted([self.old.id, self.recent.id]))
+
+
+class AGRUpdatedSinceSyncApiTests(TestCase):
+    """M-23 : filtre `?updated_since=` sur les AGR."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='sync3', password='pass')
+        self.client.force_authenticate(user=self.user)
+
+        self.producteur = Producteur.objects.create(
+            code='Y020', nom='Sync AGR', commune='Andapa', village='V1', sexe='F', actif=True
+        )
+        self.old = AGR.objects.create(
+            producteur=self.producteur, type_agr='pisciculture', ordre=1
+        )
+        self.recent = AGR.objects.create(
+            producteur=self.producteur, type_agr='aviculture', ordre=2
+        )
+        AGR.objects.filter(pk=self.old.pk).update(
+            date_modification=timezone.now() - timedelta(days=10)
+        )
+
+    def test_updated_since_returns_only_modified_agr(self):
+        response = self.client.get('/api/agr/', {
+            'updated_since': (timezone.now() - timedelta(days=1)).isoformat(),
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data['results'] if isinstance(response.data, dict) else response.data
+        ids = [row['id'] for row in data]
+        self.assertEqual(ids, [self.recent.id])
+
+
+
+class ProducteurNomCompletTests(TestCase):
+    """nom_complet et __str__ ne doivent jamais contenir « None » (prenom nul)."""
+
+    def _make(self, **kwargs):
+        data = dict(
+            code='PN01', nom='Rakoto', commune='Andapa',
+            village='V1', sexe='M', actif=True,
+        )
+        data.update(kwargs)
+        return Producteur.objects.create(**data)
+
+    def test_nom_and_prenom(self):
+        p = self._make(nom='Rakoto', prenom='Jean')
+        self.assertEqual(p.nom_complet, 'Rakoto Jean')
+
+    def test_prenom_none_omitted(self):
+        p = self._make(nom='Rakoto', prenom=None)
+        self.assertEqual(p.nom_complet, 'Rakoto')
+        self.assertNotIn('None', p.nom_complet)
+
+    def test_nom_blank_keeps_prenom(self):
+        p = self._make(code='PN02', nom='', prenom='Jean')
+        self.assertEqual(p.nom_complet, 'Jean')
+        self.assertNotIn('None', p.nom_complet)
+
+    def test_str_without_none(self):
+        p = self._make(nom='Rakoto', prenom=None)
+        self.assertNotIn('None', str(p))
+
+    def test_api_list_serialization_without_none(self):
+        self._make(nom='Rakoto', prenom=None)
+        client = APIClient()
+        user = User.objects.create_user(username='nc1', password='pass')
+        client.force_authenticate(user=user)
+        response = client.get('/api/producteurs/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data['results'] if isinstance(response.data, dict) else response.data
+        row = next(r for r in data if r['code'] == 'PN01')
+        self.assertEqual(row['nom_complet'], 'Rakoto')
+        self.assertNotIn('None', row['nom_complet'])
+
