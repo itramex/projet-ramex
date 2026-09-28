@@ -11,7 +11,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { agrService, producteurService } from '../../src/services/api';
 import { colors, spacing } from '../../src/constants/theme';
-import { AGR, AGR_TYPES, AGR_UTILISATIONS } from '../../src/types/api';
+import { AGR, AGR_TYPES, AGR_UTILISATIONS, ResilienceInfo } from '../../src/types/api';
 import { formatProducteurName } from '../../src/utils/format';
 
 /** Libellé lisible pour un type d'AGR (fallback : valeur brute) */
@@ -44,6 +44,7 @@ export default function ProducteurAgrs() {
   const router = useRouter();
   const [producteurNom, setProducteurNom] = useState('');
   const [producteurCode, setProducteurCode] = useState('');
+  const [resilience, setResilience] = useState<ResilienceInfo | null>(null);
   const [agrs, setAgrs] = useState<AGR[]>([]);
   const [revenuTotal, setRevenuTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -65,6 +66,11 @@ export default function ProducteurAgrs() {
         const p = await producteurService.detail(id);
         setProducteurNom(formatProducteurName(p.data));
         setProducteurCode(p.data.code);
+        // Résilience AGR (badge d'identité, best-effort)
+        producteurService
+          .resilience(id)
+          .then((r) => setResilience(r.data))
+          .catch(() => setResilience(null));
       } catch {
         // nom facultatif
       }
@@ -138,6 +144,16 @@ export default function ProducteurAgrs() {
           <View style={styles.identityRow}>
             <Text style={styles.identityCode}>{producteurCode || '—'}</Text>
             {producteurNom ? <Text style={styles.identityName}>{producteurNom}</Text> : null}
+            {resilience && resilience.resilient !== null ? (
+              <View style={[styles.resBadge, resilience.resilient ? styles.resOk : styles.resKo]}>
+                <Text style={styles.resText}>
+                  {resilience.resilient ? 'Résilient' : 'Non résilient'}
+                  {resilience.taux_vente_reference != null
+                    ? ` · ${Math.round(resilience.taux_vente_reference)} %`
+                    : ''}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.cumulCard}>
@@ -271,9 +287,14 @@ const styles = StyleSheet.create({
   identityRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
+  resBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  resOk: { backgroundColor: '#DCFCE7' },
+  resKo: { backgroundColor: '#FEF3C7' },
+  resText: { fontSize: 11, fontWeight: '700', color: colors.text },
   identityCode: { fontSize: 13, fontWeight: '700', color: colors.primary },
   identityName: { fontSize: 13, color: colors.textSecondary },
   cumulCard: {

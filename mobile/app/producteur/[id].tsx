@@ -12,7 +12,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { producteurService } from '../../src/services/api';
 import { colors, spacing } from '../../src/constants/theme';
-import { Producteur } from '../../src/types/api';
+import { Producteur, ResilienceInfo } from '../../src/types/api';
 import { formatProducteurName } from '../../src/utils/format';
 
 function InfoRow({ icon, label, value }: { icon: string; label: string; value?: string | null }) {
@@ -32,6 +32,7 @@ export default function ProducteurDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [producteur, setProducteur] = useState<Producteur | null>(null);
+  const [resilience, setResilience] = useState<ResilienceInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -39,9 +40,15 @@ export default function ProducteurDetail() {
     if (!id) return;
     setLoading(true);
     setError('');
+    setResilience(null);
     try {
       const response = await producteurService.detail(id);
       setProducteur(response.data);
+      // Résilience AGR (best-effort : badge facultatif)
+      producteurService
+        .resilience(id)
+        .then((r) => setResilience(r.data))
+        .catch(() => setResilience(null));
     } catch {
       setError('Impossible de charger ce producteur.');
     } finally {
@@ -121,6 +128,21 @@ export default function ProducteurDetail() {
               {producteur.verifie ? (
                 <View style={styles.badgeVerif}>
                   <Text style={styles.badgeText}>Vérifié</Text>
+                </View>
+              ) : null}
+              {resilience && resilience.resilient !== null ? (
+                <View
+                  style={[
+                    styles.badge,
+                    resilience.resilient ? styles.badgeOk : styles.badgeVerif,
+                  ]}
+                >
+                  <Text style={styles.badgeText}>
+                    {resilience.resilient ? 'Résilient' : 'Non résilient'}
+                    {resilience.taux_vente_reference != null
+                      ? ` · ${Math.round(resilience.taux_vente_reference)} %`
+                      : ''}
+                  </Text>
                 </View>
               ) : null}
             </View>

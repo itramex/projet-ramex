@@ -9,6 +9,7 @@ import SocialIndicatorChart from '../history/SocialIndicatorChart';
 
 function ProducteurDetails({ producteurId, onClose, onEdit }) {
     const [producteur, setProducteur] = useState(null);
+    const [resilience, setResilience] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeSection, setActiveSection] = useState('general');
 
@@ -17,6 +18,10 @@ function ProducteurDetails({ producteurId, onClose, onEdit }) {
         try {
             const response = await producteurService.getById(producteurId);
             setProducteur(response.data);
+            // Résilience AGR (badge facultatif, best-effort)
+            producteurService.getResilience(producteurId)
+                .then((r) => setResilience(r.data))
+                .catch(() => setResilience(null));
         } catch (error) {
             console.error('Erreur:', error);
             alert('Erreur lors du chargement des détails');
@@ -91,6 +96,18 @@ function ProducteurDetails({ producteurId, onClose, onEdit }) {
                                     <Badge variant={producteur.actif ? 'success' : 'error'} size="md" icon={producteur.actif ? 'CheckCircleIcon' : 'XCircleIcon'}>
                                         {producteur.actif ? 'Actif' : 'Inactif'}
                                     </Badge>
+                                    {resilience && resilience.resilient !== null && (
+                                        <Badge
+                                            variant={resilience.resilient ? 'success' : 'warning'}
+                                            size="md"
+                                            icon={resilience.resilient ? 'CheckCircleIcon' : 'XCircleIcon'}
+                                        >
+                                            {resilience.resilient ? 'Résilient' : 'Non résilient'}
+                                            {resilience.taux_vente_reference != null
+                                                ? ` · ${Math.round(resilience.taux_vente_reference)} % (${resilience.annee_reference})`
+                                                : ''}
+                                        </Badge>
+                                    )}
                                     {producteur.femme_leader && (
                                         <Badge variant="info" size="md" icon="SparklesIcon">
                                             Leader

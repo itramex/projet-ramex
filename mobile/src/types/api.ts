@@ -42,6 +42,24 @@ export interface Producteur {
 }
 
 /** Payload pour la création / édition (ProducteurCreateUpdateSerializer) */
+/** Résilience AGR d'un producteur — GET /producteurs/{id}/resilience/ */
+export interface ResilienceInfo {
+  producteur_id: number;
+  code: string;
+  /** null = indéterminé (aucun historique exploitable) */
+  resilient: boolean | null;
+  seuil: number;
+  annee_reference: number | null;
+  taux_vente_reference: number | null;
+  par_annee: {
+    annee: number;
+    produite: number;
+    vendue: number;
+    consommee: number;
+    taux_vente: number | null;
+  }[];
+}
+
 export interface ProducteurPayload {
   code: string;
   nom: string;

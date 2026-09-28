@@ -514,3 +514,58 @@ class AGRListFilterApiTests(TestCase):
         self.assertIn(self.a2.id, ids)
         self.assertNotIn(self.a1.id, ids)
 
+
+class ProducteurResilienceApiTests(TestCase):
+    """GET /api/producteurs/{id}/resilience/ — part vendue, dernière année."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='res1', password='pass')
+        self.client.force_authenticate(user=self.user)
+        self.p = Producteur.objects.create(
+            code='RS01', nom='Res', commune='Andapa', village='V1', sexe='F', actif=True
+        )
+
+    def _agr(self, annee, vendue=0, consommee=0, produite=0):
+        from history.models import AGRHistory
+        return AGRHistory.objects.create(
+            producteur=self.p, annee=annee, type_agr='pisciculture', ordre=1,
+            quantite_vendue=vendue, quantite_consommee=consommee,
+            quantite_produite=produite, revenu_annuel=0,
+        )
+
+    def test_resilient_when_majority_sold(self):
+        self._agr(2025, vendue=80, consommee=20)
+        response = self.client.get(f'/api/producteurs/{self.p.id}/resilience/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['resilient'])
+        self.assertEqual(response.data['annee_reference'], 2025)
+        self.assertEqual(response.data['taux_vente_reference'], 80.0)
+
+    def test_not_resilient_when_mostly_consumed(self):
+        self._agr(2025, vendue=20, consommee=80)
+        response = self.client.get(f'/api/producteurs/{self.p.id}/resilience/')
+        self.assertFalse(response.data['resilient'])
+
+    def test_latest_year_is_the_reference(self):
+        self._agr(2024, vendue=10, consommee=90)   # taux 10 %
+        self._agr(2025, vendue=90, consommee=10)   # taux 90 %
+        response = self.client.get(f'/api/producteurs/{self.p.id}/resilience/')
+        self.assertEqual(response.data['annee_reference'], 2025)
+        self.assertTrue(response.data['resilient'])
+        self.assertEqual(len(response.data['par_annee']), 2)
+
+    def test_custom_seuil(self):
+        self._agr(2025, vendue=80, consommee=20)   # taux 80 %
+        response = self.client.get(
+            f'/api/producteurs/{self.p.id}/resilience/', {'seuil': 90}
+        )
+        self.assertFalse(response.data['resilient'])
+        self.assertEqual(response.data['seuil'], 90.0)
+
+    def test_no_history_returns_null(self):
+        response = self.client.get(f'/api/producteurs/{self.p.id}/resilience/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data['resilient'])
+        self.assertIsNone(response.data['annee_reference'])
+

@@ -21,6 +21,7 @@ import {
   Paginated,
   Producteur,
   ProducteurPayload,
+  ResilienceInfo,
 } from '../types/api';
 
 /**
@@ -193,6 +194,14 @@ export const producteurService = {
     updated_since?: string;
   }) => api.get<Paginated<Producteur>>('/producteurs/', { params }),
   detail: (id: number | string) => api.get<Producteur>(`/producteurs/${id}/`),
+  /**
+   * M-24 — résilience AGR : part vendue sur la dernière année historique.
+   * `seuil` (défaut 50) : taux minimum pour être considéré résilient.
+   */
+  resilience: (id: number | string, seuil?: number) =>
+    api.get<ResilienceInfo>(`/producteurs/${id}/resilience/`, {
+      params: seuil != null ? { seuil } : {},
+    }),
   statistiques: () => api.get('/producteurs/statistiques/'),
   create: (data: ProducteurPayload) => api.post<Producteur>('/producteurs/', data),
   update: (id: number | string, data: ProducteurPayload) =>

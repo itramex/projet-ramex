@@ -331,6 +331,73 @@ class ProducteurHistoriqueMixin:
         except Producteur.DoesNotExist:
             return Response({'error': 'Producteur non trouvé'}, status=404)
 
+    @action(detail=True, methods=['get'], url_path='resilience')
+    def resilience(self, request, pk=None):
+        """
+        Indicateur de résilience AGR du producteur (dashboard #36).
+
+        Part de la production VENDUE sur la dernière année historique :
+            taux_vente = vendue / max(produite, vendue + consommee) x 100
+            resilient  = taux de la dernière année >= ?seuil= (défaut 50)
+
+        GET /api/producteurs/{id}/resilience/?seuil=50
+        """
+        from history.models import AGRHistory
+
+        try:
+            producteur = self.get_object()
+        except Producteur.DoesNotExist:
+            return Response({'error': 'Producteur non trouvé'}, status=404)
+
+        try:
+            seuil = float(request.query_params.get('seuil', 50))
+        except (TypeError, ValueError):
+            seuil = 50.0
+
+        lignes = (
+            AGRHistory.objects.filter(producteur_id=producteur.pk)
+            .values('annee')
+            .annotate(
+                produite=Sum('quantite_produite'),
+                vendue=Sum('quantite_vendue'),
+                consommee=Sum('quantite_consommee'),
+            )
+            .order_by('annee')
+        )
+
+        par_annee = []
+        annee_ref = None
+        taux_ref = None
+        for row in lignes:
+            produite = float(row['produite'] or 0)
+            vendue = float(row['vendue'] or 0)
+            consommee = float(row['consommee'] or 0)
+            # Même dénominateur que le dashboard #36 : production déclarée
+            # en priorité, sinon vendue + consommée.
+            denom = produite if produite > 0 else (vendue + consommee)
+            taux = round(vendue / denom * 100, 2) if denom > 0 else None
+            par_annee.append({
+                'annee': row['annee'],
+                'produite': produite,
+                'vendue': vendue,
+                'consommee': consommee,
+                'taux_vente': taux,
+            })
+            if taux is not None:
+                annee_ref = row['annee']
+                taux_ref = taux
+
+        return Response({
+            'producteur_id': producteur.pk,
+            'code': producteur.code,
+            'resilient': None if taux_ref is None else taux_ref >= seuil,
+            'seuil': seuil,
+            'annee_reference': annee_ref,
+            'taux_vente_reference': taux_ref,
+            'par_annee': par_annee,
+        })
+
+
 class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewsets.ModelViewSet):
     """ViewSet complet pour la gestion des producteurs"""
     queryset = Producteur.objects.all()
