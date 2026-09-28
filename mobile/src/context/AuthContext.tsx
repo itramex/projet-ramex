@@ -7,6 +7,7 @@ import axios from 'axios';
 import { ActivityIndicator, View } from 'react-native';
 import { tokenStore } from '../services/tokenStore';
 import { API_BASE_URL } from '../services/api';
+import { offlineStore } from '../services/offlineStore';
 import { colors } from '../constants/theme';
 import { AuthUser, TokenResponse } from '../types/api';
 
@@ -50,6 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     await tokenStore.clear();
+    // M-23 : purge cache + file de synchro pour ne jamais rejouer les
+    // écritures d'un compte avec le suivant.
+    await offlineStore.clearAll();
     setUser(null);
   };
 

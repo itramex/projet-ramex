@@ -16,6 +16,9 @@
         "backgroundColor": "#1a1a1a"
       }
     },
-    "plugins": ["expo-router"]
+    "plugins": [
+      "expo-router",
+      "expo-sqlite"
+    ]
   }
 }
