@@ -43,6 +43,7 @@ export default function ProducteurAgrs() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [producteurNom, setProducteurNom] = useState('');
+  const [producteurCode, setProducteurCode] = useState('');
   const [agrs, setAgrs] = useState<AGR[]>([]);
   const [revenuTotal, setRevenuTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -63,6 +64,7 @@ export default function ProducteurAgrs() {
       try {
         const p = await producteurService.detail(id);
         setProducteurNom(formatProducteurName(p.data));
+        setProducteurCode(p.data.code);
       } catch {
         // nom facultatif
       }
@@ -132,6 +134,12 @@ export default function ProducteurAgrs() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          {/* Identité du producteur : matricule visible dans ses AGR */}
+          <View style={styles.identityRow}>
+            <Text style={styles.identityCode}>{producteurCode || '—'}</Text>
+            {producteurNom ? <Text style={styles.identityName}>{producteurNom}</Text> : null}
+          </View>
+
           <View style={styles.cumulCard}>
             <Text style={styles.cumulLabel}>Revenu annuel estimé total</Text>
             <Text style={styles.cumulValue}>{formatAr(revenuTotal)}</Text>
@@ -260,6 +268,14 @@ const styles = StyleSheet.create({
   },
   retryText: { fontWeight: '700', color: colors.dark },
   content: { padding: spacing.lg, gap: spacing.md },
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  identityCode: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  identityName: { fontSize: 13, color: colors.textSecondary },
   cumulCard: {
     backgroundColor: colors.card,
     borderRadius: 14,

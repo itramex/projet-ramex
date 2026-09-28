@@ -472,3 +472,45 @@ class ProducteurNomCompletTests(TestCase):
         self.assertEqual(row['nom_complet'], 'Rakoto')
         self.assertNotIn('None', row['nom_complet'])
 
+
+class AGRListFilterApiTests(TestCase):
+    """?producteur= / ?active= / ?type_agr= sur /api/agr/.
+
+    Ces filtres sont appliqués manuellement dans get_queryset : le ViewSet
+    redéclare filter_backends sans DjangoFilterBackend, donc filterset_fields
+    serait ignoré (le mobile affichait alors la liste globale des AGR)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='agrflt', password='pass')
+        self.client.force_authenticate(user=self.user)
+        self.p1 = Producteur.objects.create(
+            code='AF01', nom='Uno', commune='Andapa', village='V1', sexe='M', actif=True
+        )
+        self.p2 = Producteur.objects.create(
+            code='AF02', nom='Duo', commune='Andapa', village='V2', sexe='F', actif=True
+        )
+        self.a1 = AGR.objects.create(producteur=self.p1, type_agr='pisciculture', ordre=1)
+        self.a2 = AGR.objects.create(producteur=self.p2, type_agr='aviculture', ordre=1)
+        AGR.objects.filter(pk=self.a2.pk).update(active=False)
+
+    def _rows(self, response):
+        return response.data['results'] if isinstance(response.data, dict) else response.data
+
+    def test_filter_by_producteur_returns_only_his_agr(self):
+        response = self.client.get('/api/agr/', {'producteur': self.p1.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([r['id'] for r in self._rows(response)], [self.a1.id])
+
+    def test_filter_by_active_excludes_inactive(self):
+        response = self.client.get('/api/agr/', {'active': 'true'})
+        ids = [r['id'] for r in self._rows(response)]
+        self.assertIn(self.a1.id, ids)
+        self.assertNotIn(self.a2.id, ids)
+
+    def test_filter_by_type_agr(self):
+        response = self.client.get('/api/agr/', {'type_agr': 'aviculture'})
+        ids = [r['id'] for r in self._rows(response)]
+        self.assertIn(self.a2.id, ids)
+        self.assertNotIn(self.a1.id, ids)
+

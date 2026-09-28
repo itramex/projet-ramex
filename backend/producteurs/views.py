@@ -1413,6 +1413,21 @@ class AGRViewSet(viewsets.ModelViewSet):
         if commune:
             queryset = queryset.filter(producteur__commune__icontains=commune.strip())
 
+        # Filtres déclarés dans filterset_fields mais non actifs : ce ViewSet
+        # redéclare filter_backends SANS DjangoFilterBackend, donc le
+        # filterset_fields est ignoré par DRF. On les applique ici (même
+        # pattern que village/commune) — ?producteur= était sine qua none
+        # pour l'écran mobile « AGR du producteur » (sinon liste globale).
+        producteur_id = params.get('producteur')
+        if producteur_id:
+            queryset = queryset.filter(producteur_id=producteur_id)
+        type_agr = params.get('type_agr')
+        if type_agr:
+            queryset = queryset.filter(type_agr=type_agr)
+        active = params.get('active')
+        if active not in (None, ''):
+            queryset = queryset.filter(active=active.lower() in ('1', 'true', 'yes'))
+
         # M-23 — synchro incrémentale mobile : ?updated_since=ISO8601
         return filter_updated_since(queryset, self.request)
     
