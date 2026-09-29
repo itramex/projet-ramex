@@ -53,7 +53,12 @@ function ProducteurList() {
     try {
       const response = await geographieService.getAgences();
       const agences = (response.data.results || response.data) || [];
-      setAgenceOptions(agences.map(a => ({ value: String(a.id), label: a.nom })));
+      const options = agences
+        .filter(a => a.actif !== false)
+        .map(a => ({ value: String(a.id), label: a.nom }));
+      // A-8 — orphelins : sans coopérative ou coopérative sans agence
+      options.push({ value: 'none', label: 'Sans agence' });
+      setAgenceOptions(options);
     } catch (e) {
       console.error('Erreur chargement agences:', e);
     }
@@ -159,6 +164,7 @@ function ProducteurList() {
 
     // === COOPÉRATIVE ===
     { id: 'cooperative', label: 'Coopérative', enabled: false, category: 'Coopérative' },
+    { id: 'agence', label: 'Agence', enabled: true, category: 'Coopérative' },
     { id: 'responsabilite_cooperative', label: 'Responsabilité coop', enabled: true, category: 'Coopérative' },
     { id: 'membre_groupement_epargne', label: 'Membre VSLA', enabled: false, category: 'Coopérative' },
     { id: 'date_adhesion_groupement', label: 'Date adhésion VSLA', enabled: false, category: 'Coopérative' },
@@ -498,7 +504,14 @@ function ProducteurList() {
 
       // === COOPÉRATIVE ===
       case 'cooperative':
-        return <span className="text-sm text-gray-900">{prod.cooperative?.nom || '-'}</span>;
+        return <span className="text-sm text-gray-900">{prod.cooperative_nom || '-'}</span>;
+
+      case 'agence':
+        return prod.agence_nom ? (
+          <span className="text-sm text-gray-900">{prod.agence_nom}</span>
+        ) : (
+          <span className="text-sm text-gray-400 italic">Sans agence</span>
+        );
 
       case 'responsabilite_cooperative':
         return <span className="text-sm text-gray-900">{prod.responsabilite_cooperative_display || prod.responsabilite_cooperative || '-'}</span>;
@@ -1173,7 +1186,7 @@ function ProducteurList() {
                         options={agenceOptions}
                         value={filters.agence}
                         onChange={(value) => setFilters({ ...filters, agence: value })}
-                        placeholder="Toutes les agences (#7)"
+                        placeholder="Toutes les agences"
                         displayKey="label"
                         valueKey="value"
                         multiple={true}

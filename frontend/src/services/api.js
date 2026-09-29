@@ -243,6 +243,7 @@ export const geographieService = {
   createAgence: (data) => api.post('/geographie/agences/', data),
   updateAgence: (id, data) => api.put(`/geographie/agences/${id}/`, data),
   deleteAgence: (id) => api.delete(`/geographie/agences/${id}/`),
+  fusionnerAgence: (id, cibleId) => api.post(`/geographie/agences/${id}/fusionner/`, { cible: cibleId }),
 
   // Structures intermédiaires
   getStructuresIntermediaires: (params = {}) => api.get('/geographie/structures-intermediaires/', { params }),

@@ -375,6 +375,17 @@ function CooperativeSection({ producteur }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InfoCard title="Coopérative" icon="UserGroupIcon">
                 <InfoRow label="Nom" value={producteur.cooperative_info?.nom || 'Aucune'} />
+                {/* A-9 — agence héritée de la coopérative, jamais éditable ici */}
+                <InfoRow
+                    label="Agence RAMEX"
+                    value={
+                        producteur.agence_nom
+                            ? `${producteur.agence_nom} (héritée de la coopérative ${producteur.cooperative_info?.nom})`
+                            : producteur.cooperative_info?.nom
+                                ? `Aucune (coopérative ${producteur.cooperative_info.nom} sans agence)`
+                                : 'Aucune (producteur sans coopérative)'
+                    }
+                />
                 <InfoRow label="Responsabilité" value={producteur.responsabilite_cooperative_display || producteur.responsabilite_cooperative} />
                 <InfoRow label="Paysan relais" value={producteur.paysan_relais ? 'Oui' : 'Non'} />
                 {producteur.date_adhesion_cooperative && (

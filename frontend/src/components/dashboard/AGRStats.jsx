@@ -38,6 +38,8 @@ function AGRStats({ filters }) {
       const params = {};
       if (filters?.villages?.length) params.village = filters.villages;
       if (filters?.communes?.length) params.commune = filters.communes;
+      // A-10 — filtre Agence hérité (intersecté avec le scoping côté serveur)
+      if (filters?.agences?.length) params.agence = filters.agences;
       const response = await agrService.getStats(params);
       setData(response.data);
     } catch (error) {

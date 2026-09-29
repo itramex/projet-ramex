@@ -515,6 +515,131 @@ class AGRListFilterApiTests(TestCase):
         self.assertNotIn(self.a1.id, ids)
 
 
+class ProducteurAgenceFilterApiTests(TestCase):
+    """?agence=<id | id,id | none> — filtre d'agence héritée (Option A, P1).
+
+    L'agence n'est pas portée par le producteur mais par sa coopérative
+    (producteur.cooperative.agence) : le filtre traverse la FK coopérative.
+    `none` = orphelins (sans coopérative, ou coopérative sans agence).
+    scope_par_agence (#29) s'applique AVANT ce filtre → intersection.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='agflt', password='pass')
+        self.client.force_authenticate(user=self.user)
+
+        from cooperatives.models import Cooperative
+        from geographie.models import Agence, District, Region
+
+        region = Region.objects.create(nom='SAVA', code='SAV')
+        district = District.objects.create(region=region, nom='Andapa', code='AND')
+        self.agence_1 = Agence.objects.create(nom='Agence Nord', district=district, code='AN')
+        self.agence_2 = Agence.objects.create(nom='Agence Sud', district=district, code='AS')
+
+        coop_1 = Cooperative.objects.create(
+            code='CA1', nom='Coop A', commune='Andapa', agence=self.agence_1
+        )
+        coop_2 = Cooperative.objects.create(
+            code='CB2', nom='Coop B', commune='Andapa', agence=self.agence_2
+        )
+        coop_3 = Cooperative.objects.create(
+            code='CC3', nom='Coop C', commune='Andapa'
+        )
+
+        self.p1 = Producteur.objects.create(
+            code='AG01', nom='Un', commune='Andapa', village='V1', sexe='M',
+            actif=True, cooperative=coop_1,
+        )
+        self.p2 = Producteur.objects.create(
+            code='AG02', nom='Deux', commune='Andapa', village='V2', sexe='F',
+            actif=True, cooperative=coop_1,
+        )
+        self.p3 = Producteur.objects.create(
+            code='AG03', nom='Trois', commune='Andapa', village='V1', sexe='M',
+            actif=True, cooperative=coop_2,
+        )
+        self.p4 = Producteur.objects.create(
+            code='AG04', nom='Quatre', commune='Andapa', village='V3', sexe='F',
+            actif=True, cooperative=coop_3,
+        )
+        self.p5 = Producteur.objects.create(
+            code='AG05', nom='Cinq', commune='Andapa', village='V3', sexe='M',
+            actif=True,
+        )
+
+    def _codes(self, response):
+        rows = response.data['results'] if isinstance(response.data, dict) else response.data
+        return sorted(r['code'] for r in rows)
+
+    def test_filter_by_agence_id(self):
+        response = self.client.get('/api/producteurs/', {'agence': self.agence_1.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), ['AG01', 'AG02'])
+
+    def test_filter_by_none_returns_orphans(self):
+        response = self.client.get('/api/producteurs/', {'agence': 'none'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), ['AG04', 'AG05'])
+
+    def test_filter_by_multiple_agences(self):
+        response = self.client.get(
+            '/api/producteurs/',
+            {'agence': f'{self.agence_1.id},{self.agence_2.id}'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), ['AG01', 'AG02', 'AG03'])
+
+    def test_agence_filter_cumulates_with_village(self):
+        response = self.client.get(
+            '/api/producteurs/', {'agence': self.agence_1.id, 'village': 'V2'}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), ['AG02'])
+
+    def test_list_exposes_inherited_agence(self):
+        response = self.client.get('/api/producteurs/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rows = response.data['results'] if isinstance(response.data, dict) else response.data
+        by_code = {r['code']: r for r in rows}
+        self.assertEqual(by_code['AG01']['agence'], self.agence_1.id)
+        self.assertEqual(by_code['AG01']['agence_nom'], 'Agence Nord')
+        self.assertIsNone(by_code['AG04']['agence_nom'])  # coop sans agence
+        self.assertIsNone(by_code['AG05']['agence_nom'])  # sans coop
+
+    def test_invalid_agence_value_returns_no_rows(self):
+        response = self.client.get('/api/producteurs/', {'agence': 'abc'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), [])
+
+    def test_export_csv_contains_agence_column(self):
+        response = self.client.get('/api/producteurs/export/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        content = response.content.decode('utf-8')
+        header = content.splitlines()[0].split(';')
+        self.assertIn('Agence', header)
+        self.assertIn('Agence Nord', content)
+
+    def test_agence_filter_intersects_scoping(self):
+        # A-11 — un compte scopé sur l'agence 1 qui demande l'agence 2
+        # reçoit une liste VIDE : le paramètre n'élargit jamais le scoping.
+        scoped = User.objects.create_user(username='scoped1', password='pass')
+        scoped.profile.agence = self.agence_1
+        scoped.profile.save()
+        self.client.force_authenticate(user=scoped)
+
+        response = self.client.get('/api/producteurs/', {'agence': self.agence_2.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._codes(response), [])
+
+        response = self.client.get('/api/producteurs/', {'agence': self.agence_1.id})
+        self.assertEqual(self._codes(response), ['AG01', 'AG02'])
+
+        # `none` intersecté au scoping : orphelins hors agence exclus
+        response = self.client.get('/api/producteurs/', {'agence': 'none'})
+        self.assertEqual(self._codes(response), [])
+
+
 class ProducteurResilienceApiTests(TestCase):
     """GET /api/producteurs/{id}/resilience/ — part vendue, dernière année."""
 

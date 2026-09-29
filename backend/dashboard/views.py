@@ -32,8 +32,11 @@ def _dashboard_base_queryset(request):
 
     # #29 — Confidentialité par agence : les non-responsables ne voient que
     # les producteurs de leur agence (via la coopérative).
-    from users.permissions import scope_par_agence
+    from users.permissions import filtrer_par_agence, scope_par_agence
     qs, _ = scope_par_agence(request.user, qs)
+    # A-10 — filtre « Agence » hérité (producteur.cooperative.agence).
+    # A-11 : appliqué APRÈS le scoping → intersection, jamais élargissement.
+    qs = filtrer_par_agence(qs, request.query_params.getlist('agence'))
     return qs
 
 
@@ -179,6 +182,11 @@ def dashboard_global(request):
     from users.permissions import scope_par_agence
     base_queryset, _ = scope_par_agence(request.user, base_queryset)
     base_queryset_all, _ = scope_par_agence(request.user, base_queryset_all)
+    # A-10/A-11 — filtre « Agence » hérité : intersection avec le scoping.
+    from users.permissions import filtrer_par_agence
+    _agences = request.query_params.getlist('agence')
+    base_queryset = filtrer_par_agence(base_queryset, _agences)
+    base_queryset_all = filtrer_par_agence(base_queryset_all, _agences)
 
     # Statistiques globales (sans filtres pour le total)
     # TOTAL = TOUS LES PRODUCTEURS (actifs + inactifs) — #29 : restreint aux
@@ -734,18 +742,23 @@ def dashboard_producteurs(request):
     """
     Statistiques spécifiques aux producteurs
     GET /api/dashboard/producteurs/
+
+    #29 — périmètre scopé (agence du profil) ; A-10 — filtre « Agence »
+    explicite (hérité), A-11 : intersection avec le scoping.
     """
+    from users.permissions import filtrer_par_agence, scope_par_agence
+
+    base = scope_par_agence(request.user, Producteur.objects.all())[0]
+    base = filtrer_par_agence(base, request.query_params.getlist('agence'))
+    actifs = base.filter(actif=True)
     data = {
-        'total': Producteur.objects.count(),
-        'actifs': Producteur.objects.actifs().count(),
+        'total': base.count(),
+        'actifs': actifs.count(),
         'par_genre': list(
-            Producteur.objects.filter(actif=True)
-            .values('sexe')
-            .annotate(count=Count('id'))
+            actifs.values('sexe').annotate(count=Count('id'))
         ),
         'par_village': list(
-            Producteur.objects.filter(actif=True)
-            .values('village')
+            actifs.values('village')
             .annotate(count=Count('id'))
             .order_by('-count')[:10]
         ),
@@ -1160,7 +1173,17 @@ def dashboard_production(request):
     
     # Construire le queryset de base avec les parcelles actives
     base_queryset = Parcelle.objects.filter(active=True).select_related('producteur')
-    
+
+    # #29 — Confidentialité par agence (queryset Parcelle → via producteur)
+    # + P2/A-10 — filtre « Agence » hérité : appliqué APRÈS le scoping pour
+    # n'intersecter jamais l'élargir.
+    from users.permissions import filtrer_par_agence, scope_par_agence
+    _lk = 'producteur__cooperative__agence'
+    base_queryset = scope_par_agence(request.user, base_queryset, lookup=_lk)[0]
+    base_queryset = filtrer_par_agence(
+        base_queryset, request.query_params.getlist('agence'), lookup=_lk
+    )
+
     # Appliquer les filtres géographiques
     if villages and any(villages):
         villages = [v for v in villages if v]
@@ -1527,6 +1550,8 @@ def dashboard_production(request):
             'villages': villages if villages and any(villages) else [],
             'communes': communes if communes and any(communes) else [],
             'culture': culture,
+            # P2 — filtre « Agence » hérité transmis par le frontend.
+            'agences': [a for a in request.query_params.getlist('agence') if a],
         }
     }
     
@@ -1567,7 +1592,16 @@ def dashboard_production_par_culture(request):
         communes = [c for c in communes if c]
         if communes:
             base_queryset = base_queryset.filter(producteur__commune__in=communes)
-    
+
+    # #29 — Confidentialité par agence (queryset Parcelle → via producteur)
+    # + P2/A-10 — filtre « Agence » hérité : appliqué APRÈS le scoping.
+    from users.permissions import filtrer_par_agence, scope_par_agence
+    _lk = 'producteur__cooperative__agence'
+    base_queryset = scope_par_agence(request.user, base_queryset, lookup=_lk)[0]
+    base_queryset = filtrer_par_agence(
+        base_queryset, request.query_params.getlist('agence'), lookup=_lk
+    )
+
     # Agréger les productions par culture
     productions_aggregees = {}
     nb_parcelles_par_culture = {}
@@ -1617,6 +1651,8 @@ def dashboard_production_par_culture(request):
         'filtres_actifs': {
             'villages': villages if villages and any(villages) else [],
             'communes': communes if communes and any(communes) else [],
+            # P2 — filtre « Agence » hérité transmis par le frontend.
+            'agences': [a for a in request.query_params.getlist('agence') if a],
         }
     }
     
@@ -1692,6 +1728,30 @@ def _compute_decisionnel(request):
     colis_qs = Colis.objects.all()
     commandes_qs = CommandeExport.objects.all()
     chains_qs = TracabiliteChain.objects.all()
+
+    # #29 + P2/A-10 — Scoping et filtre « Agence » hérités sur TOUS les
+    # querysets (lookups différents selon le lien vers le Producteur).
+    # Avant les filtres métier : le paramètre agence n'élargit jamais le
+    # scoping. NB : un compte scopé ne voit pas les entités sans producteur
+    # (ex. bons de collecte de marché) — défaut « confidentialité d'abord ».
+    from users.permissions import filtrer_par_agence, scope_par_agence
+    _agences = request.query_params.getlist('agence')
+    _scoped = []
+    for _qs, _lk in (
+        (producteurs_qs, 'cooperative__agence'),
+        (parcelles_qs, 'producteur__cooperative__agence'),
+        (agr_qs, 'producteur__cooperative__agence'),
+        (dotations_qs, 'producteur__cooperative__agence'),
+        (bons_qs, 'producteur__cooperative__agence'),
+        (lots_qs, 'bons_transport__fiche_collecte__bons_collecte__producteur__cooperative__agence'),
+        (colis_qs, 'lot_traitement__bons_transport__fiche_collecte__bons_collecte__producteur__cooperative__agence'),
+        (commandes_qs, 'colis__lot_traitement__bons_transport__fiche_collecte__bons_collecte__producteur__cooperative__agence'),
+        (chains_qs, 'producteur__cooperative__agence'),
+    ):
+        _qs = scope_par_agence(request.user, _qs, lookup=_lk)[0]
+        _scoped.append(filtrer_par_agence(_qs, _agences, lookup=_lk))
+    (producteurs_qs, parcelles_qs, agr_qs, dotations_qs, bons_qs,
+     lots_qs, colis_qs, commandes_qs, chains_qs) = _scoped
 
     if villages:
         producteurs_qs = producteurs_qs.filter(village__in=villages)

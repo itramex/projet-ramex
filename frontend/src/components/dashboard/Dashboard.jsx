@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { dashboardService } from '../../services/api';
+import { dashboardService, geographieService } from '../../services/api';
+import { isAdmin } from '../../utils/permissions';
 import Icon from '../common/Icon';
 import Card from '../common/Card';
 import { iconMap } from '../../styles/icons';
@@ -45,6 +46,7 @@ function Dashboard() {
     villages: [],
     communes: [],
     fokontanys: [],
+    agences: [],
     culture: [],
     certification: [],
     dateFrom: '',
@@ -56,6 +58,24 @@ function Dashboard() {
   const [showFokontanyDropdown, setShowFokontanyDropdown] = useState(false);
   const [showCultureDropdown, setShowCultureDropdown] = useState(false);
   const [showCertificationDropdown, setShowCertificationDropdown] = useState(false);
+  const [showAgenceDropdown, setShowAgenceDropdown] = useState(false);
+  const [agenceOptions, setAgenceOptions] = useState([]);
+
+  // A-10 — sélecteur Agence : options chargées pour l'admin uniquement
+  // (mêmes règles de confidentialité que le filtre de la liste #29).
+  useEffect(() => {
+    if (!isAdmin()) return;
+    geographieService.getAgences()
+      .then(response => {
+        const agences = (response.data.results || response.data) || [];
+        const options = agences
+          .filter(a => a.actif !== false)
+          .map(a => ({ value: String(a.id), label: a.nom }));
+        options.push({ value: 'none', label: 'Sans agence' });
+        setAgenceOptions(options);
+      })
+      .catch(e => console.error('Erreur chargement agences:', e));
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -66,6 +86,7 @@ function Dashboard() {
       filters.villages.forEach(v => params.append('village', v));
       filters.communes.forEach(c => params.append('commune', c));
       filters.fokontanys.forEach(f => params.append('fokontany', f));
+      filters.agences.forEach(a => params.append('agence', a));
       const response = await dashboardService.getGlobal(params);
       setData(response.data);
     } catch (error) {
@@ -106,6 +127,9 @@ function Dashboard() {
         params.append('culture', culture);
       });
 
+      // P2 — filtre Agence hérité (partagé avec la Vue d'ensemble)
+      filters.agences.forEach(a => params.append('agence', a));
+
       const response = await dashboardService.getProduction(params);
       setProductionData(response.data);
     } catch (error) {
@@ -131,6 +155,9 @@ function Dashboard() {
         params.append('date_to', filters.dateTo);
       }
 
+      // P2 — filtre Agence hérité (partagé avec la Vue d'ensemble)
+      filters.agences.forEach(a => params.append('agence', a));
+
       const response = await dashboardService.getDecisionnel(params);
       setDecisionData(response.data);
     } catch (error) {
@@ -146,6 +173,8 @@ function Dashboard() {
       filters.villages.forEach(village => params.append('village', village));
       filters.communes.forEach(commune => params.append('commune', commune));
       filters.culture.forEach(culture => params.append('culture', culture));
+      // P2 — filtre Agence hérité (partagé avec la Vue d'ensemble)
+      filters.agences.forEach(a => params.append('agence', a));
       const response = await dashboardService.getProductionParCulture(params);
       setCultureDetail(response.data);
     } catch (error) {
@@ -161,6 +190,7 @@ function Dashboard() {
       filters.villages.forEach(v => params.append('village', v));
       filters.communes.forEach(c => params.append('commune', c));
       filters.fokontanys.forEach(f => params.append('fokontany', f));
+      filters.agences.forEach(a => params.append('agence', a));
       const [hygiene, enfants, environnement, evolution] = await Promise.all([
         dashboardService.getHygiene(params),
         dashboardService.getEnfants(params),
@@ -231,6 +261,15 @@ function Dashboard() {
     }));
   }, []);
 
+  const toggleAgence = useCallback((agence) => {
+    setFilters(prev => ({
+      ...prev,
+      agences: prev.agences.includes(agence)
+        ? prev.agences.filter(a => a !== agence)
+        : [...prev.agences, agence]
+    }));
+  }, []);
+
   // #16 : multi-sélection culture / certification
   const toggleCulture = useCallback((culture) => {
     setFilters(prev => ({
@@ -255,6 +294,7 @@ function Dashboard() {
       villages: [],
       communes: [],
       fokontanys: [],
+      agences: [],
       culture: [],
       certification: [],
       dateFrom: '',
@@ -384,9 +424,13 @@ function Dashboard() {
           setShowCommuneDropdown={setShowCommuneDropdown}
           showFokontanyDropdown={showFokontanyDropdown}
           setShowFokontanyDropdown={setShowFokontanyDropdown}
+          showAgenceDropdown={showAgenceDropdown}
+          setShowAgenceDropdown={setShowAgenceDropdown}
+          agenceOptions={agenceOptions}
           toggleVillage={toggleVillage}
           toggleCommune={toggleCommune}
           toggleFokontany={toggleFokontany}
+          toggleAgence={toggleAgence}
           resetFilters={resetFilters}
           applyFilters={loadDashboard}
         />
@@ -407,6 +451,10 @@ function Dashboard() {
           showCultureDropdown={showCultureDropdown}
           setShowCultureDropdown={setShowCultureDropdown}
           toggleCertification={toggleCertification}
+          showAgenceDropdown={showAgenceDropdown}
+          setShowAgenceDropdown={setShowAgenceDropdown}
+          agenceOptions={agenceOptions}
+          toggleAgence={toggleAgence}
         />
       ) : activeTab === 'agr' ? (
         <AGRDashboard
@@ -430,6 +478,10 @@ function Dashboard() {
           toggleCertification={toggleCertification}
           showCertificationDropdown={showCertificationDropdown}
           setShowCertificationDropdown={setShowCertificationDropdown}
+          showAgenceDropdown={showAgenceDropdown}
+          setShowAgenceDropdown={setShowAgenceDropdown}
+          agenceOptions={agenceOptions}
+          toggleAgence={toggleAgence}
         />
       ) : null}
     </div>
@@ -461,7 +513,7 @@ const pieLabelPlugin = {
   }
 };
 
-const OverviewTab = memo(({ data, filters, villagesCommunes, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown, showFokontanyDropdown, setShowFokontanyDropdown, toggleVillage, toggleCommune, toggleFokontany, resetFilters, applyFilters }) => {
+const OverviewTab = memo(({ data, filters, villagesCommunes, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown, showFokontanyDropdown, setShowFokontanyDropdown, showAgenceDropdown, setShowAgenceDropdown, agenceOptions, toggleVillage, toggleCommune, toggleFokontany, toggleAgence, resetFilters, applyFilters }) => {
   // Chart data mémoisés pour éviter les re-renders inutiles
   // (hooks appelés inconditionnellement — règles des hooks React)
   const genreChartData = useMemo(() => ({
@@ -498,7 +550,7 @@ const OverviewTab = memo(({ data, filters, villagesCommunes, showVillageDropdown
     <>
       {/* Filtres (Overview) */}
       <Card title="Filtres" padding="md" className="mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Multi-select Village */}
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-2">Village(s)</label>
@@ -597,6 +649,41 @@ const OverviewTab = memo(({ data, filters, villagesCommunes, showVillageDropdown
               </div>
             )}
           </div>
+
+          {/* A-10 — Multi-select Agence (héritée, admin uniquement #29) */}
+          {isAdmin() && (
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Agence(s)</label>
+              <button
+                onClick={() => setShowAgenceDropdown(!showAgenceDropdown)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chick-yellow bg-white text-left flex justify-between items-center"
+              >
+                <span className={filters.agences.length === 0 ? 'text-gray-400' : 'text-dark'}>
+                  {filters.agences.length === 0
+                    ? 'Toutes les agences'
+                    : `${filters.agences.length} agence(s)`}
+                </span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showAgenceDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {agenceOptions.map((agence) => (
+                    <label key={agence.value} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.agences.includes(agence.value)}
+                        onChange={() => toggleAgence(agence.value)}
+                        className="mr-2 h-4 w-4 text-chick-yellow focus:ring-chick-yellow border-gray-300 rounded"
+                      />
+                      <span className="text-sm">{agence.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Boutons */}
@@ -732,7 +819,7 @@ const OverviewTab = memo(({ data, filters, villagesCommunes, showVillageDropdown
 OverviewTab.displayName = 'OverviewTab';
 
 // ========== Onglet Production ==========
-const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, toggleVillage, toggleCommune, onResetFilters, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown, toggleCulture, showCultureDropdown, setShowCultureDropdown, toggleCertification }) => {
+const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, toggleVillage, toggleCommune, onResetFilters, showVillageDropdown, setShowVillageDropdown, showCommuneDropdown, setShowCommuneDropdown, toggleCulture, showCultureDropdown, setShowCultureDropdown, toggleCertification, showAgenceDropdown, setShowAgenceDropdown, agenceOptions, toggleAgence }) => {
   if (!data) {
     return (
       <div className="text-center py-12">
@@ -845,6 +932,41 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, togg
             )}
           </div>
 
+          {/* P2 — Multi-select Agence (héritée, admin uniquement #29) */}
+          {isAdmin() && (
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Agence(s)</label>
+              <button
+                onClick={() => setShowAgenceDropdown(!showAgenceDropdown)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chick-yellow bg-white text-left flex justify-between items-center"
+              >
+                <span className={filters.agences.length === 0 ? 'text-gray-400' : 'text-dark'}>
+                  {filters.agences.length === 0
+                    ? 'Toutes les agences'
+                    : `${filters.agences.length} agence(s)`}
+                </span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showAgenceDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {agenceOptions.map((agence) => (
+                    <label key={agence.value} className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.agences.includes(agence.value)}
+                        onChange={() => toggleAgence(agence.value)}
+                        className="mr-2 h-4 w-4 text-chick-yellow focus:ring-chick-yellow border-gray-300 rounded"
+                      />
+                      <span className="text-sm">{agence.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Bouton Réinitialiser */}
           <div className="flex items-end">
             <button
@@ -857,7 +979,7 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, togg
         </div>
 
         {/* Affichage des filtres actifs */}
-        {(filters.villages.length > 0 || filters.communes.length > 0 || filters.culture.length > 0 || filters.certification.length > 0) && (
+        {(filters.villages.length > 0 || filters.communes.length > 0 || filters.culture.length > 0 || filters.certification.length > 0 || filters.agences.length > 0) && (
           <div className="mt-4 text-sm text-gray-600">
             <span className="font-medium">Filtres actifs:</span>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -883,6 +1005,12 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, togg
                 <span key={`cert-${index}`} className="bg-blue-50 text-gray-800 border border-blue-300 px-3 py-1 rounded-full flex items-center gap-2">
                   <span className="uppercase">{cert}</span>
                   <button onClick={() => toggleCertification(cert)} className="hover:text-gray-900">×</button>
+                </span>
+              ))}
+              {filters.agences.map((agence, index) => (
+                <span key={`agence-${index}`} className="bg-purple-50 text-purple-800 border border-purple-300 px-3 py-1 rounded-full flex items-center gap-2">
+                  <span>{agence === 'none' ? 'Sans agence' : agenceOptions.find((o) => o.value === agence)?.label || agence}</span>
+                  <button onClick={() => toggleAgence(agence)} className="hover:text-gray-900">×</button>
                 </span>
               ))}
             </div>
@@ -1269,7 +1397,7 @@ const ProductionTab = memo(({ data, cultureData, filters, villagesCommunes, togg
 
 ProductionTab.displayName = 'ProductionTab';
 
-const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onResetFilters, toggleCertification, showCertificationDropdown, setShowCertificationDropdown }) => {
+const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onResetFilters, toggleCertification, showCertificationDropdown, setShowCertificationDropdown, showAgenceDropdown, setShowAgenceDropdown, agenceOptions, toggleAgence }) => {
   const [exporting, setExporting] = useState('');
 
   const downloadExport = async (format) => {
@@ -1281,6 +1409,7 @@ const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onRes
       if (filters.dateTo) params.date_to = filters.dateTo;
       if (filters.villages?.length) params.village = filters.villages;
       if (filters.communes?.length) params.commune = filters.communes;
+      if (filters.agences?.length) params.agence = filters.agences;
 
       const response = await dashboardService.exportDecisionnel(format, params);
       const blob = new Blob([response.data], {
@@ -1368,6 +1497,39 @@ const DecisionTab = memo(({ data, filters, onFilterChange, onApplyFilters, onRes
               </div>
             )}
           </div>
+          {/* P2 — Multi-select Agence (héritée, admin uniquement #29) */}
+          {isAdmin() && (
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Agence(s)</label>
+              <button
+                type="button"
+                onClick={() => setShowAgenceDropdown(!showAgenceDropdown)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-left flex justify-between items-center"
+              >
+                <span className={filters.agences.length === 0 ? 'text-gray-400' : 'text-dark'}>
+                  {filters.agences.length === 0
+                    ? 'Toutes les agences'
+                    : `${filters.agences.length} agence(s)`}
+                </span>
+                <span className="text-gray-400">▾</span>
+              </button>
+              {showAgenceDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {agenceOptions.map((agence) => (
+                    <label key={agence.value} className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.agences.includes(agence.value)}
+                        onChange={() => toggleAgence(agence.value)}
+                        className="mr-3 h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm">{agence.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <button
               onClick={onApplyFilters}

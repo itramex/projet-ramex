@@ -89,7 +89,7 @@ function EntityForm({ fields, initialData, onSubmit, onCancel, loading }) {
 }
 
 // ==================== COMPOSANT LISTE GÉNÉRIQUE ====================
-function EntityList({ title, items, columns, onEdit, onDelete, onAdd, canAdd = true }) {
+function EntityList({ title, items, columns, onEdit, onDelete, onAdd, canAdd = true, deleteLabel, extraActions }) {
   return (
     <Card>
       <div className="flex justify-between items-center mb-4">
@@ -131,6 +131,15 @@ function EntityList({ title, items, columns, onEdit, onDelete, onAdd, canAdd = t
                     </td>
                   ))}
                   <td className="px-4 py-3 text-right text-sm font-medium">
+                    {extraActions && extraActions(item).map((action) => (
+                      <button
+                        key={action.label}
+                        onClick={() => action.onClick(item)}
+                        className="text-purple-600 hover:text-purple-800 mr-3"
+                      >
+                        {action.label}
+                      </button>
+                    ))}
                     <button
                       onClick={() => onEdit(item)}
                       className="text-blue-600 hover:text-blue-800 mr-3"
@@ -141,7 +150,7 @@ function EntityList({ title, items, columns, onEdit, onDelete, onAdd, canAdd = t
                       onClick={() => onDelete(item)}
                       className="text-red-600 hover:text-red-800"
                     >
-                      Supprimer
+                      {deleteLabel ? deleteLabel(item) : 'Supprimer'}
                     </button>
                   </td>
                 </tr>
@@ -170,6 +179,9 @@ function GeographieManagement() {
   const [agences, setAgences] = useState([]);
   const [structures, setStructures] = useState([]);
   const [cooperatives, setCooperatives] = useState([]);
+  // G-4 — état de la fusion d'agences
+  const [mergingAgence, setMergingAgence] = useState(null);
+  const [mergeTarget, setMergeTarget] = useState('');
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -249,24 +261,63 @@ function GeographieManagement() {
   };
 
   const handleDelete = async (item) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer cet élément ?')) return;
+    // G-3b — une agence rattachée est désactivée (D-5), pas supprimée :
+    // la suppression serait refusée par le backend (409) et casserait
+    // les rattachements via SET_NULL.
+    const utilise = activeTab === 'agences'
+      && ((item.nb_cooperatives || 0) > 0 || (item.nb_utilisateurs || 0) > 0);
+    const message = utilise
+      ? `« ${item.nom} » est rattachée à ${item.nb_cooperatives || 0} coopérative(s) `
+        + `et ${item.nb_utilisateurs || 0} utilisateur(s).\n`
+        + 'La supprimer casserait ces rattachements.\n'
+        + 'Désactiver cette agence à la place (rattachements conservés) ?'
+      : 'Voulez-vous vraiment supprimer cet élément ?';
+    if (!window.confirm(message)) return;
     setLoading(true);
     try {
-      const serviceMap = {
-        regions: geographieService.deleteRegion,
-        districts: geographieService.deleteDistrict,
-        communes: geographieService.deleteCommune,
-        fokontanys: geographieService.deleteFokontany,
-        villages: geographieService.deleteVillage,
-        agences: geographieService.deleteAgence,
-        structures: geographieService.deleteStructureIntermediaire,
-      };
-      await serviceMap[activeTab](item.id);
-      alert('Élément supprimé avec succès !');
+      if (utilise) {
+        await geographieService.updateAgence(item.id, { ...item, actif: false });
+        alert('Agence désactivée avec succès !');
+      } else {
+        const serviceMap = {
+          regions: geographieService.deleteRegion,
+          districts: geographieService.deleteDistrict,
+          communes: geographieService.deleteCommune,
+          fokontanys: geographieService.deleteFokontany,
+          villages: geographieService.deleteVillage,
+          agences: geographieService.deleteAgence,
+          structures: geographieService.deleteStructureIntermediaire,
+        };
+        await serviceMap[activeTab](item.id);
+        alert('Élément supprimé avec succès !');
+      }
       await loadAll();
     } catch (error) {
       console.error('Erreur suppression:', error);
-      alert('Erreur lors de la suppression. Vérifiez qu\'aucune donnée n\'est liée à cet élément.');
+      const detail = error?.response?.data?.detail;
+      alert(detail || 'Erreur lors de la suppression. Vérifiez qu\'aucune donnée n\'est liée à cet élément.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMerge = async () => {
+    if (!mergingAgence || !mergeTarget) return;
+    const confirmation = window.confirm(
+      `Réaffecter les coopératives de « ${mergingAgence.nom} » vers l'agence cible, `
+      + 'puis désactiver la source ? Cette opération est administrative et irréversible.'
+    );
+    if (!confirmation) return;
+    setLoading(true);
+    try {
+      const response = await geographieService.fusionnerAgence(mergingAgence.id, mergeTarget);
+      alert(response.data?.detail || 'Fusion effectuée !');
+      setMergingAgence(null);
+      setMergeTarget('');
+      await loadAll();
+    } catch (error) {
+      console.error('Erreur fusion:', error);
+      alert(error?.response?.data?.detail || 'Erreur lors de la fusion (droits administrateur requis).');
     } finally {
       setLoading(false);
     }
@@ -383,6 +434,17 @@ function GeographieManagement() {
         return [
           { key: 'nom', label: "Nom de l'agence" },
           { key: 'district_nom', label: 'District' },
+          {
+            key: 'nb_cooperatives',
+            label: 'Rattachements',
+            render: (item) => {
+              const coops = item.nb_cooperatives || 0;
+              const users = item.nb_utilisateurs || 0;
+              return coops + users === 0
+                ? <span className="text-gray-400">—</span>
+                : <span className="text-sm text-gray-600">{coops} coop · {users} util.</span>;
+            },
+          },
           { key: 'telephone', label: 'Téléphone' },
           { key: 'actif', label: 'Statut', render: (item) => <Badge color={item.actif ? 'green' : 'red'}>{item.actif ? 'Actif' : 'Inactif'}</Badge> },
         ];
@@ -449,7 +511,7 @@ function GeographieManagement() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setShowForm(false); setEditingItem(null); }}
+            onClick={() => { setActiveTab(tab.id); setShowForm(false); setEditingItem(null); setMergingAgence(null); setMergeTarget(''); }}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === tab.id
                 ? 'bg-chick-yellow text-dark'
@@ -478,6 +540,47 @@ function GeographieManagement() {
             loading={loading}
           />
         </Card>
+      ) : mergingAgence ? (
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            Fusionner : {mergingAgence.nom}
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Réaffecte les <strong>{mergingAgence.nb_cooperatives || 0}</strong> coopérative(s)
+            vers une autre agence, puis désactive « {mergingAgence.nom} »
+            (rattachements et historique conservés).
+          </p>
+          <select
+            value={mergeTarget}
+            onChange={(e) => setMergeTarget(e.target.value)}
+            className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chick-yellow mb-4"
+          >
+            <option value="">-- Sélectionner l'agence cible --</option>
+            {agences
+              .filter((a) => a.id !== mergingAgence.id && a.actif)
+              .map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nom}{a.district_nom ? ` — ${a.district_nom}` : ''}
+                </option>
+              ))}
+          </select>
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => { setMergingAgence(null); setMergeTarget(''); }}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              onClick={handleMerge}
+              disabled={!mergeTarget || loading}
+            >
+              {loading ? 'Fusion...' : 'Fusionner'}
+            </Button>
+          </div>
+        </Card>
       ) : (
         <EntityList
           title={getTitle()}
@@ -486,6 +589,16 @@ function GeographieManagement() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onAdd={handleAdd}
+          deleteLabel={activeTab === 'agences'
+            ? (item) => ((item.nb_cooperatives || 0) > 0 || (item.nb_utilisateurs || 0) > 0
+              ? 'Désactiver' : 'Supprimer')
+            : undefined}
+          extraActions={activeTab === 'agences'
+            ? (item) => [{
+                label: 'Fusionner',
+                onClick: () => { setMergingAgence(item); setMergeTarget(''); },
+              }]
+            : undefined}
         />
       )}
     </div>

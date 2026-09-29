@@ -146,6 +146,9 @@ class ProducteurListSerializer(serializers.ModelSerializer):
     total_enfants = serializers.ReadOnlyField()
     photo_url = serializers.SerializerMethodField()
     cooperative_nom = serializers.CharField(source='cooperative.nom', read_only=True, allow_null=True)
+    # A-1/A-2 — Agence héritée de la coopérative (Option A : zéro migration)
+    agence = serializers.IntegerField(source='cooperative.agence_id', read_only=True, allow_null=True)
+    agence_nom = serializers.CharField(source='cooperative.agence.nom', read_only=True, allow_null=True)
     responsabilite_cooperative_display = serializers.CharField(source='get_responsabilite_cooperative_display', read_only=True)
     sexe_display = serializers.CharField(source='get_sexe_display', read_only=True)
     statut_matrimonial_display = serializers.CharField(source='get_statut_matrimonial_display', read_only=True)
@@ -172,7 +175,8 @@ class ProducteurListSerializer(serializers.ModelSerializer):
             'commune_ref', 'commune_ref_nom', 'fokontany_ref', 'fokontany_ref_nom',
             'village_ref', 'village_ref_nom', 'structure_intermediaire',
             # Coopérative
-            'cooperative', 'cooperative_nom', 'responsabilite_cooperative', 'responsabilite_cooperative_display',
+            'cooperative', 'cooperative_nom', 'agence', 'agence_nom',
+            'responsabilite_cooperative', 'responsabilite_cooperative_display',
             'date_adhesion_cooperative',
             # Statut
             'actif', 'verifie', 'photo_url',
@@ -207,6 +211,9 @@ class ProducteurDetailSerializer(serializers.ModelSerializer):
     modifie_par_info = UserSerializer(source='modifie_par', read_only=True)
     verifie_par_info = UserSerializer(source='verifie_par', read_only=True)
     cooperative_info = CooperativeSerializer(source='cooperative', read_only=True)
+    # A-1/A-2 — Agence héritée de la coopérative (Option A : zéro migration)
+    agence = serializers.IntegerField(source='cooperative.agence_id', read_only=True, allow_null=True)
+    agence_nom = serializers.CharField(source='cooperative.agence.nom', read_only=True, allow_null=True)
     
     # AGR data
     agr_activities = AGRSerializer(many=True, read_only=True)
@@ -326,6 +333,9 @@ class ProducteurExportSerializer(serializers.ModelSerializer):
     age = serializers.ReadOnlyField()
     total_enfants = serializers.ReadOnlyField()
     cooperative_nom = serializers.CharField(source='cooperative.nom', read_only=True, allow_null=True)
+    # A-1/A-2 — Agence héritée de la coopérative (Option A : zéro migration)
+    agence = serializers.IntegerField(source='cooperative.agence_id', read_only=True, allow_null=True)
+    agence_nom = serializers.CharField(source='cooperative.agence.nom', read_only=True, allow_null=True)
     cree_par_nom = serializers.CharField(source='cree_par.username', read_only=True, allow_null=True)
     
     class Meta:

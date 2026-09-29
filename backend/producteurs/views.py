@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.pagination import PageNumberPagination
-from users.permissions import IsAdminOrReadOnly, scope_par_agence
+from users.permissions import IsAdminOrReadOnly, filtrer_par_agence, scope_par_agence
 from users.models import ActivityLog
 from api.filters import filter_updated_since
 from simple_history.utils import update_change_reason
@@ -412,6 +412,9 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
         """Filtre avancé des producteurs"""
         queryset = super().get_queryset()
         
+        # A-5 — agence/cooperative héritées : jointures en amont (anti N+1)
+        queryset = queryset.select_related('cooperative__agence')
+
         # #29 — Confidentialité par agence : les non-responsables (animateur,
         # agent de collecte) ne voient que les producteurs de leur agence
         # (via la coopérative). Admin/superviseur → tout.
@@ -467,13 +470,13 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
         if mahavelona is not None:
             queryset = queryset.filter(mahavelona=mahavelona.lower() == 'true')
 
-        # Filtre par agence RAMEX (via la coopérative du producteur)
-        # Supporte plusieurs agences séparées par des virgules (IDs)
+        # Filtre par agence RAMEX héritée (via la coopérative) — A-3.
+        # IDs multiples séparés par virgules + `none` = orphelins.
+        # APRÈS scope_par_agence (#29) : intersection, jamais élargi — A-11.
         agence = self.request.query_params.get('agence', None)
         if agence is not None:
-            agences = [a.strip() for a in str(agence).split(',') if a.strip()]
-            if agences:
-                queryset = queryset.filter(cooperative__agence_id__in=agences)
+            valeurs = [a.strip() for a in str(agence).split(',') if a.strip()]
+            queryset = filtrer_par_agence(queryset, valeurs)
 
         # Filtre par dotation (nouveau modèle Dotation)
         has_dotation = self.request.query_params.get('has_dotation', None)
@@ -830,7 +833,7 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
         
         headers = [
             'Code', 'Nom', 'Prénom', 'CIN', 'Sexe', 'Date de naissance', 'Âge',
-            'Téléphone', 'Email', 'Commune', 'Fokontany', 'Village',
+            'Téléphone', 'Email', 'Commune', 'Fokontany', 'Village', 'Agence',
             'Actif', 'Vérifié', 'Date adhésion'
         ]
         
@@ -850,6 +853,8 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
                 prod.commune,
                 prod.fokontany or '',
                 prod.village,
+                prod.cooperative.agence.nom
+                if prod.cooperative_id and prod.cooperative.agence_id else '',
                 'Oui' if prod.actif else 'Non',
                 'Oui' if prod.verifie else 'Non',
                 prod.date_adhesion_cooperative,
@@ -912,6 +917,7 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
                 'label': 'Coopérative',
                 'fields': {
                     'cooperative': {'label': 'Coopérative', 'type': 'foreign_key'},
+                    'agence_nom': {'label': 'Agence RAMEX', 'type': 'text'},
                     'responsabilite_cooperative': {'label': 'Responsabilité coopérative', 'type': 'choice'},
                     'date_adhesion_cooperative': {'label': 'Date adhésion coopérative', 'type': 'date'},
                     'membre_groupement_epargne': {'label': 'Membre groupement épargne', 'type': 'boolean'},
@@ -1040,6 +1046,7 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
             'niveau_education': 'Niveau d\'éducation',
             'femme_leader': 'Femme leader',
             'cooperative': 'Coopérative',
+            'agence_nom': 'Agence',
             'responsabilite_cooperative': 'Responsabilité',
             'date_adhesion_cooperative': 'Date adhésion coopérative',
             'membre_groupement_epargne': 'Membre groupement épargne',
@@ -1176,6 +1183,9 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
                 return obj.total_enfants
             elif field_name == 'cooperative':
                 return obj.cooperative.nom if obj.cooperative else ''
+            elif field_name == 'agence_nom':
+                coop = obj.cooperative
+                return coop.agence.nom if coop and coop.agence_id else ''
             
             # Champs avec choices
             elif field_name == 'sexe':
@@ -1562,6 +1572,14 @@ class AGRViewSet(viewsets.ModelViewSet):
         communes_clean = [c for c in communes if c]
 
         qs = AGR.objects.filter(active=True)
+        # #29 + A-10/A-11 : périmètre scopé puis filtre « Agence » hérité —
+        # l'action `stats` construisait son propre queryset (jamais scopé).
+        from users.permissions import filtrer_par_agence, scope_par_agence
+        qs, _ = scope_par_agence(
+            request.user, qs, lookup='producteur__cooperative__agence')
+        qs = filtrer_par_agence(
+            qs, request.query_params.getlist('agence'),
+            lookup='producteur__cooperative__agence')
         if villages_clean:
             qs = qs.filter(producteur__village__in=villages_clean)
         if communes_clean:

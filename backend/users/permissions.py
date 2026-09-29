@@ -199,3 +199,39 @@ def scope_entite_agence(user, qs, lookup_producteur, lookup_cooperative):
             **{f'{lookup_cooperative}__isnull': True})
     ), agence
 
+
+def filtrer_par_agence(qs, valeurs, lookup='cooperative__agence'):
+    """Filtre un queryset par agence RAMEX héritée (Option A, P1 — A-3/A-11).
+
+    `valeurs` : liste de chaînes — IDs d'agence et/ou le signal 'none'
+    (orphelins : rattachement manquant le long de `lookup`, ex. producteur
+    sans coopérative ou coopérative sans agence).
+
+    - `valeurs` vide → queryset inchangé ;
+    - à appeler APRÈS scope_par_agence : n'intersecte, n'élargit jamais (#29) ;
+    - tokens invalides seuls → queryset vide (réponse déterministe, jamais
+      « tout le monde »).
+    """
+    from django.db.models import Q
+
+    valeurs = [str(v).strip() for v in (valeurs or []) if str(v).strip()]
+    if not valeurs:
+        return qs
+
+    ids = [v for v in valeurs if v.isdigit()]
+    conditions = Q()
+    if ids:
+        conditions |= Q(**{f'{lookup}_id__in': ids})
+    if 'none' in valeurs:
+        parts = lookup.split('__')
+        # Chaque niveau traversé manquant = orphelin
+        # (ex. 'cooperative' absent pour lookup 'cooperative__agence').
+        for i in range(1, len(parts)):
+            prefix = '__'.join(parts[:i])
+            conditions |= Q(**{f'{prefix}__isnull': True})
+        conditions |= Q(**{f'{lookup}__isnull': True})
+
+    if ids or 'none' in valeurs:
+        return qs.filter(conditions)
+    return qs.none()
+
