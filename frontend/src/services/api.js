@@ -502,8 +502,15 @@ export const formationService = {
   getAudits: (params = {}) => api.get('/formations/audits/', { params }),
   getAuditsStats: () => api.get('/formations/audits/statistiques/'),
   getAuditNonConformites: (auditId) => api.get(`/formations/audits/${auditId}/nonconformites/`),
+  createAudit: (data) => api.post('/formations/audits/', data),
+  updateAudit: (id, data) => api.put(`/formations/audits/${id}/`, data),
+  deleteAudit: (id) => api.delete(`/formations/audits/${id}/`),
 
   // Non-conformités
+  getNonConformites: (params = {}) => api.get('/formations/nonconformites/', { params }),
+  createNonConformite: (data) => api.post('/formations/nonconformites/', data),
+  updateNonConformite: (id, data) => api.put(`/formations/nonconformites/${id}/`, data),
+  deleteNonConformite: (id) => api.delete(`/formations/nonconformites/${id}/`),
   resolveNonConformite: (id) => api.post(`/formations/nonconformites/${id}/resoudre/`),
   // Uploads de pièces jointes (#20 : certificat, rapport d'audit, preuve de NC)
   uploadCertificationPiece: (id, formData) =>

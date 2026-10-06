@@ -104,7 +104,7 @@ function FormationsCertifications() {
       setStatsCertifications(statsCertificationsRes.data);
     } catch (error) {
       console.error('Erreur chargement:', error);
-      setError(error.response?.data?.detail || 'Erreur lors du chargement des donnÃ©es');
+      setError(error.response?.data?.detail || 'Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
@@ -123,7 +123,7 @@ function FormationsCertifications() {
             variant="primary"
             icon="ArrowPathIcon"
           >
-            RÃ©essayer
+            Réessayer
           </Button>
         </div>
       </div>
@@ -295,11 +295,11 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
   // Always show producer list in the certifications tab
   const showList = true;
 
-  // Si on est en mode "filtre global", visibleFormations est dÃ©jÃ  filtrÃ© par le backend (props.formations)
-  // Si on est en mode "drill-down type" (selectedType), on filtre le tableau existant (si loadData n'a pas filtrÃ©)
+  // Si on est en mode "filtre global", visibleFormations est déjÃ  filtré par le backend (props.formations)
+  // Si on est en mode "drill-down type" (selectedType), on filtre le tableau existant (si loadData n'a pas filtré)
   // Mais ici loadData recharge TOUT en fonction des filtres.
   // Donc :
-  // - Si filters actifs : formations contient dÃ©jÃ  le rÃ©sultat.
+  // - Si filters actifs : formations contient déjÃ  le résultat.
   // - Si selectedType actif (sans filters globaux) : formations contient TOUT, on doit filtrer localement.
 
   const visibleFormations = selectedType
@@ -368,7 +368,7 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
             <h3 className="text-lg font-bold text-dark">
               {selectedType
                 ? `Formations : ${selectedType.nom}`
-                : isFiltered ? 'RÃ©sultats de recherche' : 'Types de Formations'}
+                : isFiltered ? 'Résultats de recherche' : 'Types de Formations'}
             </h3>
           </div>
           <Button
@@ -443,7 +443,7 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
               onClick={handleLocalReset}
               className="text-sm text-red-600 hover:text-red-800 underline pb-2"
             >
-              RÃ©initialiser
+              Réinitialiser
             </button>
           )}
 
@@ -475,7 +475,7 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
           <div className="overflow-x-auto">
             {(!stats?.par_type || stats.par_type.length === 0) ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">Aucun type de formation enregistrÃ©</p>
+                <p className="text-gray-500">Aucun type de formation enregistré</p>
               </div>
             ) : (
               <table className="min-w-full divide-y divide-gray-200">
@@ -498,7 +498,7 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-gray-900">
-                          {item.type_formation__nom || 'Non spÃ©cifiÃ©'}
+                          {item.type_formation__nom || 'Non spécifié'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -517,7 +517,7 @@ function FormationsTab({ formations, stats, onReload, allProducteurs, filters, o
           <div className="overflow-x-auto">
             {visibleFormations.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">Aucune formation trouvÃ©e pour ce type</p>
+                <p className="text-gray-500">Aucune formation trouvée pour ce type</p>
               </div>
             ) : (
               <table className="min-w-full divide-y divide-gray-200">
@@ -625,8 +625,8 @@ function FormationFormModal({ formation, mode, onClose, onSuccess }) {
       const producteursRes = await producteurService.getAllForDropdown();
       setProducteurs(producteursRes.data.results || producteursRes.data);
     } catch (error) {
-      console.error('Erreur chargement donnÃ©es formulaire:', error);
-      setError('Erreur lors du chargement des donnÃ©es');
+      console.error('Erreur chargement données formulaire:', error);
+      setError('Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
@@ -655,13 +655,13 @@ function FormationFormModal({ formation, mode, onClose, onSuccess }) {
 
     try {
       if (mode === 'create') {
-        // En mode crÃ©ation, on envoie la liste des producteurs
+        // En mode création, on envoie la liste des producteurs
         if (formData.producteurs.length === 0) {
           throw new Error("Veuillez sélectionner au moins un producteur");
         }
         await formationService.createFormation(formData);
       } else if (mode === 'edit') {
-        // En mode Ã©dition, on envoie le seul producteur et le payload adaptÃ©
+        // En mode édition, on envoie le seul producteur et le payload adapté
         const payload = { ...formData };
         delete payload.producteurs;
         await formationService.updateFormation(formation.id, payload);
@@ -949,7 +949,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
     };
     const labels = {
       valide: 'Valide',
-      expire: 'ExpirÃ©',
+      expire: 'Expiré',
       en_cours: 'En cours',
       suspendu: 'Suspendu',
     };
@@ -994,7 +994,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.type_certification]);
 
-  // ===== Audits & Non-conformitÃ©s =====
+  // ===== Audits & Non-conformités =====
   const [audits, setAudits] = useState([]);
   const [auditStats, setAuditStats] = useState(null);
   const [auditsLoading, setAuditsLoading] = useState(false);
@@ -1088,7 +1088,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
       const res = await formationService.getAuditNonConformites(auditId);
       setAuditNCs(res.data);
     } catch (e) {
-      console.error('Erreur chargement non-conformitÃ©s:', e);
+      console.error('Erreur chargement non-conformités:', e);
     } finally {
       setAuditNCsLoading(false);
     }
@@ -1100,7 +1100,85 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
       if (selectedAudit) loadAuditNCs(selectedAudit.id);
       loadHistory();
     } catch (e) {
-      console.error('Erreur rÃ©solution NC:', e);
+      console.error('Erreur résolution NC:', e);
+    }
+  };
+
+  // ===== Création d'audits & non-conformités (saisie du suivi) =====
+  const [typesCertifs, setTypesCertifs] = useState([]);
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showNCModal, setShowNCModal] = useState(false);
+  const [savingModal, setSavingModal] = useState(false);
+  const [auditForm, setAuditForm] = useState({
+    type_certification: '',
+    date_audit: new Date().toISOString().slice(0, 10),
+    organisme: '',
+    resultat: 'conforme',
+    resume: '',
+  });
+  const [ncForm, setNcForm] = useState({
+    producteur: '',
+    type: 'mineure',
+    description: '',
+    action_corrective: '',
+    date_limite: '',
+  });
+
+  useEffect(() => {
+    formationService.getAllTypesCertifications()
+      .then((res) => setTypesCertifs(res.data.results || res.data))
+      .catch((e) => console.error('Erreur chargement types certifications:', e));
+  }, []);
+
+  const handleCreateAudit = async (e) => {
+    e.preventDefault();
+    setSavingModal(true);
+    try {
+      await formationService.createAudit(auditForm);
+      setShowAuditModal(false);
+      setAuditForm({
+        type_certification: '',
+        date_audit: new Date().toISOString().slice(0, 10),
+        organisme: '',
+        resultat: 'conforme',
+        resume: '',
+      });
+      await Promise.all([loadAudits(), loadHistory()]);
+    } catch (err) {
+      console.error('Erreur création audit:', err);
+      const d = err.response?.data;
+      alert(typeof d === 'string' ? d : (d?.detail || JSON.stringify(d) || "Erreur lors de la création de l'audit."));
+    } finally {
+      setSavingModal(false);
+    }
+  };
+
+  const handleCreateNC = async (e) => {
+    e.preventDefault();
+    if (!selectedAudit) return;
+    setSavingModal(true);
+    try {
+      await formationService.createNonConformite({
+        audit: selectedAudit.id,
+        producteur: ncForm.producteur || null,
+        type: ncForm.type,
+        description: ncForm.description,
+        action_corrective: ncForm.action_corrective || '',
+        date_limite: ncForm.date_limite || null,
+      });
+      setShowNCModal(false);
+      setNcForm({ producteur: '', type: 'mineure', description: '', action_corrective: '', date_limite: '' });
+      await Promise.all([
+        loadAuditNCs(selectedAudit.id),
+        loadAudits(),
+        loadHistory(),
+      ]);
+    } catch (err) {
+      console.error('Erreur création NC:', err);
+      const d = err.response?.data;
+      alert(typeof d === 'string' ? d : (d?.detail || JSON.stringify(d) || 'Erreur lors de la création de la non-conformité.'));
+    } finally {
+      setSavingModal(false);
     }
   };
 
@@ -1160,7 +1238,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
             <h3 className="text-lg font-bold text-dark">
               {selectedType
                 ? `Certifications : ${selectedType.nom}`
-                : isFiltered ? 'RÃ©sultats de recherche' : 'Liste des certifications'}
+                : isFiltered ? 'Résultats de recherche' : 'Liste des certifications'}
             </h3>
           </div>
           {showList && (
@@ -1221,7 +1299,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
               onClick={handleLocalReset}
               className="text-sm text-red-600 hover:text-red-800 underline pb-2"
             >
-              RÃ©initialiser
+              Réinitialiser
             </button>
           )}
 
@@ -1269,7 +1347,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                   >
                     <div>
                       <span className="text-gray-700 font-medium text-lg">
-                        {item.nom || 'Non spÃ©cifiÃ©'}
+                        {item.nom || 'Non spécifié'}
                       </span>
                       <span className="text-gray-500 text-sm ml-2 font-mono bg-gray-100 px-2 py-1 rounded">
                         {item.code}
@@ -1470,7 +1548,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">Aucune donnÃ©e</div>
+                  <div className="text-center py-8 text-gray-500">Aucune donnée</div>
                 )}
               </>
             )}
@@ -1596,16 +1674,19 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
         </div>
       )}
 
-      {/* Audits & Non-conformitÃ©s */}
+      {/* Audits & Non-conformités */}
       <div className="bg-white rounded-lg shadow-md p-6 mt-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-dark flex items-center gap-2">
             <Icon name="ClipboardDocumentCheckIcon" size="md" className="text-gray-600" />
-            Audits & Non-conformitÃ©s
+            Audits & Non-conformités
           </h3>
           <div className="flex items-center gap-3">
             <Button onClick={loadAudits} variant="secondary" icon="ArrowPathIcon">
-              RafraÃ®chir
+              Rafraîchir
+            </Button>
+            <Button onClick={() => setShowAuditModal(true)} variant="primary" icon="PlusIcon" iconPosition="left">
+              Ajouter un audit
             </Button>
           </div>
         </div>
@@ -1658,11 +1739,16 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
             </div>
             {selectedAudit && (
               <div className="mt-6">
-                <h4 className="font-semibold text-dark mb-2">Non-conformitÃ©s â€” Audit du {new Date(selectedAudit.date_audit).toLocaleDateString('fr-FR')}</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-dark">Non-conformités — Audit du {new Date(selectedAudit.date_audit).toLocaleDateString('fr-FR')}</h4>
+                  <Button onClick={() => setShowNCModal(true)} variant="primary" size="sm" icon="PlusIcon" iconPosition="left">
+                    Ajouter une non-conformité
+                  </Button>
+                </div>
                 {auditNCsLoading ? (
                   <div className="text-center py-6 text-gray-500">Chargement...</div>
                 ) : auditNCs.length === 0 ? (
-                  <div className="text-gray-500">Aucune non-conformitÃ©</div>
+                  <div className="text-gray-500">Aucune non-conformité</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -1688,7 +1774,7 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
                             </td>
                             <td className="px-4 py-2 text-sm">
                               {nc.statut !== 'resolue' && (
-                                <button onClick={() => resolveNC(nc.id)} className="text-green-600 hover:text-green-800">Marquer rÃ©solue</button>
+                                <button onClick={() => resolveNC(nc.id)} className="text-green-600 hover:text-green-800">Marquer résolue</button>
                               )}
                             </td>
                           </tr>
@@ -1702,6 +1788,169 @@ function CertificationsTab({ certifications, stats, allProducteurs, filters, onF
           </>
         )}
       </div>
+
+      {/* ===== Modale : création d'un audit de certification ===== */}
+      {showAuditModal && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Nouvel audit de certification</h3>
+              <button onClick={() => setShowAuditModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+            </div>
+            <form onSubmit={handleCreateAudit} className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type de certification <span className="text-red-500">*</span></label>
+                <select
+                  required
+                  value={auditForm.type_certification}
+                  onChange={(e) => setAuditForm({ ...auditForm, type_certification: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                >
+                  <option value="">Sélectionner…</option>
+                  {typesCertifs.map((t) => (
+                    <option key={t.id} value={t.id}>{t.nom} ({t.code})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date d'audit <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    required
+                    value={auditForm.date_audit}
+                    onChange={(e) => setAuditForm({ ...auditForm, date_audit: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Résultat <span className="text-red-500">*</span></label>
+                  <select
+                    value={auditForm.resultat}
+                    onChange={(e) => setAuditForm({ ...auditForm, resultat: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                  >
+                    <option value="conforme">Conforme</option>
+                    <option value="non_conforme">Non conforme</option>
+                    <option value="observations">Avec observations</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Organisme</label>
+                <input
+                  type="text"
+                  value={auditForm.organisme}
+                  onChange={(e) => setAuditForm({ ...auditForm, organisme: e.target.value })}
+                  placeholder="Ex: Control Union"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Résumé / constats</label>
+                <textarea
+                  rows={3}
+                  value={auditForm.resume}
+                  onChange={(e) => setAuditForm({ ...auditForm, resume: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-2 border-t border-gray-200">
+                <button type="button" onClick={() => setShowAuditModal(false)} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Annuler
+                </button>
+                <button type="submit" disabled={savingModal} className="px-4 py-2 text-sm font-medium text-dark bg-primary-yellow rounded-lg hover:opacity-90 disabled:opacity-50">
+                  {savingModal ? 'Enregistrement…' : "Créer l'audit"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Modale : création d'une non-conformité (pour l'audit sélectionné) ===== */}
+      {showNCModal && selectedAudit && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Nouvelle non-conformité — audit du {new Date(selectedAudit.date_audit).toLocaleDateString('fr-FR')}
+              </h3>
+              <button onClick={() => setShowNCModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+            </div>
+            <form onSubmit={handleCreateNC} className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Producteur concerné</label>
+                <select
+                  value={ncForm.producteur}
+                  onChange={(e) => setNcForm({ ...ncForm, producteur: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                >
+                  <option value="">— Aucun / groupe entier —</option>
+                  {allProducteurs.map((p) => (
+                    <option key={p.id} value={p.id}>{p.code} - {p.nom} {p.prenom || ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gravité <span className="text-red-500">*</span></label>
+                  <select
+                    value={ncForm.type}
+                    onChange={(e) => setNcForm({ ...ncForm, type: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                  >
+                    <option value="mineure">Mineure</option>
+                    <option value="majeure">Majeure</option>
+                    <option value="critique">Critique</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date limite de résolution</label>
+                  <input
+                    type="date"
+                    value={ncForm.date_limite}
+                    onChange={(e) => setNcForm({ ...ncForm, date_limite: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-red-500">*</span></label>
+                <textarea
+                  required
+                  rows={3}
+                  value={ncForm.description}
+                  onChange={(e) => setNcForm({ ...ncForm, description: e.target.value })}
+                  placeholder="Constat de non-conformité…"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Action corrective prévue</label>
+                <textarea
+                  rows={2}
+                  value={ncForm.action_corrective}
+                  onChange={(e) => setNcForm({ ...ncForm, action_corrective: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                La pièce justificative (photo, document) pourra être jointe après création via le lien « Joindre » de la colonne Preuve.
+              </p>
+              <div className="flex justify-end gap-3 pt-2 border-t border-gray-200">
+                <button type="button" onClick={() => setShowNCModal(false)} className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Annuler
+                </button>
+                <button type="submit" disabled={savingModal} className="px-4 py-2 text-sm font-medium text-dark bg-primary-yellow rounded-lg hover:opacity-90 disabled:opacity-50">
+                  {savingModal ? 'Enregistrement…' : 'Créer la non-conformité'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
