@@ -300,6 +300,27 @@ export const parcelleService = {
 // ========== SERVICE DOTATIONS ==========
 export const dotationService = {
   getAll: (params = {}) => api.get('/dotations/', { params }),
+  /**
+   * Récupère TOUTES les pages de dotations (la pagination DRF est de 100/page ;
+   * sans cela le tableau et la modale bénéficiaires seraient tronqués).
+   * Renvoie { results, stats_par_type?, cumul_par_type?, cumul_total? } de la
+   * première réponse complétée par tous les `results` assemblés.
+   */
+  getAllPaginated: async (params = {}) => {
+    const first = await api.get('/dotations/', { params });
+    const data = first.data;
+    if (!data || !Array.isArray(data.results)) return data;
+    const all = [...data.results];
+    let next = data.next;
+    let guard = 0;
+    while (next && guard < 50) {
+      const page = await api.get(next.replace(/^https?:\/\/[^/]+/, ''));
+      all.push(...(page.data.results || []));
+      next = page.data.next;
+      guard += 1;
+    }
+    return { ...data, results: all };
+  },
   getById: (id) => api.get(`/dotations/${id}/`),
   create: (data) => { invalidateByPrefix('/dotations/'); return api.post('/dotations/', data); },
   update: (id, data) => { invalidateByPrefix('/dotations/'); return api.put(`/dotations/${id}/`, data); },

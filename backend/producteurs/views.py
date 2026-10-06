@@ -1343,16 +1343,32 @@ class DotationViewSet(viewsets.ModelViewSet):
         return qs
 
     def list(self, request, *args, **kwargs):
-        """Liste des dotations + agrégats cumulés par type/total."""
+        """Liste des dotations + agrégats par type/total.
+
+        #28 : `stats_par_type` détaille chaque rubrique (kit scolaire, poisson,
+        volaille, autre) avec le nombre de dotations, la quantité totale ET le
+        nombre de bénéficiaires distincts — calculés sur le queryset complet
+        (les `results` restent paginés à 100).
+        """
         response = super().list(request, *args, **kwargs)
         queryset = self.filter_queryset(self.get_queryset())
 
         aggregates = queryset.values('type_dotation').annotate(
-            total_quantite=Sum('quantite')
+            total_quantite=Sum('quantite'),
+            nb_dotations=Count('id'),
+            nb_beneficiaires=Count('producteur', distinct=True),
         ).order_by('type_dotation')
-        cumul_par_type = {
-            row['type_dotation']: int(row['total_quantite'] or 0)
+
+        stats_par_type = {
+            row['type_dotation']: {
+                'nb_dotations': row['nb_dotations'],
+                'total_quantite': int(row['total_quantite'] or 0),
+                'nb_beneficiaires': row['nb_beneficiaires'],
+            }
             for row in aggregates
+        }
+        cumul_par_type = {
+            k: v['total_quantite'] for k, v in stats_par_type.items()
         }
         cumul_total = int(sum(cumul_par_type.values()))
 
@@ -1360,11 +1376,13 @@ class DotationViewSet(viewsets.ModelViewSet):
         if isinstance(payload, dict) and 'results' in payload:
             payload['cumul_par_type'] = cumul_par_type
             payload['cumul_total'] = cumul_total
+            payload['stats_par_type'] = stats_par_type
         else:
             payload = {
                 'results': payload,
                 'cumul_par_type': cumul_par_type,
                 'cumul_total': cumul_total,
+                'stats_par_type': stats_par_type,
             }
         response.data = payload
         return response

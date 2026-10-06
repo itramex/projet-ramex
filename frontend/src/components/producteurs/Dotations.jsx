@@ -24,8 +24,10 @@ const DEFAULT_FORM = { producteur: '', type_dotation: 'kit_scolaire', annee: new
  */
 function Dotations() {
   const [dotations, setDotations] = useState([]);
-  const [cumulParType, setCumulParType] = useState({});
-  const [cumulTotal, setCumulTotal] = useState(0);
+  // Détail PAR RUBRIQUE (kit scolaire, poisson, volaille, autre) : nb de
+  // dotations, quantité et bénéficiaires distincts — agrégé côté serveur sur
+  // TOUTES les lignes (pas de cumul global : les unités sont hétérogènes).
+  const [statsParType, setStatsParType] = useState({});
   const [producteurs, setProducteurs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -61,7 +63,7 @@ function Dotations() {
     try {
       const params = { type_dotation: type };
       if (anneeFilter) params.annee = anneeFilter;
-      const res = await dotationService.getAll(params);
+      const res = await dotationService.getAllPaginated(params);
       const rows = res.data.results || res.data || [];
       // Regrouper par producteur (une ligne par bénéficiaire, quantités cumulées + détail par année #27)
       const map = new Map();
@@ -101,11 +103,11 @@ function Dotations() {
       if (search.trim()) params.search = search.trim();
       if (typeFilter) params.type_dotation = typeFilter;
       if (anneeFilter) params.annee = anneeFilter;
-      const res = await dotationService.getAll(params);
-      const data = res.data;
-      setDotations(data.results || data || []);
-      setCumulParType(data.cumul_par_type || {});
-      setCumulTotal(data.cumul_total || 0);
+      const res = await dotationService.getAllPaginated(params);
+      const data = res.data || {};
+      setDotations(data.results || []);
+      // Détail par rubrique renvoyé par le backend (queryset complet)
+      setStatsParType(data.stats_par_type || {});
     } catch (err) {
       console.error('Erreur chargement dotations:', err);
       setError('Erreur lors du chargement des dotations.');
@@ -225,11 +227,33 @@ function Dotations() {
   const typeLabel = (t) => TYPE_DOTATIONS.find((x) => x.value === t)?.label || t;
   const typeColor = (t) => TYPE_DOTATIONS.find((x) => x.value === t)?.color || 'bg-gray-100 text-gray-800';
 
-  const repartition = useMemo(
-    () => Object.entries(cumulParType).map(([type, qte]) => ({ type, label: typeLabel(type), qte })),
-    [cumulParType]
-  );
-  const maxRepartition = Math.max(...repartition.map((r) => r.qte), 1);
+  // Rubriques présentes (kit scolaire, poisson, volaille, autre) avec leur
+  // propre décompte — les cumuls globaux ont été retirés : additionner des
+  // kits et des poissons n'a aucun sens (#27).
+  const rubriques = useMemo(() => {
+    const src = Object.keys(statsParType).length
+      ? statsParType
+      : dotations.reduce((acc, d) => {
+          // Fallback local si l'API ne renvoie pas stats_par_type
+          const t = d.type_dotation || 'autre';
+          if (!acc[t]) acc[t] = { nb_dotations: 0, total_quantite: 0, benef: new Set() };
+          acc[t].nb_dotations += 1;
+          acc[t].total_quantite += d.quantite || 0;
+          if (d.producteur) acc[t].benef.add(d.producteur);
+          return acc;
+        }, {});
+    const norm = {};
+    Object.entries(src).forEach(([type, v]) => {
+      norm[type] = {
+        nbDotations: v.nb_dotations ?? 0,
+        unites: v.total_quantite ?? 0,
+        beneficiaires: v.nb_beneficiaires ?? (v.benef ? v.benef.size : 0),
+      };
+    });
+    return TYPE_DOTATIONS
+      .filter((t) => norm[t.value])
+      .map((t) => ({ ...t, ...norm[t.value] }));
+  }, [statsParType, dotations]);
 
   const anneesDispo = useMemo(() => {
     const set = new Set(dotations.map((d) => d.annee));
@@ -273,42 +297,41 @@ return (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
       )}
 
-      {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <p className="text-xs text-gray-500 uppercase">Total dotations</p>
-          <p className="text-2xl font-bold text-dark">{dotations.length}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <p className="text-xs text-gray-500 uppercase">Quantité cumulée</p>
-          <p className="text-2xl font-bold text-blue-600">{cumulTotal.toLocaleString('fr-FR')}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <p className="text-xs text-gray-500 uppercase">Répartition par type</p>
-          <div className="space-y-1 mt-1">
-            {repartition.length === 0 && <p className="text-sm text-gray-400 italic">Aucune donnée</p>}
-            {repartition.map((r) => (
-              <div key={r.type} className="flex items-center gap-2 text-xs">
-                <span className="w-20 shrink-0 text-gray-600 truncate">{r.label}</span>
-                <div className="flex-1 h-3 bg-gray-100 rounded overflow-hidden">
-                  <div
-                    className="h-full bg-primary-yellow"
-                    style={{ width: `${Math.round((r.qte / maxRepartition) * 100)}%` }}
-                  />
-                </div>
-                <span className="w-10 text-right font-medium text-dark">{r.qte}</span>
-                <button
-                  type="button"
-                  onClick={() => openBeneficiaires(r.type, r.label)}
-                  className="text-[11px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
-                  title={`Voir les bénéficiaires — ${r.label}`}
-                >
-                  Bénéficiaires
-                </button>
-              </div>
-            ))}
+      {/* Détail PAR RUBRIQUE — chaque rubrique a son propre décompte (pas de
+          cumul global : kits, poissons et volailles n'ont pas la même unité)
+          + bouton d'accès à la liste des bénéficiaires de la rubrique */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        {rubriques.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-md p-4 md:col-span-2 xl:col-span-4 text-sm text-gray-400 italic">
+            Aucune dotation pour ces filtres.
           </div>
-        </div>
+        ) : rubriques.map((r) => (
+          <div key={r.value} className="bg-white rounded-lg shadow-md p-4 flex flex-col gap-2">
+            <span className={`inline-block w-fit px-2 py-0.5 rounded-full text-xs font-semibold ${r.color}`}>
+              {r.label}
+            </span>
+            <p className="text-2xl font-bold text-dark">
+              {r.nbDotations}
+              <span className="ml-1 text-sm font-medium text-gray-500">dotation(s)</span>
+            </p>
+            <div className="text-xs text-gray-600 space-y-0.5">
+              <p>
+                Quantité distribuée : <strong className="text-dark">{r.unites.toLocaleString('fr-FR')}</strong>
+              </p>
+              <p>
+                Bénéficiaires : <strong className="text-dark">{r.beneficiaires}</strong> producteur(s)
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => openBeneficiaires(r.value, r.label)}
+              className="mt-auto w-full text-xs px-2 py-1.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium"
+              title={`Voir la liste des bénéficiaires — ${r.label}`}
+            >
+              Voir la liste des bénéficiaires
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Impact des dotations (#28) : kits → scolarisation, volaille/poisson → revenus AGR */}
