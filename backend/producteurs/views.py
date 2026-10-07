@@ -420,6 +420,22 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
         # (via la coopérative). Admin/superviseur → tout.
         queryset, _ = scope_par_agence(self.request.user, queryset)
 
+        # Filtre agence explicite (admin) — ?agence=1,2[,none]
+        # 'none' = orphelins : sans coopérative ou coopérative sans agence (A-8).
+        # Appliqué APRÈS le scope : intersection seule, ne peut élargir #29.
+        agence_param = self.request.query_params.get('agence')
+        if agence_param:
+            tokens = [t.strip() for t in agence_param.split(',') if t.strip()]
+            ids = [int(t) for t in tokens if t.isdigit()]
+            want_none = 'none' in tokens
+            agence_q = Q()
+            if ids:
+                agence_q |= Q(cooperative__agence_id__in=ids)
+            if want_none:
+                agence_q |= Q(cooperative__isnull=True) | Q(cooperative__agence__isnull=True)
+            if agence_q:
+                queryset = queryset.filter(agence_q)
+
         actif = self.request.query_params.get('actif', None)
         if actif is not None:
             queryset = queryset.filter(actif=actif.lower() == 'true')
@@ -501,7 +517,6 @@ class ProducteurViewSet(ProducteurHistoriqueMixin, ProducteurCumulsMixin, viewse
         dotation = self.request.query_params.get('dotation', None)
         if dotation is not None and dotation.lower() == 'true':
             # Filtre pour ceux qui ont reçu une dotation (champ texte non vide OU modèle Dotation)
-            from django.db.models import Q
             queryset = queryset.filter(
                 Q(dotations__isnull=False) | 
                 (Q(dotation__isnull=False) & ~Q(dotation__exact=''))
