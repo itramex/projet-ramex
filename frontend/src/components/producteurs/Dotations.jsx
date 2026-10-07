@@ -35,7 +35,9 @@ function Dotations() {
   // Filtres
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [anneeFilter, setAnneeFilter] = useState('');
+  // Période d'années — permet de cumuler plusieurs exercices (ex. 2023 → 2025)
+  const [anneeDe, setAnneeDe] = useState('');
+  const [anneeA, setAnneeA] = useState('');
 
   // Modale
   const [showForm, setShowForm] = useState(false);
@@ -52,6 +54,8 @@ function Dotations() {
   const [beneficiairesModal, setBeneficiairesModal] = useState(null); // { type, label }
   const [beneficiaires, setBeneficiaires] = useState([]);
   const [beneficiairesLoading, setBeneficiairesLoading] = useState(false);
+  // Colonnes années du tableau croisé (producteur × année, 0 compris)
+  const [beneficiairesAnnees, setBeneficiairesAnnees] = useState([]);
 
   // Impact des dotations (#28) — kits → scolarisation, volaille/poisson → revenus AGR
   const [impact, setImpact] = useState(null);
@@ -62,11 +66,13 @@ function Dotations() {
     setBeneficiairesLoading(true);
     try {
       const params = { type_dotation: type };
-      if (anneeFilter) params.annee = anneeFilter;
+      if (anneeDe) params.from_year = anneeDe;
+      if (anneeA) params.to_year = anneeA;
       const res = await dotationService.getAllPaginated(params);
       const rows = res.data.results || res.data || [];
       // Regrouper par producteur (une ligne par bénéficiaire, quantités cumulées + détail par année #27)
       const map = new Map();
+      const anneesVues = new Set();
       rows.forEach((d) => {
         const key = d.producteur;
         const prev = map.get(key) || {
@@ -81,9 +87,20 @@ function Dotations() {
         if (d.annee) {
           prev.annees.add(d.annee);
           prev.par_annee[d.annee] = (prev.par_annee[d.annee] || 0) + (d.quantite || 0);
+          anneesVues.add(Number(d.annee));
         }
         map.set(key, prev);
       });
+      // Colonnes du tableau croisé : toute la période demandée (De→A, 0 compris),
+      // sinon toutes les années présentes dans les données de la rubrique.
+      let anneesCols;
+      if (anneeDe && anneeA && Number(anneeA) >= Number(anneeDe)) {
+        anneesCols = [];
+        for (let y = Number(anneeDe); y <= Number(anneeA); y += 1) anneesCols.push(y);
+      } else {
+        anneesCols = [...anneesVues].sort((a, b) => a - b);
+      }
+      setBeneficiairesAnnees(anneesCols);
       setBeneficiaires(
         [...map.values()].sort((a, b) => b.total - a.total)
       );
@@ -102,7 +119,8 @@ function Dotations() {
       const params = {};
       if (search.trim()) params.search = search.trim();
       if (typeFilter) params.type_dotation = typeFilter;
-      if (anneeFilter) params.annee = anneeFilter;
+      if (anneeDe) params.from_year = anneeDe;
+      if (anneeA) params.to_year = anneeA;
       const res = await dotationService.getAllPaginated(params);
       const data = res.data || {};
       setDotations(data.results || []);
@@ -129,7 +147,7 @@ function Dotations() {
     loadDotations();
     loadProducteurs();
     // Chargement initial uniquement : le rechargement filtré est déjà géré
-    // par l'effet debouncé ci-dessous (search/typeFilter/anneeFilter).
+    // par l'effet debouncé ci-dessous (search/typeFilter/anneeDe/anneeA).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -137,14 +155,16 @@ function Dotations() {
     const t = setTimeout(loadDotations, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, typeFilter, anneeFilter]);
+  }, [search, typeFilter, anneeDe, anneeA]);
 
-  // Impact (#28) : recalculé quand l'année sélectionnée change
+  // Impact (#28) : recalculé quand la période change.
+  // L'action `impact` accepte une année unique : on lui passe l'année de fin
+  // de la période (référence de scolarisation) ; sans filtre → toutes années.
   useEffect(() => {
     let cancelled = false;
     setImpactLoading(true);
     dotationService
-      .getImpact(anneeFilter ? { annee: anneeFilter } : {})
+      .getImpact(anneeA ? { annee: anneeA } : {})
       .then((res) => { if (!cancelled) setImpact(res.data); })
       .catch((err) => {
         console.error('Erreur chargement impact dotations:', err);
@@ -152,7 +172,7 @@ function Dotations() {
       })
       .finally(() => { if (!cancelled) setImpactLoading(false); });
     return () => { cancelled = true; };
-  }, [anneeFilter]);
+  }, [anneeDe, anneeA]);
 
   const openCreate = () => {
     setEditing(null);
@@ -486,16 +506,30 @@ return (
             <option key={t.value} value={t.value}>{t.label}</option>
           ))}
         </select>
-        <select
-          value={anneeFilter}
-          onChange={(e) => setAnneeFilter(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-yellow"
-        >
-          <option value="">Toutes les années</option>
-          {anneesDispo.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500">Année de</span>
+          <select
+            value={anneeDe}
+            onChange={(e) => setAnneeDe(e.target.value)}
+            className="text-sm border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+          >
+            <option value="">toutes</option>
+            {anneesDispo.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <span className="text-xs text-gray-500">à</span>
+          <select
+            value={anneeA}
+            onChange={(e) => setAnneeA(e.target.value)}
+            className="text-sm border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+          >
+            <option value="">toutes</option>
+            {anneesDispo.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        </div>
       </div>
       {/* Tableau */}
       <div className="bg-white rounded-lg shadow-md overflow-x-auto">
@@ -691,8 +725,12 @@ return (
                 <h3 className="text-lg font-bold text-dark">
                   Bénéficiaires — {beneficiairesModal.label}
                 </h3>
-                {anneeFilter && (
-                  <p className="text-xs text-gray-500">Année {anneeFilter}</p>
+                {(anneeDe || anneeA) ? (
+                  <p className="text-xs text-gray-500">
+                    Période {anneeDe || '…'} → {anneeA || '…'} — cumul multi-années
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500">Toutes les années — cumul multi-années</p>
                 )}
               </div>
               <button
@@ -717,8 +755,10 @@ return (
                     <tr className="text-left text-xs text-gray-500 uppercase">
                       <th className="py-2">Producteur</th>
                       <th className="py-2">Code</th>
-                      <th className="py-2 text-right">Quantité totale</th>
-                      <th className="py-2 text-right">Détail par année</th>
+                      {beneficiairesAnnees.map((y) => (
+                        <th key={y} className="py-2 text-right">{y}</th>
+                      ))}
+                      <th className="py-2 text-right bg-gray-50">Total (cumul)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -726,21 +766,38 @@ return (
                       <tr key={b.producteur} className="hover:bg-amber-50">
                         <td className="py-2 font-medium text-dark">{b.nom}</td>
                         <td className="py-2 text-gray-500">{b.code}</td>
-                        <td className="py-2 text-right font-semibold text-blue-600">
+                        {beneficiairesAnnees.map((y) => (
+                          <td key={y} className="py-2 text-right text-gray-700">
+                            {b.par_annee[y] ?? <span className="text-gray-300">0</span>}
+                          </td>
+                        ))}
+                        <td className="py-2 text-right font-semibold text-blue-600 bg-gray-50">
                           {b.total.toLocaleString('fr-FR')}
-                        </td>
-                        <td className="py-2 text-right text-gray-500">
-                          {[...b.annees].sort((x, y) => x - y).map((a) => `${a} : ${b.par_annee[a]}`).join(' · ') || '—'}
                         </td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr className="text-xs text-gray-600 border-t-2 border-gray-200">
+                      <td className="py-2 font-semibold" colSpan={2}>Total par année</td>
+                      {beneficiairesAnnees.map((y) => {
+                        const somme = beneficiaires.reduce((acc, b) => acc + (b.par_annee[y] || 0), 0);
+                        return (
+                          <td key={y} className="py-2 text-right font-semibold">{somme}</td>
+                        );
+                      })}
+                      <td className="py-2 text-right font-semibold text-blue-600 bg-gray-50">
+                        {beneficiaires.reduce((acc, b) => acc + b.total, 0).toLocaleString('fr-FR')}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               )}
             </div>
             <div className="px-5 py-3 border-t border-gray-200 text-xs text-gray-500">
-              {beneficiaires.length} bénéficiaire{beneficiaires.length > 1 ? 's' : ''}
-              {' '}— quantités cumulées par producteur (pas de total global cumulé).
+              {beneficiaires.length} bénéficiaire{beneficiaires.length > 1 ? 's' : ''} —
+              colonnes : quantité reçue chaque année (0 = aucune dotation cette année-là) ;
+              <strong> Total (cumul)</strong> sur la période affichée.
             </div>
           </div>
         </div>
