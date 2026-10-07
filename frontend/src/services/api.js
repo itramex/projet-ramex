@@ -327,6 +327,9 @@ export const dotationService = {
   delete: (id) => { invalidateByPrefix('/dotations/'); return api.delete(`/dotations/${id}/`); },
   // #28 — Impact des dotations : kits → scolarisation, volaille/poisson → revenus AGR
   getImpact: (params = {}) => api.get('/dotations/impact/', { params }),
+  // #27 — Bénéficiaires d'une rubrique avec indicateurs ménage
+  // (quantités par année, enfants scolarisés/total, taux, revenu AGR)
+  getBeneficiaires: (params = {}) => api.get('/dotations/beneficiaires/', { params }),
 };
 
 // ========== SERVICE DASHBOARD ==========

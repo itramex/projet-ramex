@@ -49,6 +49,24 @@ function ProducteurList() {
     if (isAdmin()) loadAgences();
   }, []);
 
+  // Lien « fiche » (?fiche=ID) : ouvrir directement la fiche du producteur
+  // (ex. depuis la modale bénéficiaires d'une dotation). L'URL est nettoyée
+  // après chargement pour ne pas ré-ouvrir la fiche à la visite suivante.
+  useEffect(() => {
+    const ficheId = new URLSearchParams(window.location.search).get('fiche');
+    if (!ficheId) return;
+    producteurService
+      .getById(ficheId)
+      .then((res) => {
+        setSelectedProducteur(res.data);
+        setShowDetails(true);
+      })
+      .catch((err) => console.error('Erreur chargement fiche producteur:', err))
+      .finally(() => {
+        window.history.replaceState({}, '', window.location.pathname);
+      });
+  }, []);
+
   const loadAgences = async () => {
     try {
       const response = await geographieService.getAgences();

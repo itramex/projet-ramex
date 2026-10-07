@@ -1477,6 +1477,81 @@ class DotationViewSet(viewsets.ModelViewSet):
             },
         }, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['get'], url_path='beneficiaires')
+    def beneficiaires(self, request):
+        """Liste des bénéficiaires d'une rubrique + indicateurs ménage (#27).
+
+        GET /api/dotations/beneficiaires/?type_dotation=kit_scolaire&from_year=&to_year=
+
+        Relie chaque ligne de dotation au ménage du producteur, en quelques
+        requêtes : quantités par année (cumul), scolarisation des enfants du
+        foyer (nb scolarisés / total, taux) et revenu AGR sur la période.
+        """
+        qs = self.filter_queryset(self.get_queryset())
+        type_dotation = request.query_params.get('type_dotation')
+        if type_dotation:
+            qs = qs.filter(type_dotation=type_dotation)
+
+        rows = list(
+            qs.values('producteur_id', 'producteur__code', 'producteur__nom',
+                      'producteur__prenom', 'annee')
+              .annotate(qte=Sum('quantite'))
+              .order_by('producteur__code', 'annee')
+        )
+        prod_ids = {r['producteur_id'] for r in rows if r['producteur_id']}
+        annees = sorted({r['annee'] for r in rows if r['annee'] is not None})
+
+        # Ménage : scolarisation des enfants du producteur (1 requête)
+        menage = {
+            p['id']: p
+            for p in Producteur.objects.filter(id__in=prod_ids).values(
+                'id', 'nb_enfants_scolarises', 'nb_enfants_non_scolarises',
+                'taux_scolarisation',
+            )
+        }
+
+        # Revenus AGR sur les mêmes années (1 requête)
+        from history.models import AGRHistory
+        revenus = {
+            r['producteur_id']: float(r['total'] or 0)
+            for r in AGRHistory.objects
+                .filter(producteur_id__in=prod_ids, annee__in=annees)
+                .values('producteur_id')
+                .annotate(total=Sum('revenu_annuel'))
+        }
+
+        benef = {}
+        for r in rows:
+            pid = r['producteur_id']
+            if pid is None:
+                continue
+            b = benef.setdefault(pid, {
+                'producteur': pid,
+                'code': r['producteur__code'],
+                'nom': ' '.join(
+                    x for x in (r['producteur__nom'], r['producteur__prenom']) if x
+                ),
+                'par_annee': {},
+                'total': 0,
+            })
+            b['par_annee'][str(r['annee'])] = r['qte']
+            b['total'] += r['qte']
+
+        for pid, b in benef.items():
+            m = menage.get(pid, {})
+            scol = m.get('nb_enfants_scolarises') or 0
+            non_scol = m.get('nb_enfants_non_scolarises') or 0
+            b['enfants_scolarises'] = scol
+            b['enfants_total'] = scol + non_scol
+            b['taux_scolarisation'] = float(m.get('taux_scolarisation') or 0)
+            b['revenu_agr'] = revenus.get(pid, 0)
+
+        return Response({
+            'type_dotation': type_dotation,
+            'annees': annees,
+            'beneficiaires': sorted(benef.values(), key=lambda x: x['code'] or ''),
+        }, status=status.HTTP_200_OK)
+
 
 class AGRViewSet(viewsets.ModelViewSet):
     """ViewSet for AGR (Activités Génératrices de Revenus) management"""

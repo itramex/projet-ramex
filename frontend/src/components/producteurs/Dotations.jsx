@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { dotationService, producteurService } from '../../services/api';
 import Icon from '../common/Icon';
 
@@ -68,45 +69,25 @@ function Dotations() {
       const params = { type_dotation: type };
       if (anneeDe) params.from_year = anneeDe;
       if (anneeA) params.to_year = anneeA;
-      const res = await dotationService.getAllPaginated(params);
-      const rows = res.data.results || res.data || [];
-      // Regrouper par producteur (une ligne par bénéficiaire, quantités cumulées + détail par année #27)
-      const map = new Map();
-      const anneesVues = new Set();
-      rows.forEach((d) => {
-        const key = d.producteur;
-        const prev = map.get(key) || {
-          producteur: key,
-          nom: d.producteur_nom || d.producteur_code || '-',
-          code: d.producteur_code || '',
-          total: 0,
-          annees: new Set(),
-          par_annee: {},
-        };
-        prev.total += d.quantite || 0;
-        if (d.annee) {
-          prev.annees.add(d.annee);
-          prev.par_annee[d.annee] = (prev.par_annee[d.annee] || 0) + (d.quantite || 0);
-          anneesVues.add(Number(d.annee));
-        }
-        map.set(key, prev);
-      });
+      // Endpoint dédié : quantités par année + indicateurs ménage
+      // (enfants scolarisés/total, taux, revenu AGR) en un seul appel.
+      const res = await dotationService.getBeneficiaires(params);
+      const data = res.data || {};
       // Colonnes du tableau croisé : toute la période demandée (De→A, 0 compris),
-      // sinon toutes les années présentes dans les données de la rubrique.
+      // sinon les années présentes dans les données de la rubrique.
       let anneesCols;
       if (anneeDe && anneeA && Number(anneeA) >= Number(anneeDe)) {
         anneesCols = [];
         for (let y = Number(anneeDe); y <= Number(anneeA); y += 1) anneesCols.push(y);
       } else {
-        anneesCols = [...anneesVues].sort((a, b) => a - b);
+        anneesCols = [...(data.annees || [])].sort((a, b) => a - b);
       }
       setBeneficiairesAnnees(anneesCols);
-      setBeneficiaires(
-        [...map.values()].sort((a, b) => b.total - a.total)
-      );
+      setBeneficiaires(data.beneficiaires || []);
     } catch (err) {
       console.error('Erreur chargement bénéficiaires:', err);
       setBeneficiaires([]);
+      setBeneficiairesAnnees([]);
     } finally {
       setBeneficiairesLoading(false);
     }
@@ -366,6 +347,21 @@ return (
             <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary-yellow" />
           )}
         </div>
+
+        {/* Alertes : groupe vide → comparaison non mesurable sur la période */}
+        {impact && impact.kit_scolaire_vs_scolarisation?.beneficiaires?.nb_producteurs === 0 && (
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
+            ⚠ Aucun bénéficiaire de kit scolaire{anneeA ? ` en ${anneeA}` : ' sur la période'} —
+            le comparatif de scolarisation n&rsquo;est pas disponible.
+          </div>
+        )}
+        {impact && impact.elevage_vs_agr?.beneficiaires?.nb_producteurs === 0 && (
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
+            ⚠ Aucune dotation <strong>Poisson/Volaille</strong> enregistrée{anneeA ? ` en ${anneeA}` : ' sur la période'} —
+            la comparaison des revenus AGR (bénéficiaires vs non) n&rsquo;est pas disponible.
+            Saisissez des dotations de ces rubriques pour activer l&rsquo;axe.
+          </div>
+        )}
 
         {!impact && !impactLoading && (
           <p className="text-sm text-gray-400 italic">Données d&rsquo;impact indisponibles.</p>
@@ -759,12 +755,22 @@ return (
                         <th key={y} className="py-2 text-right">{y}</th>
                       ))}
                       <th className="py-2 text-right bg-gray-50">Total (cumul)</th>
+                      <th className="py-2 text-right" title="Enfants scolarisés / enfants en âge scolaire (ménage)">Enfants scol.</th>
+                      <th className="py-2 text-right" title="Revenu AGR total du producteur sur la période">Revenu AGR</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {beneficiaires.map((b) => (
                       <tr key={b.producteur} className="hover:bg-amber-50">
-                        <td className="py-2 font-medium text-dark">{b.nom}</td>
+                        <td className="py-2 font-medium">
+                          <Link
+                            to={`/producteurs?fiche=${b.producteur}`}
+                            className="text-blue-600 hover:underline"
+                            title="Voir la fiche du producteur (ménage, dotations, AGR)"
+                          >
+                            {b.nom}
+                          </Link>
+                        </td>
                         <td className="py-2 text-gray-500">{b.code}</td>
                         {beneficiairesAnnees.map((y) => (
                           <td key={y} className="py-2 text-right text-gray-700">
@@ -773,6 +779,20 @@ return (
                         ))}
                         <td className="py-2 text-right font-semibold text-blue-600 bg-gray-50">
                           {b.total.toLocaleString('fr-FR')}
+                        </td>
+                        <td className="py-2 text-right text-gray-700">
+                          {b.enfants_total > 0 ? (
+                            <span title={`Taux de scolarisation : ${b.taux_scolarisation ?? 0} %`}>
+                              {b.enfants_scolarises}/{b.enfants_total}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="py-2 text-right text-gray-700">
+                          {b.revenu_agr
+                            ? `${Math.round(b.revenu_agr).toLocaleString('fr-FR')} Ar`
+                            : <span className="text-gray-300">—</span>}
                         </td>
                       </tr>
                     ))}
@@ -788,6 +808,13 @@ return (
                       })}
                       <td className="py-2 text-right font-semibold text-blue-600 bg-gray-50">
                         {beneficiaires.reduce((acc, b) => acc + b.total, 0).toLocaleString('fr-FR')}
+                      </td>
+                      <td className="py-2 text-right font-semibold">
+                        {beneficiaires.reduce((a, b) => a + (b.enfants_scolarises || 0), 0)}
+                        /{beneficiaires.reduce((a, b) => a + (b.enfants_total || 0), 0)}
+                      </td>
+                      <td className="py-2 text-right font-semibold">
+                        {Math.round(beneficiaires.reduce((a, b) => a + (b.revenu_agr || 0), 0)).toLocaleString('fr-FR')} Ar
                       </td>
                     </tr>
                   </tfoot>
