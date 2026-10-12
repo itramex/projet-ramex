@@ -392,3 +392,73 @@ export interface FicheCollectePayload {
   agent_re: string;
   bons_collecte?: number[];
 }
+
+/** ---------- M-15 : Formations & Certifications ---------- */
+
+/** Catalogue des types de formations — GET /types-formations/ (TypeFormation) */
+export interface TypeFormation {
+  id: number;
+  nom: string;
+  description?: string;
+  duree_jours?: number;
+  actif?: boolean;
+}
+
+/** Statut d'une formation suivie (FormationListSerializer) */
+export interface Formation {
+  id: number;
+  producteur: number;
+  producteur_nom?: string | null;
+  producteur_code?: string | null;
+  type_formation: number;
+  type_formation_nom?: string;
+  date_formation: string;
+  lieu?: string;
+  organisme?: string;
+  certificat_obtenu?: boolean;
+  /** Présent dans le détail (FormationSerializer) */
+  notes?: string;
+  date_enregistrement?: string;
+}
+
+/** Payload POST/PUT /formations/ — champs requis : producteur, type_formation, date_formation */
+export interface FormationPayload {
+  producteur: number;
+  type_formation: number;
+  date_formation: string;
+  lieu?: string;
+  organisme?: string;
+  certificat_obtenu?: boolean;
+  notes?: string;
+}
+
+/** Statuts de certification — Certification.STATUT_CHOICES */
+export type StatutCertification = 'valide' | 'expire' | 'en_cours' | 'suspendu';
+
+export const STATUTS_CERTIFICATION = [
+  { value: 'valide', label: 'Valide' },
+  { value: 'expire', label: 'Expiré' },
+  { value: 'en_cours', label: "En cours d'obtention" },
+  { value: 'suspendu', label: 'Suspendu' },
+] as const;
+
+/** Certification obtenue (CertificationListSerializer — lecture seule sur mobile) */
+export interface Certification {
+  id: number;
+  producteur?: number | null;
+  producteur_nom?: string | null;
+  producteur_code?: string | null;
+  cooperative?: number | null;
+  cooperative_nom?: string | null;
+  type_certification: number;
+  type_certification_nom?: string;
+  type_certification_code?: string;
+  numero_certificat?: string;
+  date_obtention: string;
+  date_expiration: string;
+  statut: StatutCertification;
+  statut_display?: string;
+  est_valide?: boolean;
+  niveau_certification_display?: string;
+  entite_label?: string;
+}

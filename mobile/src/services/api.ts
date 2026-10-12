@@ -17,6 +17,10 @@ import {
   DotationsResponse,
   FicheCollecte,
   FicheCollectePayload,
+  Formation,
+  FormationPayload,
+  Certification,
+  TypeFormation,
   MenagePayload,
   Paginated,
   Producteur,
@@ -308,6 +312,38 @@ export const ficheCollecteService = {
   update: (id: number | string, data: FicheCollectePayload) =>
     api.put<FicheCollecte>(`/tracabilite/fiches-collecte/${id}/`, data),
   remove: (id: number | string) => api.delete(`/tracabilite/fiches-collecte/${id}/`),
+};
+
+/** M-15 — Formations suivies par les producteurs + catalogue de types */
+export const formationService = {
+  /** Catalogue des types de formations actifs (référentiel pour le formulaire) */
+  typesFormations: () =>
+    api.get<Paginated<TypeFormation> | TypeFormation[]>('/formations/types-formations/'),
+  /**
+   * Formations d'un producteur.
+   * M-23 — `updatedSince` optionnel : ne renvoie que les formations modifiées depuis.
+   */
+  listByProducteur: (producteurId: number | string, updatedSince?: string) =>
+    api.get<Paginated<Formation> | Formation[]>('/formations/formations/', {
+      params: { producteur: producteurId, updated_since: updatedSince },
+    }),
+  detail: (id: number | string) => api.get<Formation>(`/formations/formations/${id}/`),
+  create: (data: FormationPayload) => api.post<Formation>('/formations/formations/', data),
+  update: (id: number | string, data: FormationPayload) =>
+    api.put<Formation>(`/formations/formations/${id}/`, data),
+  remove: (id: number | string) => api.delete(`/formations/formations/${id}/`),
+};
+
+/** M-15 — Certifications obtenues (producteurs & coopératives) — lecture seule */
+export const certificationService = {
+  /**
+   * Certifications d'un producteur (lecture seule).
+   * M-23 — `updatedSince` optionnel : ne renvoie que les certifications modifiées depuis.
+   */
+  listByProducteur: (producteurId: number | string, updatedSince?: string) =>
+    api.get<Paginated<Certification> | Certification[]>('/formations/certifications/', {
+      params: { producteur: producteurId, updated_since: updatedSince },
+    }),
 };
 
 export default api;
