@@ -1,9 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
 import { dashboardService } from '../../services/api';
 import SearchableSelect from '../common/SearchableSelect';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
 import Card from '../common/Card';
+
+// Enregistrer les composants Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 function Menage() {
   const [data, setData] = useState(null);
@@ -15,6 +39,8 @@ function Menage() {
   const [selectedCommunes, setSelectedCommunes] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState([]);
+  const [evolution, setEvolution] = useState(null);
+  const [evolutionLoading, setEvolutionLoading] = useState(false);
 
   const loadFilters = async () => {
     try {
@@ -69,6 +95,8 @@ function Menage() {
     }
   }, [selectedVillages, selectedCommunes, selectedYear]);
 
+  // Ã‰volution multi-annÃ©es du taux de scolarisation (mÃªmes filtres gÃ©o)
+
   // Effets déclarés APRÈS les fonctions (sinon TDZ « Cannot access 'loadData'
   // before initialization » → page blanche)
   useEffect(() => {
@@ -79,6 +107,22 @@ function Menage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const loadEvolution = useCallback(async () => {
+    setEvolutionLoading(true);
+    try {
+      const evoParams = {};
+      if (selectedVillages.length > 0) evoParams.village = selectedVillages;
+      if (selectedCommunes.length > 0) evoParams.commune = selectedCommunes;
+      const response = await dashboardService.getScolarisationEvolution(evoParams);
+      setEvolution(response.data);
+    } catch (error) {
+      console.error('Erreur Ã©volution scolarisation:', error);
+      setEvolution(null);
+    } finally {
+      setEvolutionLoading(false);
+    }
+  }, [selectedVillages, selectedCommunes]);
 
   const handleResetFilters = () => {
     setSelectedVillages([]);
