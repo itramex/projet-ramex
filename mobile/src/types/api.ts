@@ -462,3 +462,66 @@ export interface Certification {
   niveau_certification_display?: string;
   entite_label?: string;
 }
+
+/** ---------- M-16 : Historique / Évolution annuelle ---------- */
+
+/** Historique de production par parcelle et année — GET /history/production-history/ */
+export interface ProductionHistory {
+  id: number;
+  parcelle: number;
+  parcelle_info?: {
+    id: number;
+    code_parcelle: string;
+    dimension_ha?: string;
+    producteur: number;
+    producteur_code?: string;
+    producteur_nom?: string;
+  };
+  annee: number;
+  culture: string;
+  quantite_kg: string | number;
+  prix_vente_kg?: string | number | null;
+  revenu_total?: string | number | null;
+  revenu_calcule?: number | null;
+  variation_annee_precedente?: {
+    annee_precedente: number;
+    quantite_precedente: number;
+    variation_pct: number;
+  } | null;
+  date_enregistrement?: string;
+  notes?: string;
+}
+
+/** Historique AGR par producteur et année — GET /history/agr-history/by_producteur/ */
+export interface AGRHistoryItem {
+  id: number;
+  producteur: number;
+  producteur_info?: { id: number; code?: string; nom_complet?: string; village?: string };
+  annee: number;
+  type_agr: string;
+  type_agr_display?: string;
+  ordre: number;
+  quantite_produite?: string | number | null;
+  quantite_vendue?: string | number | null;
+  quantite_consommee?: string | number | null;
+  prix_vente_unitaire?: string | number | null;
+  revenu_annuel?: string | number | null;
+  revenu_calcule?: number | null;
+  notes?: string;
+}
+
+/** Historique d'indicateurs sociaux — GET /history/social-indicator-history/by_producteur/ */
+export interface SocialHistoryItem {
+  id: number;
+  producteur: number;
+  producteur_info?: { id: number; code?: string; nom_complet?: string; village?: string };
+  annee: number;
+  type_indicateur: string;
+  type_indicateur_display?: string;
+  valeur_numerique?: string | number | null;
+  valeur_texte?: string | null;
+  valeur_booleen?: boolean | null;
+  valeur?: { type: string; valeur: unknown } | null;
+  notes?: string;
+}
+
