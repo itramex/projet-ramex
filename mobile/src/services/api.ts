@@ -8,6 +8,7 @@ import { offlineStore } from './offlineStore';
 import {
   AGR,
   AGRPayload,
+  AGRHistoryItem,
   BonCollecte,
   BonCollectePayload,
   Campagne,
@@ -25,7 +26,9 @@ import {
   Paginated,
   Producteur,
   ProducteurPayload,
+  ProductionHistory,
   ResilienceInfo,
+  SocialHistoryItem,
 } from '../types/api';
 
 /**
@@ -343,6 +346,29 @@ export const certificationService = {
   listByProducteur: (producteurId: number | string, updatedSince?: string) =>
     api.get<Paginated<Certification> | Certification[]>('/formations/certifications/', {
       params: { producteur: producteurId, updated_since: updatedSince },
+    }),
+};
+
+/** M-16 — Historique / Évolution annuelle (production, AGR, social) */
+export const historyService = {
+  /**
+   * Historique de production d'un producteur (via ses parcelles).
+   * Le backend filtre avec `parcelle__producteur` — réponse paginée DRF.
+   */
+  productionsByProducteur: (producteurId: number | string) =>
+    api.get<Paginated<ProductionHistory> | ProductionHistory[]>(
+      '/history/production-history/',
+      { params: { parcelle__producteur: producteurId, page_size: 100 } }
+    ),
+  /** Revenus AGR historiques — réponse en tableau brut (action by_producteur) */
+  agrByProducteur: (producteurId: number | string) =>
+    api.get<AGRHistoryItem[]>('/history/agr-history/by_producteur/', {
+      params: { producteur_id: producteurId },
+    }),
+  /** Indicateurs sociaux historiques — réponse en tableau brut (action by_producteur) */
+  socialByProducteur: (producteurId: number | string) =>
+    api.get<SocialHistoryItem[]>('/history/social-indicator-history/by_producteur/', {
+      params: { producteur_id: producteurId },
     }),
 };
 
