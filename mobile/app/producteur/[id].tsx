@@ -183,6 +183,12 @@ export default function ProducteurDetail() {
             >
               <Text style={styles.menageText}>Formations</Text>
             </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.menageButton, pressed && styles.menagePressed]}
+              onPress={() => router.push({ pathname: '/producteur/evolution', params: { id: String(producteur.id) } })}
+            >
+              <Text style={styles.menageText}>Évolution</Text>
+            </Pressable>
           </View>
 
           <View style={styles.actionsCard}>
