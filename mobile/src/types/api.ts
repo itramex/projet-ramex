@@ -567,3 +567,45 @@ export interface DashboardProductionParCulture {
   filtres_actifs?: { villages?: string[]; communes?: string[]; agences?: string[] };
 }
 
+/** M-18 — Géographie : référentiel lecture seule (GET /geographie/*) */
+export interface DistrictGeo {
+  id: number;
+  nom: string;
+  code?: string;
+  region?: number;
+  region_nom?: string;
+  actif?: boolean;
+}
+
+export interface CommuneGeo {
+  id: number;
+  nom: string;
+  code?: string;
+  district?: number;
+  district_nom?: string;
+  actif?: boolean;
+}
+
+export interface VillageGeo {
+  id: number;
+  nom: string;
+  code?: string;
+  fokontany?: number;
+  fokontany_nom?: string;
+  actif?: boolean;
+}
+
+export interface AgenceGeo {
+  id: number;
+  nom: string;
+  code?: string;
+  district?: number | null;
+  district_nom?: string;
+  actif?: boolean;
+  adresse?: string;
+  telephone?: string;
+  email?: string;
+  nb_cooperatives?: number;
+  nb_utilisateurs?: number;
+}
+

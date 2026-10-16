@@ -31,6 +31,10 @@ import {
   SocialHistoryItem,
   DashboardGlobalResponse,
   DashboardProductionParCulture,
+  DistrictGeo,
+  CommuneGeo,
+  VillageGeo,
+  AgenceGeo,
 } from '../types/api';
 
 /**
@@ -385,6 +389,26 @@ export const dashboardService = {
   /** Production par culture — GET /dashboard/production-par-culture/ */
   productionParCulture: () =>
     api.get<DashboardProductionParCulture>('/dashboard/production-par-culture/'),
+};
+
+/** M-18 — Géographie : référentiel lecture seule (GET /geographie/*) */
+export const geographieService = {
+  districts: () =>
+    api.get<Paginated<DistrictGeo> | DistrictGeo[]>('/geographie/districts/', {
+      params: { page_size: 200 },
+    }),
+  communes: () =>
+    api.get<Paginated<CommuneGeo> | CommuneGeo[]>('/geographie/communes/', {
+      params: { page_size: 200 },
+    }),
+  villages: () =>
+    api.get<Paginated<VillageGeo> | VillageGeo[]>('/geographie/villages/', {
+      params: { page_size: 200 },
+    }),
+  agences: () =>
+    api.get<Paginated<AgenceGeo> | AgenceGeo[]>('/geographie/agences/', {
+      params: { page_size: 200 },
+    }),
 };
 
 export default api;
