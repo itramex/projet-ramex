@@ -164,6 +164,13 @@ export default function Accueil() {
         <Text style={styles.actionText}>Voir les coopératives</Text>
       </Pressable>
 
+      <Pressable
+        style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+        onPress={() => router.push('/geographie')}
+      >
+        <Text style={styles.actionText}>Consulter la géographie</Text>
+      </Pressable>
+
       <View style={styles.footerNote}>
         <Text style={styles.footerText}>
           Application connectée à l'API RAMEX. Les fonctionnalités hors-ligne (collecte
