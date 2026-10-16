@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
-import { producteurService } from '../../src/services/api';
+import { producteurService, dashboardService } from '../../src/services/api';
+import type { DashboardGlobalResponse, DashboardProductionParCulture } from '../../src/types/api';
 import { colors, spacing } from '../../src/constants/theme';
 
 interface Stats {
@@ -23,20 +24,28 @@ export default function Accueil() {
   const router = useRouter();
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [dash, setDash] = useState<DashboardGlobalResponse | null>(null);
+  const [prod, setProd] = useState<DashboardProductionParCulture | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const loadStats = useCallback(async () => {
     setLoading(true);
     setError('');
-    try {
-      const response = await producteurService.statistiques();
-      setStats(response.data as Stats);
-    } catch {
+    // Trois sources indépendantes : une panne d'une source n'empêche pas les autres.
+    const [statsRes, dashRes, prodRes] = await Promise.allSettled([
+      producteurService.statistiques(),
+      dashboardService.global(),
+      dashboardService.productionParCulture(),
+    ]);
+    if (statsRes.status === 'fulfilled') {
+      setStats(statsRes.value.data as Stats);
+    } else {
       setError('Statistiques indisponibles. Vérifiez votre connexion au serveur.');
-    } finally {
-      setLoading(false);
     }
+    if (dashRes.status === 'fulfilled') setDash(dashRes.value.data);
+    if (prodRes.status === 'fulfilled') setProd(prodRes.value.data);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -86,6 +95,60 @@ export default function Accueil() {
           ))}
         </View>
       )}
+
+      {dash?.impact_dotation ? (
+        <>
+          <Text style={styles.sectionTitle}>Impact dotations (kits)</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, { color: colors.success }]}>
+                {dash.impact_dotation.enfants_concernes_avec_kit}
+              </Text>
+              <Text style={styles.statLabel}>Enfants avec kit</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, { color: colors.danger }]}>
+                {dash.impact_dotation.enfants_concernes_sans_kit}
+              </Text>
+              <Text style={styles.statLabel}>Enfants sans kit</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
+                {dash.impact_dotation.taux_avec_kit.toFixed(1)} %
+              </Text>
+              <Text style={styles.statLabel}>Taux avec kit</Text>
+            </View>
+          </View>
+        </>
+      ) : null}
+
+      {prod ? (
+        <>
+          <Text style={styles.sectionTitle}>Production par culture</Text>
+          <View style={styles.totalCard}>
+            <Text style={styles.totalValue}>
+              {prod.total_production_kg.toLocaleString('fr-FR')} kg
+            </Text>
+            <Text style={styles.totalLabel}>
+              Production totale — {prod.nb_cultures_differentes} culture(s)
+            </Text>
+          </View>
+          {prod.productions_par_culture.map((c) => (
+            <View key={c.culture} style={styles.cultureRow}>
+              <View style={styles.cultureLeft}>
+                <Text style={styles.cultureName}>{c.culture}</Text>
+                <Text style={styles.cultureMeta}>
+                  {c.nb_parcelles} parcelles · {c.superficie_totale_ha.toFixed(1)} ha · moy.{' '}
+                  {c.production_moyenne_kg.toFixed(1)} kg
+                </Text>
+              </View>
+              <Text style={styles.cultureValue}>
+                {c.production_totale_kg.toLocaleString('fr-FR')} kg
+              </Text>
+            </View>
+          ))}
+        </>
+      ) : null}
 
       <Pressable
         style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
@@ -163,6 +226,29 @@ const styles = StyleSheet.create({
   },
   actionPressed: { opacity: 0.85 },
   actionText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+  totalCard: {
+    backgroundColor: colors.dark,
+    borderRadius: 14,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  totalValue: { color: colors.primary, fontSize: 22, fontWeight: '800' },
+  totalLabel: { color: colors.primary, fontSize: 12, marginTop: 2 },
+  cultureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  cultureLeft: { flex: 1, marginRight: spacing.sm },
+  cultureName: { fontSize: 15, fontWeight: '700', color: colors.text, textTransform: 'capitalize' },
+  cultureMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  cultureValue: { fontSize: 15, fontWeight: '800', color: colors.success },
   footerNote: { marginTop: spacing.xl },
   footerText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center' },
 });
