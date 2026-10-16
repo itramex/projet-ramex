@@ -29,6 +29,8 @@ import {
   ProductionHistory,
   ResilienceInfo,
   SocialHistoryItem,
+  DashboardGlobalResponse,
+  DashboardProductionParCulture,
 } from '../types/api';
 
 /**
@@ -370,6 +372,19 @@ export const historyService = {
     api.get<SocialHistoryItem[]>('/history/social-indicator-history/by_producteur/', {
       params: { producteur_id: producteurId },
     }),
+};
+
+/** M-17 — Dashboard mobile : chiffres clés + production par culture */
+export const dashboardService = {
+  /**
+   * Chiffres clés globaux — GET /dashboard/.
+   * Réponse volumineuse (demographics, geographic, ...) ; le mobile n'utilise
+   * que les sections `global` (producteurs) et `impact_dotation` (kits).
+   */
+  global: () => api.get<DashboardGlobalResponse>('/dashboard/'),
+  /** Production par culture — GET /dashboard/production-par-culture/ */
+  productionParCulture: () =>
+    api.get<DashboardProductionParCulture>('/dashboard/production-par-culture/'),
 };
 
 export default api;

@@ -525,3 +525,45 @@ export interface SocialHistoryItem {
   notes?: string;
 }
 
+/** M-17 — Dashboard : chiffres clés globaux — GET /dashboard/ (section `global`) */
+export interface DashboardGlobal {
+  total: number;
+  total_filtres?: number;
+  actifs: number;
+  actifs_filtres?: number;
+  inactifs: number;
+  inactifs_filtres?: number;
+  taux_actifs: number;
+  taux_actifs_filtres?: number;
+}
+
+/** M-17 — Dashboard : impact dotations (section `impact_dotation`) */
+export interface ImpactDotation {
+  taux_avec_kit: number;
+  taux_sans_kit: number;
+  enfants_concernes_avec_kit: number;
+  enfants_concernes_sans_kit: number;
+}
+
+/** M-17 — Réponse complète GET /dashboard/ (sections partielles utilisées par le mobile) */
+export interface DashboardGlobalResponse {
+  impact_dotation: ImpactDotation;
+  global: DashboardGlobal;
+}
+
+/** M-17 — Production par culture — GET /dashboard/production-par-culture/ */
+export interface ProductionCultureItem {
+  culture: string;
+  production_totale_kg: number;
+  nb_parcelles: number;
+  superficie_totale_ha: number;
+  production_moyenne_kg: number;
+}
+
+export interface DashboardProductionParCulture {
+  productions_par_culture: ProductionCultureItem[];
+  total_production_kg: number;
+  nb_cultures_differentes: number;
+  filtres_actifs?: { villages?: string[]; communes?: string[]; agences?: string[] };
+}
+
