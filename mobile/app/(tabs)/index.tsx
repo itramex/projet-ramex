@@ -194,8 +194,9 @@ export default function Accueil() {
 
       <View style={styles.footerNote}>
         <Text style={styles.footerText}>
-          Application connectée à l'API RAMEX. Les fonctionnalités hors-ligne (collecte
-          terrain + synchronisation) arrivent dans une prochaine version.
+          Application connectée à l'API RAMEX. Mode terrain disponible : les saisies hors ligne
+          (FABC, FC) sont conservées sur l'appareil puis envoyées au retour du réseau — voir
+          « Synchronisation » dans l'onglet Terrain.
         </Text>
       </View>
     </ScrollView>

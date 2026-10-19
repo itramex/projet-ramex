@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -252,6 +253,16 @@ export default function FicheCollecteForm() {
       else await ficheCollecteService.create(payload);
       router.back();
     } catch (err) {
+      // M-23b — hors ligne : la saisie est en file locale = succès côté terrain.
+      if ((err as { offlineQueued?: boolean }).offlineQueued) {
+        Alert.alert(
+          'Enregistré hors ligne',
+          "La fiche de collecte est conservée sur l'appareil et sera envoyée automatiquement au retour du réseau (écran Synchronisation).",
+          [{ text: 'OK' }]
+        );
+        router.back();
+        return;
+      }
       const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
       if (data && typeof data === 'object') {
         const mapped: Record<string, string> = {};
