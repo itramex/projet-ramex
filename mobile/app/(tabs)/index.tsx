@@ -171,6 +171,13 @@ export default function Accueil() {
         <Text style={styles.actionText}>Consulter la géographie</Text>
       </Pressable>
 
+      <Pressable
+        style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+        onPress={() => router.push('/calendrier')}
+      >
+        <Text style={styles.actionText}>Calendrier agricole</Text>
+      </Pressable>
+
       <View style={styles.footerNote}>
         <Text style={styles.footerText}>
           Application connectée à l'API RAMEX. Les fonctionnalités hors-ligne (collecte
