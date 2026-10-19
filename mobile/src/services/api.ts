@@ -5,6 +5,7 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { tokenStore } from './tokenStore';
 import { offlineStore } from './offlineStore';
+import { syncStatus } from './syncStatus';
 import {
   AGR,
   AGRPayload,
@@ -105,6 +106,9 @@ let flushPromise: Promise<void> | null = null;
 let bootstrapped = false; // premier 2xx de la session → purge la file héritée
 let queueDirty = false; // une mutation a été enfilee depuis cette session
 
+// M-23b — état initial du badge « en attente » (best-effort, à chaud ou à froid).
+void offlineStore.queueCount().then((n) => syncStatus.setPending(n));
+
 /**
  * M-23 — rejoue la file d'écriture (FIFO). Stoppe au premier échec :
  * la mutation reste en file et sera retentée au prochain succès réseau.
@@ -127,6 +131,7 @@ export async function flushSyncQueue(): Promise<void> {
             _fromQueue: true,
           } as QueuedConfig);
           await offlineStore.queueRemove(item.id);
+          void offlineStore.queueCount().then((n) => syncStatus.setPending(n));
         } catch {
           break; // réseau KO ou erreur serveur : réessai au prochain 2xx
         }
@@ -143,6 +148,9 @@ api.interceptors.response.use(
     // ---- M-23 offline : alimente le cache + horodate l'endpoint ----
     const method = (response.config.method ?? 'get').toLowerCase();
     if (response.status >= 200 && response.status < 300) {
+      // M-23b : 2xx réel (les réponses servies du cache ne passent pas ici)
+      // = preuve de connexion au serveur.
+      syncStatus.markOnline();
       if (method === 'get' && response.status === 200) {
         const path = (response.config.url ?? '').split('?')[0];
         void offlineStore.cacheSet(cacheKeyFor(response.config), response.data);
@@ -163,6 +171,7 @@ api.interceptors.response.use(
     // ---- M-23 offline : pas de réponse serveur = réseau KO ----
     const offlineConfig = error.config as QueuedConfig | undefined;
     if (offlineConfig && !error.response) {
+      syncStatus.markOffline();
       const method = (offlineConfig.method ?? 'get').toLowerCase();
       if (method === 'get') {
         // GET hors réseau : sert le cache local (donnée périmée acceptée).
@@ -180,6 +189,7 @@ api.interceptors.response.use(
         // Mutation hors réseau : enfile et informe explicitement l'utilisateur.
         await offlineStore.queueEnqueue(method, offlineConfig.url ?? '', offlineConfig.data);
         queueDirty = true;
+        void offlineStore.queueCount().then((n) => syncStatus.setPending(n));
         const queuedError = new Error(
           "Hors ligne : opération enregistrée sur l'appareil, envoi automatique au retour du réseau.",
         ) as Error & { offlineQueued?: boolean };
