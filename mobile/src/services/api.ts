@@ -42,6 +42,9 @@ import {
   ActiviteDDPayload,
   PartenaireDD,
   PartenaireDDPayload,
+  Recommendation,
+  RecommendationStats,
+  StatutRecommendation,
 } from '../types/api';
 
 /**
@@ -447,6 +450,15 @@ export const ddService = {
     }),
   createPartenaire: (data: PartenaireDDPayload) =>
     api.post<PartenaireDD>('/developpement-durable/partenaires/', data),
+};
+
+/** M-21 — Recommandations agricoles (montées racine : GET /recommendations/) */
+export const recommendationService = {
+  list: (params: { statut?: StatutRecommendation; search?: string } = {}) =>
+    api.get<Paginated<Recommendation> | Recommendation[]>('/recommendations/', {
+      params: { page_size: 100, ...params },
+    }),
+  stats: () => api.get<RecommendationStats>('/recommendations/statistics/'),
 };
 
 export default api;

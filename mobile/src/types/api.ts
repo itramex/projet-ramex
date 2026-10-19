@@ -802,3 +802,46 @@ export interface ActiviteDDPayload {
   notes?: string;
 }
 
+/** M-21 — Recommandations agricoles IA (lecture seule) */
+export type StatutRecommendation = 'pending' | 'executed' | 'rejected';
+
+export const STATUTS_RECOMMANDATION: Array<{ value: StatutRecommendation; label: string }> = [
+  { value: 'pending', label: 'En attente' },
+  { value: 'executed', label: 'Exécutée' },
+  { value: 'rejected', label: 'Rejetée' },
+];
+
+export interface ProducteurBasique {
+  id: number;
+  code?: string;
+  nom?: string;
+  prenom?: string | null;
+  nom_complet?: string;
+}
+
+export interface Recommendation {
+  id: number;
+  producteur: number;
+  producteur_info?: ProducteurBasique | null;
+  type_activite: string;
+  description: string;
+  score_pertinence: number;
+  score_display?: number;
+  explication?: string;
+  date_generation?: string;
+  statut: StatutRecommendation;
+  status_display?: string;
+  date_execution?: string | null;
+  sources?: unknown[];
+}
+
+export interface RecommendationStats {
+  total_recommendations: number;
+  pending_count: number;
+  executed_count: number;
+  rejected_count: number;
+  avg_score: number;
+  top_activities?: Array<Record<string, unknown>>;
+  recent_recommendations?: Recommendation[];
+}
+
