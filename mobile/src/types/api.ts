@@ -714,3 +714,91 @@ export interface RapportCampagne {
   indicateurs: IndicateurCampagne[];
 }
 
+/** M-20 — Développement durable : choix du modèle (parité backend) */
+export const TYPES_PARTENAIRE_DD = [
+  { value: 'autorite_locale', label: 'Autorité locale' },
+  { value: 'ong', label: 'ONG' },
+  { value: 'partenaire_technique', label: 'Partenaire technique' },
+] as const;
+export type TypePartenaireDD = (typeof TYPES_PARTENAIRE_DD)[number]['value'];
+
+export const TYPES_ACTIVITE_DD = [
+  { value: 'reboisement', label: 'Reboisement' },
+  { value: 'convention_partenariat', label: 'Convention de partenariat' },
+  { value: 'pepiniere', label: 'Production de jeunes plants / pépinière' },
+  { value: 'sensibilisation', label: 'Séance de sensibilisation' },
+  { value: 'formation', label: 'Formation' },
+  { value: 'audit_interne', label: 'Audit interne' },
+  { value: 'audit_externe', label: 'Audit externe' },
+] as const;
+export type TypeActiviteDD = (typeof TYPES_ACTIVITE_DD)[number]['value'];
+
+export const OBJECTIFS_CLIENT_DD = [
+  { value: 'resilience', label: 'Résilience des producteurs' },
+  { value: 'autonomisation_femmes', label: 'Autonomisation des femmes' },
+  { value: 'droits_humains', label: 'Droits humains (lutte contre le travail des enfants)' },
+  { value: 'biodiversite', label: 'Préservation de la biodiversité' },
+  { value: 'environnement', label: "Protection de l'environnement" },
+  { value: 'autre', label: 'Autre' },
+] as const;
+export type ObjectifClientDD = (typeof OBJECTIFS_CLIENT_DD)[number]['value'];
+
+/** Partenaire DD (GET/POST /developpement-durable/partenaires/) */
+export interface PartenaireDD {
+  id: number;
+  nom: string;
+  type: TypePartenaireDD;
+  type_display?: string;
+  contact?: string;
+  telephone?: string;
+  email?: string;
+  adresse?: string;
+  description?: string;
+  actif?: boolean;
+}
+
+export interface PartenaireDDPayload {
+  nom: string;
+  type: TypePartenaireDD;
+  contact?: string;
+  telephone?: string;
+  email?: string;
+  adresse?: string;
+  description?: string;
+  actif?: boolean;
+}
+
+/** Activité DD (GET/POST /developpement-durable/activites/) */
+export interface ActiviteDD {
+  id: number;
+  type_activite: TypeActiviteDD;
+  type_activite_display?: string;
+  date: string;
+  cooperative?: number | null;
+  cooperative_nom?: string | null;
+  producteur?: number | null;
+  producteur_nom?: string | null;
+  partenaire?: number | null;
+  partenaire_nom?: string | null;
+  objectif_client: ObjectifClientDD;
+  objectif_client_display?: string;
+  description: string;
+  resultat?: string;
+  nombre_participants?: number;
+  notes?: string;
+  responsable?: number | null;
+  responsable_nom?: string | null;
+}
+
+export interface ActiviteDDPayload {
+  type_activite: TypeActiviteDD;
+  date: string;
+  cooperative?: number | null;
+  partenaire?: number | null;
+  objectif_client: ObjectifClientDD;
+  description: string;
+  resultat?: string;
+  nombre_participants?: number;
+  notes?: string;
+}
+

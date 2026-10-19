@@ -38,6 +38,10 @@ import {
   PhaseAgricole,
   CalendrierResponse,
   RapportCampagne,
+  ActiviteDD,
+  ActiviteDDPayload,
+  PartenaireDD,
+  PartenaireDDPayload,
 } from '../types/api';
 
 /**
@@ -426,6 +430,23 @@ export const cycleService = {
     }),
   rapport: (campagne: number) =>
     api.get<RapportCampagne>('/cycle-annuel/rapports/', { params: { campagne } }),
+};
+
+/** M-20 — Développement durable : activités + partenaires (permission CanManageCertificationDD) */
+export const ddService = {
+  activites: (params: { search?: string; type_activite?: string } = {}) =>
+    api.get<Paginated<ActiviteDD> | ActiviteDD[]>('/developpement-durable/activites/', {
+      params: { page_size: 100, ...params },
+    }),
+  createActivite: (data: ActiviteDDPayload) =>
+    api.post<ActiviteDD>('/developpement-durable/activites/', data),
+  removeActivite: (id: number) => api.delete(`/developpement-durable/activites/${id}/`),
+  partenaires: () =>
+    api.get<Paginated<PartenaireDD> | PartenaireDD[]>('/developpement-durable/partenaires/', {
+      params: { page_size: 100 },
+    }),
+  createPartenaire: (data: PartenaireDDPayload) =>
+    api.post<PartenaireDD>('/developpement-durable/partenaires/', data),
 };
 
 export default api;
