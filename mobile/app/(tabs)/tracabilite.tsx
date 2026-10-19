@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { colors, spacing } from '../../src/constants/theme';
+import { connectivityLabel, syncStatus, SyncSnapshot } from '../../src/services/syncStatus';
 
 interface HubItem {
-  route: '/tracabilite/bons-collecte' | '/tracabilite/fiches-collecte';
+  route: '/tracabilite/bons-collecte' | '/tracabilite/fiches-collecte' | '/sync';
   emoji: string;
   title: string;
   subtitle: string;
@@ -23,10 +24,22 @@ const ITEMS: HubItem[] = [
     title: 'Fiches de collecte (FC)',
     subtitle: "Regrouper les FABC d'un marché : totaux et producteurs.",
   },
+  {
+    route: '/sync',
+    emoji: '🔄',
+    title: 'Synchronisation',
+    subtitle: "État hors-ligne, file d'envoi en attente, dernier envoi serveur.",
+  },
 ];
 
 export default function TracabiliteHub() {
   const router = useRouter();
+  const [snap, setSnap] = useState<SyncSnapshot>(syncStatus.get());
+
+  // Badge en temps réel (mis à jour par les interceptors de api.ts).
+  useEffect(() => syncStatus.subscribe(setSnap), []);
+
+  const online = snap.connectivity === 'online';
 
   return (
     <>
@@ -36,6 +49,26 @@ export default function TracabiliteHub() {
           Saisie terrain de la traçabilité : enregistrez les bons de collecte (FABC) puis
           regroupez-les dans les fiches de collecte (FC) du marché.
         </Text>
+
+        <View style={styles.badge}>
+          <View
+            style={[
+              styles.badgeDot,
+              {
+                backgroundColor:
+                  snap.connectivity === 'unknown'
+                    ? colors.textSecondary
+                    : online
+                      ? colors.success
+                      : colors.danger,
+              },
+            ]}
+          />
+          <Text style={styles.badgeText}>
+            {connectivityLabel(snap.connectivity)}
+            {snap.pending > 0 ? ` · ${snap.pending} en attente` : ''}
+          </Text>
+        </View>
 
         {ITEMS.map((item) => (
           <Pressable
@@ -60,6 +93,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md },
   intro: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  badgeDot: { width: 8, height: 8, borderRadius: 4 },
+  badgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
