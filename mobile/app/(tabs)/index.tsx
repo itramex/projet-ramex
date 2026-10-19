@@ -185,6 +185,13 @@ export default function Accueil() {
         <Text style={styles.actionText}>Développement durable</Text>
       </Pressable>
 
+      <Pressable
+        style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+        onPress={() => router.push('/recommandations')}
+      >
+        <Text style={styles.actionText}>Recommandations agricoles</Text>
+      </Pressable>
+
       <View style={styles.footerNote}>
         <Text style={styles.footerText}>
           Application connectée à l'API RAMEX. Les fonctionnalités hors-ligne (collecte
