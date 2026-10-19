@@ -35,6 +35,9 @@ import {
   CommuneGeo,
   VillageGeo,
   AgenceGeo,
+  PhaseAgricole,
+  CalendrierResponse,
+  RapportCampagne,
 } from '../types/api';
 
 /**
@@ -409,6 +412,20 @@ export const geographieService = {
     api.get<Paginated<AgenceGeo> | AgenceGeo[]>('/geographie/agences/', {
       params: { page_size: 200 },
     }),
+};
+
+/** M-19 — Cycle annuel : calendrier, phases agricoles, rapport de campagne (lecture seule) */
+export const cycleService = {
+  calendrier: (pilier?: string) =>
+    api.get<CalendrierResponse>('/cycle-annuel/phases-agricoles/calendrier/', {
+      params: pilier ? { pilier } : {},
+    }),
+  phases: (params: { search?: string; pilier?: string } = {}) =>
+    api.get<Paginated<PhaseAgricole> | PhaseAgricole[]>('/cycle-annuel/phases-agricoles/', {
+      params: { page_size: 100, ...params },
+    }),
+  rapport: (campagne: number) =>
+    api.get<RapportCampagne>('/cycle-annuel/rapports/', { params: { campagne } }),
 };
 
 export default api;

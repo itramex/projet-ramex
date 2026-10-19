@@ -609,3 +609,108 @@ export interface AgenceGeo {
   nb_utilisateurs?: number;
 }
 
+/** M-19 — Cycle annuel : référentiel des phases du calendrier agricole */
+export type PhasePilier = 'tracabilite' | 'certification' | 'developpement_durable';
+
+export interface PhaseAgricole {
+  id: number;
+  code: string;
+  nom: string;
+  pilier: PhasePilier;
+  pilier_display?: string;
+  type_phase: string;
+  type_phase_display?: string;
+  mois_debut: number;
+  mois_fin: number;
+  cycle_croise?: boolean;
+  toute_annee?: boolean;
+  couleur: string;
+  ordre?: number;
+  description?: string;
+  actif?: boolean;
+  mois_actifs?: number[];
+}
+
+/** Phase d'un mois du calendrier (GET /cycle-annuel/phases-agricoles/calendrier/) */
+export interface PhaseCalendrierItem {
+  id: number;
+  code: string;
+  nom: string;
+  pilier: PhasePilier;
+  type_phase: string;
+  couleur: string;
+  toute_annee?: boolean;
+}
+
+export interface CalendrierMois {
+  numero: number;
+  nom: string;
+  phases: PhaseCalendrierItem[];
+}
+
+export interface CalendrierResponse {
+  mois: CalendrierMois[];
+  par_pilier: { tracabilite: number; certification: number; developpement_durable: number };
+  total: number;
+}
+
+/** Phase planifiée sur une campagne (serializer PhaseCampagne) */
+export interface PhaseCampagne {
+  id: number;
+  campagne?: number;
+  campagne_code?: string;
+  phase?: number;
+  phase_nom?: string;
+  phase_pilier?: PhasePilier;
+  phase_couleur?: string;
+  date_debut?: string;
+  date_fin?: string;
+  statut?: string;
+  statut_display?: string;
+  objectif?: number | null;
+  realise?: number | null;
+  taux_realisation?: number;
+  responsable?: string;
+  observations?: string;
+}
+
+/** Indicateur de campagne (serializer IndicateurCampagne) */
+export interface IndicateurCampagne {
+  id: number;
+  campagne?: number;
+  campagne_code?: string;
+  libelle: string;
+  type?: string;
+  type_display?: string;
+  objectif?: number | null;
+  realise?: number | null;
+  taux_realisation?: number;
+  pilier?: PhasePilier;
+  pilier_display?: string;
+}
+
+/** Rapport consolidé d'une campagne (GET /cycle-annuel/rapports/?campagne=) */
+export interface RapportCampagne {
+  campagne: {
+    id: number;
+    code: string;
+    annee_debut?: number;
+    annee_fin?: number;
+    type?: string | null;
+    statut?: string;
+  };
+  tracabilite: {
+    bons_collecte: number;
+    poids_total_kg: number;
+    montant_total_ar: number;
+    estimation_kg: number;
+    commandes_export: number;
+    poids_export_kg: number;
+    valeur_export_usd: number;
+  };
+  certification: { cible_objectif: number; realise_objectif: number };
+  developpement_durable: { cible_objectif: number; realise_objectif: number };
+  phases: { planifiees: number; en_cours: number; terminees: number; liste: PhaseCampagne[] };
+  indicateurs: IndicateurCampagne[];
+}
+
