@@ -1,7 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
+
+from .permissions import IsAdmin
 from django.contrib.auth.models import User
 from django.db.models import Q, Count
 from django.utils import timezone
@@ -36,9 +38,24 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserDetailSerializer
     
     def get_permissions(self):
-        """Seuls les admins peuvent créer, modifier ou supprimer des utilisateurs"""
-        if self.action in ['create', 'update', 'partial_update', 'destroy', 'reset_password', 'toggle_active']:
-            return [IsAdminUser()]
+        """
+        S3/S4 (audit sécurité) :
+        - écriture (create/update/destroy/reset_password/toggle_active) → admin ;
+        - liste des utilisateurs → admin (plus d'annuaire pour les non-admins) ;
+        - détail → admin, ou l'utilisateur lui-même (consultation de son profil).
+        """
+        admin_only = ['create', 'update', 'partial_update', 'destroy',
+                      'reset_password', 'toggle_active', 'list']
+        if self.action in admin_only:
+            return [IsAdmin()]
+        if self.action == 'retrieve':
+            try:
+                is_self = int(self.kwargs.get('pk', 0)) == self.request.user.id
+            except (TypeError, ValueError):
+                is_self = False
+            if is_self:
+                return [IsAuthenticated()]
+            return [IsAdmin()]
         return [IsAuthenticated()]
     
     def get_queryset(self):
@@ -123,7 +140,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
     def reset_password(self, request, pk=None):
         """Réinitialiser le mot de passe d'un utilisateur (admin uniquement)"""
         user = self.get_object()
@@ -139,7 +156,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
     def toggle_active(self, request, pk=None):
         """Activer/Désactiver un utilisateur"""
         user = self.get_object()
@@ -170,7 +187,9 @@ class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet pour consulter les journaux d'activité"""
     queryset = ActivityLog.objects.all().select_related('user')
     serializer_class = ActivityLogSerializer
-    permission_classes = [IsAuthenticated]
+    # S3 (audit sécurité) — journal d'activité réservé aux admins : les
+    # utilisateurs non-admins ne doivent pas voir « qui a fait quoi ».
+    permission_classes = [IsAdmin]
     
     def get_queryset(self):
         """Filtrage des logs"""
