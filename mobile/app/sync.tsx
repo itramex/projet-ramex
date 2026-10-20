@@ -89,11 +89,16 @@ export default function SyncScreen() {
     if (queue.length === 0) return;
     setFlushing(true);
     try {
-      await flushSyncQueue();
+      const res = await flushSyncQueue();
       const rest = await offlineStore.queueList();
       setQueue(rest);
       syncStatus.setPending(rest.length);
-      if (rest.length === 0) {
+      if (res.failed > 0) {
+        Alert.alert(
+          'Synchronisation avec rejets',
+          `${res.sent} envoyée(s) ; ${res.failed} rejetée(s) par le serveur (retirée(s) de la file — à ressaisir si nécessaire) ; ${res.remaining} reste(nt) en attente.`
+        );
+      } else if (rest.length === 0) {
         Alert.alert('Synchronisation', 'Toutes les opérations en attente ont été envoyées.');
       } else {
         Alert.alert(
