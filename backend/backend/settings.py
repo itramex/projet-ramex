@@ -188,6 +188,13 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # S1 (audit sécurité) — limitation de débit sur l'authentification :
+    # le throttling n'est activé que sur les vues qui déclarent un
+    # `throttle_scope` (login / refresh), le reste de l'API reste inchangé.
+    'DEFAULT_THROTTLE_RATES': {
+        'login': config('LOGIN_THROTTLE_RATE', default='10/min'),
+        'login_refresh': config('LOGIN_REFRESH_THROTTLE_RATE', default='30/min'),
+    },
 }
 
 # ============================================

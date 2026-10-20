@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenRefreshView
 from api.serializers import CustomTokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -18,6 +19,10 @@ from drf_spectacular.views import (
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    # S1 (audit sécurité) — anti force brute : 10 tentatives/min par IP
+    # (configurable via LOGIN_THROTTLE_RATE).
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
     
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -49,10 +54,16 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         return response
 
 
+class LoginRefreshThrottledView(TokenRefreshView):
+    """S1 (audit sécurité) — rafraîchissement limité à 30/min par IP."""
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login_refresh'
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/refresh/', LoginRefreshThrottledView.as_view(), name='token_refresh'),
     path('api/token/blacklist/', blacklist_token, name='token_blacklist'),
     path('api/dashboard/decisionnel/export/', dashboard_decisionnel_export, name='root_dashboard_decisionnel_export'),
     path('api/', include('api.urls')),
