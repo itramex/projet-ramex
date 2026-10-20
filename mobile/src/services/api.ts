@@ -102,7 +102,17 @@ function cacheKeyFor(config: InternalAxiosRequestConfig): string {
 
 type QueuedConfig = InternalAxiosRequestConfig & { _fromQueue?: boolean };
 
-let flushPromise: Promise<void> | null = null;
+/** M-23b — résultat d'un purge de la file d'écriture. */
+export interface FlushResult {
+  /** Mutations envoyées avec succès. */
+  sent: number;
+  /** Mutations rejetées définitivement par le serveur (4xx) puis retirées de la file. */
+  failed: number;
+  /** Mutations toujours en attente (réseau/5xx/session). */
+  remaining: number;
+}
+
+let flushPromise: Promise<FlushResult> | null = null;
 let bootstrapped = false; // premier 2xx de la session → purge la file héritée
 let queueDirty = false; // une mutation a été enfilee depuis cette session
 
@@ -110,18 +120,26 @@ let queueDirty = false; // une mutation a été enfilee depuis cette session
 void offlineStore.queueCount().then((n) => syncStatus.setPending(n));
 
 /**
- * M-23 — rejoue la file d'écriture (FIFO). Stoppe au premier échec :
- * la mutation reste en file et sera retentée au prochain succès réseau.
+ * M-23 — rejoue la file d'écriture (FIFO).
+ * - Réseau KO / 5xx / 401-403 : stoppe au premier échec, la mutation reste en
+ *   file et sera retentée au prochain 2xx.
+ * - 4xx définitif (400/404/422… payload refusé tel quel) : la mutation est
+ *   **retirée** de la file et comptabilisée en échec — sinon elle bloquerait
+ *   éternellement les mutations suivantes derrière elle.
  */
-export async function flushSyncQueue(): Promise<void> {
+export async function flushSyncQueue(): Promise<FlushResult> {
   if (flushPromise) return flushPromise;
-  flushPromise = (async () => {
+  flushPromise = (async (): Promise<FlushResult> => {
+    let sent = 0;
+    let failed = 0;
     try {
       // Ne jamais rejouer sans session : évite les 401 intempestifs.
       const token = await tokenStore.getAccessToken();
-      if (!token) return;
+      if (!token) {
+        return { sent, failed, remaining: (await offlineStore.queueList()).length };
+      }
       const pending = await offlineStore.queueList();
-      if (pending.length === 0) return;
+      if (pending.length === 0) return { sent, failed, remaining: 0 };
       for (const item of pending) {
         try {
           await api.request({
@@ -132,10 +150,27 @@ export async function flushSyncQueue(): Promise<void> {
           } as QueuedConfig);
           await offlineStore.queueRemove(item.id);
           void offlineStore.queueCount().then((n) => syncStatus.setPending(n));
-        } catch {
-          break; // réseau KO ou erreur serveur : réessai au prochain 2xx
+          sent++;
+        } catch (err) {
+          const status = (err as AxiosError)?.response?.status;
+          if (
+            status !== undefined &&
+            status >= 400 &&
+            status < 500 &&
+            status !== 401 &&
+            status !== 403
+          ) {
+            // Rejet définitif serveur : jamais accepté tel quel → on ne bloque
+            // pas la file ; l'écran Synchronisation remonte le compte d'échecs.
+            await offlineStore.queueRemove(item.id);
+            void offlineStore.queueCount().then((n) => syncStatus.setPending(n));
+            failed++;
+            continue;
+          }
+          break; // réseau KO / 5xx / session : réessai au prochain 2xx
         }
       }
+      return { sent, failed, remaining: (await offlineStore.queueList()).length };
     } finally {
       flushPromise = null;
     }
