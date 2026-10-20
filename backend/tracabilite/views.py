@@ -277,6 +277,18 @@ class BonTransportViewSet(viewsets.ModelViewSet):
         if campagne_id:
             queryset = queryset.filter(campagne_id=campagne_id)
         
+        # S2 (audit sécurité) — #29 : les non-responsables ne voient que les
+        # bons de transport de leur agence (coopérative directe ou héritée
+        # de la fiche de collecte).
+        from users.permissions import can_see_all_data, get_user_agence
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(
+                    Q(cooperative__agence_id=agence.id)
+                    | Q(fiche_collecte__cooperative__agence_id=agence.id)
+                )
+
         return queryset.select_related('campagne', 'fiche_collecte', 'cooperative').prefetch_related('details_sacs')
     
     @action(detail=True, methods=['post'], url_path='marquer-recu')
@@ -333,6 +345,18 @@ class LotTraitementViewSet(viewsets.ModelViewSet):
         if type_traitement:
             queryset = queryset.filter(type_traitement=type_traitement)
         
+        # S2 (audit sécurité) — #29 : lots rattachés à l'agence (coopérative
+        # directe ou héritée des bons de transport sources).
+        from users.permissions import can_see_all_data, get_user_agence
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(
+                    Q(cooperative__agence_id=agence.id)
+                    | Q(bons_transport__cooperative__agence_id=agence.id)
+                    | Q(bons_transport__fiche_collecte__cooperative__agence_id=agence.id)
+                ).distinct()
+
         return queryset.select_related('campagne', 'cooperative').prefetch_related('bons_transport')
 
 
@@ -358,6 +382,18 @@ class ColisViewSet(viewsets.ModelViewSet):
         if qualite:
             queryset = queryset.filter(qualite=qualite)
         
+        # S2 (audit sécurité) — #29 : colis rattachés à l'agence via leur lot
+        # de traitement (coopérative du lot ou héritée des BT sources).
+        from users.permissions import can_see_all_data, get_user_agence
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(
+                    Q(lot_traitement__cooperative__agence_id=agence.id)
+                    | Q(lot_traitement__bons_transport__cooperative__agence_id=agence.id)
+                    | Q(lot_traitement__bons_transport__fiche_collecte__cooperative__agence_id=agence.id)
+                ).distinct()
+
         return queryset.select_related('lot_traitement')
     
     @action(detail=True, methods=['get'], url_path='generate-qr')
@@ -427,6 +463,18 @@ class CommandeExportViewSet(viewsets.ModelViewSet):
         if pays:
             queryset = queryset.filter(pays_destination__icontains=pays)
         
+        # S2 (audit sécurité) — #29 : commandes d'export rattachées à l'agence
+        # via leurs colis (lot de traitement → coopérative, directe ou héritée).
+        from users.permissions import can_see_all_data, get_user_agence
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(
+                    Q(colis__lot_traitement__cooperative__agence_id=agence.id)
+                    | Q(colis__lot_traitement__bons_transport__cooperative__agence_id=agence.id)
+                    | Q(colis__lot_traitement__bons_transport__fiche_collecte__cooperative__agence_id=agence.id)
+                ).distinct()
+
         return queryset.select_related('campagne').prefetch_related('colis')
     
     @action(detail=True, methods=['get'], url_path='trace')
@@ -463,6 +511,12 @@ class TracabiliteChainViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = TracabiliteChain.objects.select_related('producteur')
+        # S2 (audit sécurité) — #29 : chaînes des producteurs de l'agence.
+        from users.permissions import can_see_all_data, get_user_agence
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(producteur__cooperative__agence_id=agence.id)
         type_trace = self.request.query_params.get('type')
         if type_trace:
             queryset = queryset.filter(type_tracabilite=type_trace)
@@ -494,6 +548,13 @@ class EstimationProductionViewSet(viewsets.ModelViewSet):
         if producteur:
             queryset = queryset.filter(producteur_id=producteur)
 
+        # S2 (audit sécurité) — #29 : estimations des producteurs de l'agence.
+        from users.permissions import can_see_all_data, get_user_agence
+        if not can_see_all_data(self.request.user):
+            agence = get_user_agence(self.request.user)
+            if agence:
+                queryset = queryset.filter(producteur__cooperative__agence_id=agence.id)
+
         type_vanille = self.request.query_params.get('type_vanille')
         if type_vanille:
             queryset = queryset.filter(type_vanille=type_vanille)
@@ -503,15 +564,18 @@ class EstimationProductionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='stats')
     def stats(self, request):
         """Statistiques : total estimé par campagne et type de vanille."""
-        somme = EstimationProduction.objects.filter(
+        # S2 (audit sécurité) — #29 : les stats reprennent le périmètre de
+        # get_queryset (scoping agence), jamais la vue globale.
+        base = self.get_queryset()
+        somme = base.filter(
             campagne__statut='active'
         ).aggregate(total=Sum('quantite_estimee'))
         par_type = (
-            EstimationProduction.objects.values('type_vanille')
+            base.values('type_vanille')
             .annotate(total=Sum('quantite_estimee'), count=Count('id'))
         )
         par_campagne = (
-            EstimationProduction.objects.values('campagne__code', 'campagne')
+            base.values('campagne__code', 'campagne')
             .annotate(total=Sum('quantite_estimee'), count=Count('id'))
         )
         return Response({
